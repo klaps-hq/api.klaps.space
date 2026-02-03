@@ -1,18 +1,18 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { MoviesService } from './movies.service';
-import { movies } from '../database/schema/schema';
-import { InternalApiKeyGuard } from 'src/common/guards/internal-api-key.guard';
+import { InternalApiKeyGuard } from '../common/guards/internal-api-key.guard';
+import type { MovieWithGenres } from './movies.types';
 
 @Controller('movies')
 export class MoviesController {
   constructor(private readonly moviesService: MoviesService) {}
 
   /**
-   * Returns all movies.
+   * Returns all movies with their genres.
    */
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getMovies(): Promise<(typeof movies.$inferSelect)[]> {
+  getMovies(): Promise<MovieWithGenres[]> {
     return this.moviesService.getMovies();
   }
 }
