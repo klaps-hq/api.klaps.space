@@ -3,10 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { drizzle } from 'drizzle-orm/mysql2';
 import { DRIZZLE } from './constants';
 import * as schema from './schema/schema';
-import { Pool } from 'pg';
+import * as relations from './schema/relations';
 
 /**
- * Global module that provides a Drizzle ORM instance (PostgreSQL).
+ * Global module that provides a Drizzle ORM instance (MySQL).
  * Inject with @Inject(DRIZZLE) in your services.
  */
 @Global()
@@ -18,8 +18,10 @@ import { Pool } from 'pg';
       useFactory: (configService: ConfigService) => {
         const connectionString =
           configService.getOrThrow<string>('DATABASE_URL');
-        const pool = new Pool({ connectionString });
-        return drizzle(connectionString, { schema, mode: 'default' });
+        return drizzle(connectionString, {
+          schema: { ...schema, ...relations },
+          mode: 'default',
+        });
       },
     },
   ],

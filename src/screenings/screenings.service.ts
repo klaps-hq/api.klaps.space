@@ -65,21 +65,39 @@ export class ScreeningsService {
 
   async getRandomRetroScreening(): Promise<MovieWithScreenings | null> {
     const { startOfDay } = getDateRange(getTodayDateString());
-    const candidateIds = await this.db.query.screenings.findMany({
+
+    const retroMovies = await this.db.query.movies.findMany({
       where: and(
-        gte(schema.screenings.date, startOfDay),
         lt(schema.movies.productionYear, RETRO_YEAR_THRESHOLD),
         isNotNull(schema.movies.backdropUrl),
         ne(schema.movies.backdropUrl, ''),
       ),
+      columns: { id: true },
+    });
+    const retroMovieIds = retroMovies.map((m) => m.id);
+    if (retroMovieIds.length === 0) return null;
+
+    const candidateScreenings = await this.db.query.screenings.findMany({
+      where: and(
+        gte(schema.screenings.date, startOfDay),
+        inArray(schema.screenings.movieId, retroMovieIds),
+      ),
+      with: {
+        movie: {
+          with: {
+            movies_genres: { with: { genre: true } },
+          },
+        },
+      },
+      limit: SCREENINGS_FETCH_LIMIT,
     });
 
-    if (candidateIds.length === 0) return null;
-    const chosenMovie = pickRandomElement(candidateIds);
+    if (candidateScreenings.length === 0) return null;
+    const chosenScreening = pickRandomElement(candidateScreenings);
 
     const screenings = await this.db.query.screenings.findMany({
       where: and(
-        eq(schema.screenings.movieId, chosenMovie.movieId),
+        eq(schema.screenings.movieId, chosenScreening.movieId),
         gte(schema.screenings.date, startOfDay),
       ),
       with: {
