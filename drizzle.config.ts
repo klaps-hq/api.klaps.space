@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
-  dialect: 'postgresql',
+  dialect: 'mysql',
   schema: './src/database/schema/index.ts',
   out: './src/database/schema',
   introspect: { casing: 'preserve' },

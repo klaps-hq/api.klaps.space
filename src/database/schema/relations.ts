@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { cities, cinemas, actors, movies_actors, movies, countries, movies_countries, directors, movies_directors, genres, movies_genres, screenings, showtimes } from "./schema";
+import { cities, cinemas, actors, movies_actors, movies, countries, movies_countries, directors, movies_directors, genres, movies_genres, movies_scriptwriters, scriptwriters, screenings, showtimes } from "./schema";
 
 export const cinemasRelations = relations(cinemas, ({one, many}) => ({
 	city: one(cities, {
@@ -34,6 +34,7 @@ export const moviesRelations = relations(movies, ({many}) => ({
 	movies_countries: many(movies_countries),
 	movies_directors: many(movies_directors),
 	movies_genres: many(movies_genres),
+	movies_scriptwriters: many(movies_scriptwriters),
 	screenings: many(screenings),
 }));
 
@@ -80,6 +81,21 @@ export const movies_genresRelations = relations(movies_genres, ({one}) => ({
 
 export const genresRelations = relations(genres, ({many}) => ({
 	movies_genres: many(movies_genres),
+}));
+
+export const movies_scriptwritersRelations = relations(movies_scriptwriters, ({one}) => ({
+	movie: one(movies, {
+		fields: [movies_scriptwriters.movieId],
+		references: [movies.id]
+	}),
+	scriptwriter: one(scriptwriters, {
+		fields: [movies_scriptwriters.scriptwriterId],
+		references: [scriptwriters.id]
+	}),
+}));
+
+export const scriptwritersRelations = relations(scriptwriters, ({many}) => ({
+	movies_scriptwriters: many(movies_scriptwriters),
 }));
 
 export const screeningsRelations = relations(screenings, ({one}) => ({

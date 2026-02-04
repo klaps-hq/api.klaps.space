@@ -5,14 +5,15 @@ import {
   primaryKey,
   unique,
   int,
-  tinyint,
   varchar,
   timestamp,
   foreignKey,
   float,
   text,
   date,
+  bigint,
   datetime,
+  tinyint,
 } from 'drizzle-orm/mysql-core';
 import { sql } from 'drizzle-orm';
 
@@ -164,6 +165,10 @@ export const movies = mysqlTable(
     updatedAt: timestamp({ mode: 'string' })
       .default(sql`(now())`)
       .notNull(),
+    backdropUrl: varchar({ length: 512 }),
+    boxoffice: bigint({ mode: 'number' }),
+    budget: bigint({ mode: 'number' }),
+    distribution: varchar({ length: 255 }),
   },
   (table) => [
     primaryKey({ columns: [table.id], name: 'movies_id' }),
@@ -275,6 +280,32 @@ export const movies_genres = mysqlTable(
   ],
 );
 
+export const movies_scriptwriters = mysqlTable(
+  'movies_scriptwriters',
+  {
+    id: int().autoincrement().notNull(),
+    movieId: int()
+      .notNull()
+      .references(() => movies.id),
+    scriptwriterId: int()
+      .notNull()
+      .references(() => scriptwriters.id),
+    createdAt: timestamp({ mode: 'string' })
+      .default(sql`(now())`)
+      .notNull(),
+    updatedAt: timestamp({ mode: 'string' })
+      .default(sql`(now())`)
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.id], name: 'movies_scriptwriters_id' }),
+    unique('movies_scriptwriters_movieId_scriptwriterId_unique').on(
+      table.movieId,
+      table.scriptwriterId,
+    ),
+  ],
+);
+
 export const screenings = mysqlTable(
   'screenings',
   {
@@ -301,6 +332,26 @@ export const screenings = mysqlTable(
     type: varchar({ length: 255 }).notNull(),
   },
   (table) => [primaryKey({ columns: [table.id], name: 'screenings_id' })],
+);
+
+export const scriptwriters = mysqlTable(
+  'scriptwriters',
+  {
+    id: int().autoincrement().notNull(),
+    filmwebId: int().notNull(),
+    name: varchar({ length: 255 }).notNull(),
+    url: varchar({ length: 255 }).notNull(),
+    createdAt: timestamp({ mode: 'string' })
+      .default(sql`(now())`)
+      .notNull(),
+    updatedAt: timestamp({ mode: 'string' })
+      .default(sql`(now())`)
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.id], name: 'scriptwriters_id' }),
+    unique('scriptwriters_filmwebId_unique').on(table.filmwebId),
+  ],
 );
 
 export const showtimes = mysqlTable(

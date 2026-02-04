@@ -89,6 +89,10 @@ CREATE TABLE `movies` (
 	`videoUrl` varchar(255),
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp NOT NULL DEFAULT (now()),
+	`backdropUrl` varchar(512),
+	`boxoffice` bigint,
+	`budget` bigint,
+	`distribution` varchar(255),
 	CONSTRAINT `movies_id` PRIMARY KEY(`id`),
 	CONSTRAINT `movies_filmwebId_unique` UNIQUE(`filmwebId`)
 );
@@ -133,6 +137,16 @@ CREATE TABLE `movies_genres` (
 	CONSTRAINT `movies_genres_movieId_genreId_unique` UNIQUE(`movieId`,`genreId`)
 );
 --> statement-breakpoint
+CREATE TABLE `movies_scriptwriters` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`movieId` int NOT NULL,
+	`scriptwriterId` int NOT NULL,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `movies_scriptwriters_id` PRIMARY KEY(`id`),
+	CONSTRAINT `movies_scriptwriters_movieId_scriptwriterId_unique` UNIQUE(`movieId`,`scriptwriterId`)
+);
+--> statement-breakpoint
 CREATE TABLE `screenings` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`url` varchar(255),
@@ -146,6 +160,17 @@ CREATE TABLE `screenings` (
 	`updatedAt` timestamp NOT NULL DEFAULT (now()),
 	`type` varchar(255) NOT NULL,
 	CONSTRAINT `screenings_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `scriptwriters` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`filmwebId` int NOT NULL,
+	`name` varchar(255) NOT NULL,
+	`url` varchar(255) NOT NULL,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `scriptwriters_id` PRIMARY KEY(`id`),
+	CONSTRAINT `scriptwriters_filmwebId_unique` UNIQUE(`filmwebId`)
 );
 --> statement-breakpoint
 CREATE TABLE `showtimes` (
@@ -168,6 +193,8 @@ ALTER TABLE `movies_directors` ADD CONSTRAINT `movies_directors_directorId_direc
 ALTER TABLE `movies_directors` ADD CONSTRAINT `movies_directors_movieId_movies_id_fk` FOREIGN KEY (`movieId`) REFERENCES `movies`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `movies_genres` ADD CONSTRAINT `movies_genres_genreId_genres_id_fk` FOREIGN KEY (`genreId`) REFERENCES `genres`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `movies_genres` ADD CONSTRAINT `movies_genres_movieId_movies_id_fk` FOREIGN KEY (`movieId`) REFERENCES `movies`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `movies_scriptwriters` ADD CONSTRAINT `movies_scriptwriters_movieId_movies_id_fk` FOREIGN KEY (`movieId`) REFERENCES `movies`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `movies_scriptwriters` ADD CONSTRAINT `movies_scriptwriters_scriptwriterId_scriptwriters_id_fk` FOREIGN KEY (`scriptwriterId`) REFERENCES `scriptwriters`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `screenings` ADD CONSTRAINT `screenings_cinemaId_cinemas_filmwebId_fk` FOREIGN KEY (`cinemaId`) REFERENCES `cinemas`(`filmwebId`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `screenings` ADD CONSTRAINT `screenings_movieId_movies_id_fk` FOREIGN KEY (`movieId`) REFERENCES `movies`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `screenings` ADD CONSTRAINT `screenings_showtimeId_showtimes_id_fk` FOREIGN KEY (`showtimeId`) REFERENCES `showtimes`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint

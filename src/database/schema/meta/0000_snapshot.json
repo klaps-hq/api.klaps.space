@@ -574,6 +574,34 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true
+        },
+        "backdropUrl": {
+          "autoincrement": false,
+          "name": "backdropUrl",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "boxoffice": {
+          "autoincrement": false,
+          "name": "boxoffice",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "budget": {
+          "autoincrement": false,
+          "name": "budget",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "distribution": {
+          "autoincrement": false,
+          "name": "distribution",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "compositePrimaryKeys": {
@@ -952,6 +980,95 @@
       },
       "checkConstraint": {}
     },
+    "movies_scriptwriters": {
+      "name": "movies_scriptwriters",
+      "columns": {
+        "id": {
+          "autoincrement": true,
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "movieId": {
+          "autoincrement": false,
+          "name": "movieId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scriptwriterId": {
+          "autoincrement": false,
+          "name": "scriptwriterId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "default": "(now())",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "default": "(now())",
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {
+        "movies_scriptwriters_id": {
+          "name": "movies_scriptwriters_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "movies_scriptwriters_movieId_movies_id_fk": {
+          "name": "movies_scriptwriters_movieId_movies_id_fk",
+          "tableFrom": "movies_scriptwriters",
+          "tableTo": "movies",
+          "columnsFrom": [
+            "movieId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "movies_scriptwriters_scriptwriterId_scriptwriters_id_fk": {
+          "name": "movies_scriptwriters_scriptwriterId_scriptwriters_id_fk",
+          "tableFrom": "movies_scriptwriters",
+          "tableTo": "scriptwriters",
+          "columnsFrom": [
+            "scriptwriterId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "uniqueConstraints": {
+        "movies_scriptwriters_movieId_scriptwriterId_unique": {
+          "name": "movies_scriptwriters_movieId_scriptwriterId_unique",
+          "columns": [
+            "movieId",
+            "scriptwriterId"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
     "screenings": {
       "name": "screenings",
       "columns": {
@@ -1086,6 +1203,74 @@
         }
       },
       "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "scriptwriters": {
+      "name": "scriptwriters",
+      "columns": {
+        "id": {
+          "autoincrement": true,
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "filmwebId": {
+          "autoincrement": false,
+          "name": "filmwebId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "autoincrement": false,
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url": {
+          "autoincrement": false,
+          "name": "url",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "default": "(now())",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "default": "(now())",
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {
+        "scriptwriters_id": {
+          "name": "scriptwriters_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "uniqueConstraints": {
+        "scriptwriters_filmwebId_unique": {
+          "name": "scriptwriters_filmwebId_unique",
+          "columns": [
+            "filmwebId"
+          ]
+        }
+      },
       "checkConstraint": {}
     },
     "showtimes": {
@@ -1279,7 +1464,27 @@
           }
         }
       },
+      "movies_scriptwriters": {
+        "columns": {
+          "createdAt": {
+            "isDefaultAnExpression": true
+          },
+          "updatedAt": {
+            "isDefaultAnExpression": true
+          }
+        }
+      },
       "screenings": {
+        "columns": {
+          "createdAt": {
+            "isDefaultAnExpression": true
+          },
+          "updatedAt": {
+            "isDefaultAnExpression": true
+          }
+        }
+      },
+      "scriptwriters": {
         "columns": {
           "createdAt": {
             "isDefaultAnExpression": true

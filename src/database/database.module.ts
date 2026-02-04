@@ -2,7 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { drizzle } from 'drizzle-orm/mysql2';
 import { DRIZZLE } from './constants';
-import * as schema from './schema';
+import * as schema from './schema/schema';
 import { Pool } from 'pg';
 
 /**
