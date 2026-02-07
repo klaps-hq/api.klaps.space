@@ -1,4 +1,10 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ScreeningsService } from './screenings.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { MovieWithScreenings } from './screenings.types';
@@ -9,23 +15,30 @@ export class ScreeningsController {
   constructor(private readonly screeningsService: ScreeningsService) {}
 
   /**
-   * Returns movies with screenings for the given date (default today) and optional city.
-   * Query params: date (YYYY-MM-DD), cityId (optional), movieLimit (optional, default 50).
+   * Returns movies with screenings for the given date (default today) and optional filters.
+   * Query params: date (YYYY-MM-DD), cityId (optional), genreId (optional), limit (optional, default 10).
    */
-  @Get('screenings')
+  @Get()
   @UseGuards(InternalApiKeyGuard)
   getScreenings(
     @Query() query: GetScreeningsQueryDto,
   ): Promise<MovieWithScreenings[]> {
     return this.screeningsService.getScreenings({
-      date: query.date,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
       cityId: query.cityId,
+      genreId: query.genreId,
+      limit: query.limit,
     });
   }
 
   @Get('random-screening')
   @UseGuards(InternalApiKeyGuard)
-  getRandomRetroScreening(): Promise<MovieWithScreenings | null> {
-    return this.screeningsService.getRandomRetroScreening();
+  async getRandomRetroScreening(): Promise<MovieWithScreenings> {
+    const screening = await this.screeningsService.getRandomRetroScreening();
+    if (!screening) {
+      throw new NotFoundException('No retro screening found');
+    }
+    return screening;
   }
 }

@@ -1,19 +1,26 @@
-import { IsDateString, IsInt, IsOptional, Min } from 'class-validator';
+import { IsDateString, IsInt, IsOptional, MaxDate, Min } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
 /**
  * Query DTO for GET /screenings.
- * date: optional, YYYY-MM-DD (defaults to today in service).
+ * dateFrom: optional, YYYY-MM-DD (defaults to today in service).
+ * dateTo: optional, YYYY-MM-DD (defaults to 30 days from today in service).
  * cityId: optional, positive integer.
- * movieLimit: optional, max number of movies to return (default 50).
+ * limit: optional, max number of movies to return (default 10).
  */
 export class GetScreeningsQueryDto {
   @IsOptional()
-  @IsDateString(
-    {},
-    { message: 'date must be a valid ISO date string (YYYY-MM-DD)' },
-  )
-  date?: string;
+  @IsDateString({})
+  @Transform(({ value }) => value ?? new Date().toISOString().slice(0, 10))
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsDateString({})
+  @Transform(({ value }) => value ?? new Date().toISOString().slice(0, 10))
+  @MaxDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), {
+    message: 'dateTo must be less than 30 days from today',
+  })
+  dateTo?: string;
 
   @IsOptional()
   @Type(() => Number)
@@ -22,11 +29,17 @@ export class GetScreeningsQueryDto {
   cityId?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'genreId must be an integer' })
+  @Min(1, { message: 'genreId must be a positive integer' })
+  genreId?: number;
+
+  @IsOptional()
   @Transform(({ value }) =>
-    value !== undefined && value !== '' ? Number(value) : 50,
+    value !== undefined && value !== '' ? Number(value) : undefined,
   )
   @Type(() => Number)
-  @IsInt({ message: 'movieLimit must be an integer' })
-  @Min(1, { message: 'movieLimit must be at least 1' })
-  movieLimit: number = 50;
+  @IsInt({ message: 'limit must be an integer' })
+  @Min(1, { message: 'limit must be at least 1' })
+  limit?: number;
 }

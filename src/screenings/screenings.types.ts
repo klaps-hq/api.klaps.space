@@ -10,7 +10,10 @@ export type ScreeningWithMovieAndCinema = Screening & {
   cinema: typeof cinemas.$inferSelect;
 };
 
-export type ScreeningWithStartTime = Screening & { startTime: string };
+export type ScreeningWithStartTime = Screening & {
+  startTime: string;
+  cinemaName: string;
+};
 
 export type MovieWithScreenings = {
   movie: MovieWithGenres;
@@ -18,6 +21,9 @@ export type MovieWithScreenings = {
 };
 
 export type GetScreeningsParams = {
-  date?: string;
+  dateFrom?: string;
+  dateTo?: string;
   cityId?: number | undefined;
+  genreId?: number | undefined;
+  limit?: number;
 };
