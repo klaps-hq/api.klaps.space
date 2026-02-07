@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { CitiesModule } from './cities/cities.module';
 import { DatabaseModule } from './database/database.module';
 import { MoviesModule } from './movies/movies.module';
+import { GenresModule } from './genres/genres.module';
 import { ScreeningsModule } from './screenings/screenings.module';
 
 @Module({
@@ -13,6 +14,7 @@ import { ScreeningsModule } from './screenings/screenings.module';
     DatabaseModule,
     MoviesModule,
     CitiesModule,
+    GenresModule,
     ScreeningsModule,
   ],
   controllers: [AppController],
