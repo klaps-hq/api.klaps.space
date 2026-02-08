@@ -52,4 +52,17 @@ export class CinemasService {
       cityName: city?.name ?? '',
     }));
   }
+
+  /**
+   * Returns a single cinema by its database id, including city name.
+   */
+  async getCinemaById(id: number): Promise<CinemaWithCityName | null> {
+    const cinema = await this.db.query.cinemas.findFirst({
+      where: eq(schema.cinemas.id, id),
+      with: { city: true },
+    });
+    if (!cinema) return null;
+    const { city, ...rest } = cinema;
+    return { ...rest, cityName: city?.name ?? '' };
+  }
 }

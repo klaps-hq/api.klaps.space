@@ -1,4 +1,12 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  ParseIntPipe,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CinemasService } from './cinemas.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { CinemaWithCityName } from './cinemas.types';
@@ -21,5 +29,21 @@ export class CinemasController {
       cityId: query.cityId,
       limit: query.limit,
     });
+  }
+
+  /**
+   * URL: /api/v1/cinemas/:id
+   * Returns a single cinema by its id.
+   */
+  @Get(':id')
+  @UseGuards(InternalApiKeyGuard)
+  async getCinemaById(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<CinemaWithCityName> {
+    const cinema = await this.cinemasService.getCinemaById(id);
+    if (!cinema) {
+      throw new NotFoundException(`Cinema with id ${id} not found`);
+    }
+    return cinema;
   }
 }
