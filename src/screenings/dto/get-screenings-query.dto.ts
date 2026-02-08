@@ -17,9 +17,6 @@ export class GetScreeningsQueryDto {
   @IsOptional()
   @IsDateString({})
   @Transform(({ value }) => value ?? new Date().toISOString().slice(0, 10))
-  @MaxDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), {
-    message: 'dateTo must be less than 30 days from today',
-  })
   dateTo?: string;
 
   @IsOptional()

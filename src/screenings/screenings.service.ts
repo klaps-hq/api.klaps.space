@@ -88,14 +88,16 @@ export class ScreeningsService {
       },
     });
 
-    return movies.map(({ screenings, ...movie }) => ({
-      movie,
-      screenings: screenings.map(({ cinema, ...s }) => ({
-        ...s,
-        startTime: s.date,
-        cinemaName: cinema?.name ?? '',
-      })),
-    }));
+    return movies
+      .filter(({ screenings }) => screenings.length > 0)
+      .map(({ screenings, ...movie }) => ({
+        movie,
+        screenings: screenings.map(({ cinema, ...s }) => ({
+          ...s,
+          startTime: s.date,
+          cinemaName: cinema?.name ?? '',
+        })),
+      }));
   }
 
   async getRandomRetroScreening(): Promise<MovieWithScreenings | null> {

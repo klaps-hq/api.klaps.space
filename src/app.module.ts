@@ -7,6 +7,7 @@ import { DatabaseModule } from './database/database.module';
 import { MoviesModule } from './movies/movies.module';
 import { GenresModule } from './genres/genres.module';
 import { ScreeningsModule } from './screenings/screenings.module';
+import { CinemasModule } from './cinemas/cinemas.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ScreeningsModule } from './screenings/screenings.module';
     DatabaseModule,
     MoviesModule,
     CitiesModule,
+    CinemasModule,
     GenresModule,
     ScreeningsModule,
   ],
