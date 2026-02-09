@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
-import * as schema from '../database/schema/schema';
+import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
 import type { Genre } from './genres.types';
 

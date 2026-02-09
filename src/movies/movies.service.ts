@@ -1,14 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
-import * as schema from '../database/schema/schema';
+import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
 import type {
   GetMoviesParams,
   GetMultiCityMoviesParams,
+  Movie,
   MovieWithGenres,
   MultiCityMovie,
   PaginatedMoviesResponse,
 } from './movies.types';
+import type { CreateMovieDto } from './dto/create-movie.dto';
 import { count, desc, eq, gte, lte, sql } from 'drizzle-orm';
 
 const DEFAULT_PAGE = 1;
@@ -116,5 +118,27 @@ export class MoviesService {
       .having(sql`COUNT(DISTINCT ${schema.cities.id}) >= ${minCities}`)
       .orderBy(desc(citiesCountExpression))
       .limit(limit);
+  }
+
+  /**
+   * Creates a new movie and returns the inserted row.
+   */
+  async createMovie(dto: CreateMovieDto): Promise<Movie> {
+    const [result] = await this.db
+      .insert(schema.movies)
+      .values({
+        ...dto,
+        worldPremiereDate: dto.worldPremiereDate
+          ? new Date(dto.worldPremiereDate)
+          : undefined,
+        polishPremiereDate: dto.polishPremiereDate
+          ? new Date(dto.polishPremiereDate)
+          : undefined,
+      })
+      .$returningId();
+    const movie = await this.db.query.movies.findFirst({
+      where: eq(schema.movies.id, result.id),
+    });
+    return movie!;
   }
 }

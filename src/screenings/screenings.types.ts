@@ -1,17 +1,18 @@
-import { cinemas, screenings } from '../database/schema/schema';
+import { cinemasTable } from '../database/schemas/cinemas.schema';
+import { screeningsTable } from '../database/schemas/screenings.schema';
 import type { MovieWithGenres } from '../movies/movies.types';
 
-export type Screening = typeof screenings.$inferSelect;
+export type Screening = typeof screeningsTable.$inferSelect;
 export type ScreeningWithMovie = Screening & {
   movie: MovieWithGenres;
 };
 export type ScreeningWithMovieAndCinema = Screening & {
   movie: MovieWithGenres;
-  cinema: typeof cinemas.$inferSelect;
+  cinema: typeof cinemasTable.$inferSelect;
 };
 
 export type ScreeningWithStartTime = Screening & {
-  startTime: string;
+  startTime: Date;
   cinemaName: string;
 };
 
@@ -23,6 +24,7 @@ export type MovieWithScreenings = {
 export type GetScreeningsParams = {
   dateFrom?: string;
   dateTo?: string;
+  movieId?: number;
   cityId?: number | undefined;
   genreId?: number | undefined;
   limit?: number;

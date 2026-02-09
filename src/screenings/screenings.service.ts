@@ -1,15 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import { DRIZZLE } from '../database/constants';
-import * as schema from '../database/schema/schema';
-import * as relations from '../database/schema/relations';
-
+import * as schema from '../database/schemas';
+import * as relations from '../database/schemas/relations';
 import { getDateRangeUpToMonthFromNow } from '../lib/utils';
 import { randomInt } from 'node:crypto';
 import type {
   GetScreeningsParams,
   MovieWithScreenings,
+  Screening,
 } from './screenings.types';
+import type { CreateScreeningDto } from './dto/create-screening.dto';
 import { and, eq, gte, inArray, isNotNull, lte, ne } from 'drizzle-orm';
 
 type FullSchema = typeof schema & typeof relations;
@@ -52,6 +53,9 @@ export class ScreeningsService {
         and(
           gte(schema.screenings.date, startDay),
           lte(schema.screenings.date, endDay),
+          params?.movieId
+            ? eq(schema.screenings.movieId, params.movieId)
+            : undefined,
           params?.cityId
             ? eq(schema.showtimes.cityId, params.cityId)
             : undefined,
@@ -70,7 +74,7 @@ export class ScreeningsService {
       with: {
         movies_genres: { with: { genre: true } },
         screenings: {
-          with: { cinema: true },
+          with: { cinema: { with: { city: true } } },
           where: and(
             gte(schema.screenings.date, startDay),
             lte(schema.screenings.date, endDay),
@@ -96,6 +100,7 @@ export class ScreeningsService {
           ...s,
           startTime: s.date,
           cinemaName: cinema?.name ?? '',
+          cityName: cinema?.city?.name ?? '',
         })),
       }));
   }
@@ -161,5 +166,19 @@ export class ScreeningsService {
         cityName: s.showtime?.city?.name ?? '',
       })),
     };
+  }
+
+  /**
+   * Creates a new screening and returns the inserted row.
+   */
+  async createScreening(dto: CreateScreeningDto): Promise<Screening> {
+    const [result] = await this.db
+      .insert(schema.screenings)
+      .values({ ...dto, date: new Date(dto.date) })
+      .$returningId();
+    const screening = await this.db.query.screenings.findFirst({
+      where: eq(schema.screenings.id, result.id),
+    });
+    return screening!;
   }
 }

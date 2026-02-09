@@ -2,8 +2,8 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { drizzle } from 'drizzle-orm/mysql2';
 import { DRIZZLE } from './constants';
-import * as schema from './schema/schema';
-import * as relations from './schema/relations';
+import * as schema from './schemas';
+import * as relations from './schemas/relations';
 
 /**
  * Global module that provides a Drizzle ORM instance (MySQL).

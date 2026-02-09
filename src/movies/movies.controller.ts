@@ -1,9 +1,11 @@
 import {
+  Body,
   Controller,
   Get,
   NotFoundException,
   Param,
   ParseIntPipe,
+  Post,
   Query,
   UseGuards,
   UseInterceptors,
@@ -12,12 +14,14 @@ import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { MoviesService } from './movies.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type {
+  Movie,
   MovieWithGenres,
   MultiCityMovie,
   PaginatedMoviesResponse,
 } from './movies.types';
 import { GetMultiCityMoviesQueryDto } from './dto/get-multi-city-movies-query.dto';
 import { GetMoviesQueryDto } from './dto/get-movies-query.dto';
+import { CreateMovieDto } from './dto/create-movie.dto';
 
 /** Cache TTL for multi-city movies endpoint: 15 minutes (in ms). */
 const MULTI_CITY_CACHE_TTL = 900_000;
@@ -40,6 +44,16 @@ export class MoviesController {
       page: query.page,
       limit: query.limit,
     });
+  }
+
+  /**
+   * URL: /api/v1/movies
+   * Creates a new movie.
+   */
+  @Post()
+  @UseGuards(InternalApiKeyGuard)
+  createMovie(@Body() dto: CreateMovieDto): Promise<Movie> {
+    return this.moviesService.createMovie(dto);
   }
 
   /**

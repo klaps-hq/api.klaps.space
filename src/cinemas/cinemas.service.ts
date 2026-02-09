@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
-import * as schema from '../database/schema/schema';
-import * as relations from '../database/schema/relations';
+import * as schema from '../database/schemas';
+import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { CinemaWithCityName, GetCinemasParams } from './cinemas.types';

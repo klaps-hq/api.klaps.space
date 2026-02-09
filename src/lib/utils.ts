@@ -11,26 +11,24 @@ export const getDateRange = (
   endOfDay: dateStr + TIME_END_OF_DAY,
 });
 
-/** Returns a date range: defaults to today through 30 days out (YYYY-MM-DD HH:mm:ss). */
+/** Returns a date range: defaults to today through 30 days out. */
 export const getDateRangeUpToMonthFromNow = (
   dateFrom?: string,
   dateTo?: string,
 ): {
-  startDay: string;
-  endDay: string;
+  startDay: Date;
+  endDay: Date;
 } => {
   const start = dateFrom ? new Date(dateFrom) : new Date();
-  const startDay = start.toISOString().slice(0, 10);
+  start.setHours(0, 0, 0, 0);
 
-  if (dateTo) {
-    return { startDay, endDay: dateTo + TIME_END_OF_DAY };
+  const end = dateTo ? new Date(dateTo) : new Date(start);
+  if (!dateTo) {
+    end.setDate(end.getDate() + 30);
   }
+  end.setHours(23, 59, 59, 999);
 
-  const endDate = new Date(start);
-  endDate.setDate(endDate.getDate() + 30);
-  const endDay = endDate.toISOString().slice(0, 10) + TIME_END_OF_DAY;
-
-  return { startDay, endDay };
+  return { startDay: start, endDay: end };
 };
 
 export const pickRandomElement = <T>(array: T[]): T => {

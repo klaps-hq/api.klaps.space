@@ -5,6 +5,7 @@ import { Transform, Type } from 'class-transformer';
  * Query DTO for GET /screenings.
  * dateFrom: optional, YYYY-MM-DD (defaults to today in service).
  * dateTo: optional, YYYY-MM-DD (defaults to 30 days from today in service).
+ * movieId: optional, positive integer.
  * cityId: optional, positive integer.
  * limit: optional, max number of movies to return (default 10).
  */
@@ -18,6 +19,12 @@ export class GetScreeningsQueryDto {
   @IsDateString({})
   @Transform(({ value }) => value ?? new Date().toISOString().slice(0, 10))
   dateTo?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'movieId must be an integer' })
+  @Min(1, { message: 'movieId must be a positive integer' })
+  movieId?: number;
 
   @IsOptional()
   @Type(() => Number)

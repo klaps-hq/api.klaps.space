@@ -1,4 +1,4 @@
-import { genres, movies } from '../database/schema/schema';
+import { genres, movies } from '../database/schemas';
 
 export type Movie = typeof movies.$inferSelect;
 export type Genre = typeof genres.$inferSelect;
