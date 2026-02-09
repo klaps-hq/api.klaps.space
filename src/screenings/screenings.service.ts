@@ -169,12 +169,25 @@ export class ScreeningsService {
   }
 
   /**
-   * Creates a new screening and returns the inserted row.
+   * Creates or updates a screening (upserts on duplicate key) and returns the row.
    */
   async createScreening(dto: CreateScreeningDto): Promise<Screening> {
+    const values = { ...dto, date: new Date(dto.date) };
     const [result] = await this.db
       .insert(schema.screenings)
-      .values({ ...dto, date: new Date(dto.date) })
+      .values(values)
+      .onDuplicateKeyUpdate({
+        set: {
+          url: dto.url,
+          movieId: dto.movieId,
+          showtimeId: dto.showtimeId,
+          cinemaId: dto.cinemaId,
+          type: dto.type,
+          date: values.date,
+          isDubbing: dto.isDubbing,
+          isSubtitled: dto.isSubtitled,
+        },
+      })
       .$returningId();
     const screening = await this.db.query.screenings.findFirst({
       where: eq(schema.screenings.id, result.id),

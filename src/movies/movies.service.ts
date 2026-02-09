@@ -121,23 +121,46 @@ export class MoviesService {
   }
 
   /**
-   * Creates a new movie and returns the inserted row.
+   * Creates or updates a movie (upserts on duplicate filmwebId) and returns the row.
    */
   async createMovie(dto: CreateMovieDto): Promise<Movie> {
-    const [result] = await this.db
+    const values = {
+      ...dto,
+      worldPremiereDate: dto.worldPremiereDate
+        ? new Date(dto.worldPremiereDate)
+        : undefined,
+      polishPremiereDate: dto.polishPremiereDate
+        ? new Date(dto.polishPremiereDate)
+        : undefined,
+    };
+    await this.db
       .insert(schema.movies)
-      .values({
-        ...dto,
-        worldPremiereDate: dto.worldPremiereDate
-          ? new Date(dto.worldPremiereDate)
-          : undefined,
-        polishPremiereDate: dto.polishPremiereDate
-          ? new Date(dto.polishPremiereDate)
-          : undefined,
-      })
-      .$returningId();
+      .values(values)
+      .onDuplicateKeyUpdate({
+        set: {
+          url: dto.url,
+          title: dto.title,
+          titleOriginal: dto.titleOriginal,
+          description: dto.description,
+          productionYear: dto.productionYear,
+          worldPremiereDate: values.worldPremiereDate,
+          polishPremiereDate: values.polishPremiereDate,
+          usersRating: dto.usersRating,
+          usersRatingVotes: dto.usersRatingVotes,
+          criticsRating: dto.criticsRating,
+          criticsRatingVotes: dto.criticsRatingVotes,
+          language: dto.language,
+          duration: dto.duration,
+          posterUrl: dto.posterUrl,
+          backdropUrl: dto.backdropUrl,
+          videoUrl: dto.videoUrl,
+          boxoffice: dto.boxoffice,
+          budget: dto.budget,
+          distribution: dto.distribution,
+        },
+      });
     const movie = await this.db.query.movies.findFirst({
-      where: eq(schema.movies.id, result.id),
+      where: eq(schema.movies.filmwebId, dto.filmwebId),
     });
     return movie!;
   }

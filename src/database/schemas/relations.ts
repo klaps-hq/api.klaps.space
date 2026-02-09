@@ -11,6 +11,7 @@ import { moviesDirectorsTable } from './movies_directors.schema';
 import { genresTable } from './genres.schema';
 import { moviesGenresTable } from './movies_genres.schema';
 import { moviesScriptwritersTable } from './movies_scriptwriters.schema';
+import { processedCitiesTable } from './processed_cities.schema';
 import { scriptwritersTable } from './scriptwriters.schema';
 import { screeningsTable } from './screenings.schema';
 import { showtimesTable } from './showtimes.schema';
@@ -26,7 +27,18 @@ export const cinemasRelations = relations(cinemasTable, ({ one, many }) => ({
 export const citiesRelations = relations(citiesTable, ({ many }) => ({
   cinemas: many(cinemasTable),
   showtimes: many(showtimesTable),
+  processedCities: many(processedCitiesTable),
 }));
+
+export const processedCitiesRelations = relations(
+  processedCitiesTable,
+  ({ one }) => ({
+    city: one(citiesTable, {
+      fields: [processedCitiesTable.cityId],
+      references: [citiesTable.id],
+    }),
+  }),
+);
 
 export const moviesActorsRelations = relations(
   moviesActorsTable,

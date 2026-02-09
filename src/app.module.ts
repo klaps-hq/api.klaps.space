@@ -8,6 +8,7 @@ import { MoviesModule } from './movies/movies.module';
 import { GenresModule } from './genres/genres.module';
 import { ScreeningsModule } from './screenings/screenings.module';
 import { CinemasModule } from './cinemas/cinemas.module';
+import { ShowtimesModule } from './showtimes/showtimes.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { CinemasModule } from './cinemas/cinemas.module';
     CinemasModule,
     GenresModule,
     ScreeningsModule,
+    ShowtimesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -24,15 +24,21 @@ export class CitiesService {
   }
 
   /**
-   * Creates a new city and returns the inserted row.
+   * Creates or updates a city (upserts on duplicate filmwebId) and returns the row.
    */
   async createCity(dto: CreateCityDto): Promise<City> {
-    const [result] = await this.db
+    await this.db
       .insert(schema.cities)
       .values(dto)
-      .$returningId();
+      .onDuplicateKeyUpdate({
+        set: {
+          name: dto.name,
+          nameDeclinated: dto.nameDeclinated,
+          areacode: dto.areacode,
+        },
+      });
     const city = await this.db.query.cities.findFirst({
-      where: eq(schema.cities.id, result.id),
+      where: eq(schema.cities.filmwebId, dto.filmwebId),
     });
     return city!;
   }
