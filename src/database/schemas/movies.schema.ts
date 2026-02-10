@@ -7,9 +7,9 @@ import {
   text,
   timestamp,
   varchar,
-} from "drizzle-orm/mysql-core";
+} from 'drizzle-orm/mysql-core';
 
-export const moviesTable = mysqlTable("movies", {
+export const moviesTable = mysqlTable('movies', {
   id: int().primaryKey().autoincrement(),
   filmwebId: int().notNull().unique(),
   url: varchar({ length: 255 }).notNull(),
@@ -23,13 +23,13 @@ export const moviesTable = mysqlTable("movies", {
   usersRatingVotes: int(),
   criticsRating: float(),
   criticsRatingVotes: int(),
-  language: varchar({ length: 255 }).notNull(),
+  language: varchar({ length: 255 }),
   duration: int().notNull(),
   posterUrl: varchar({ length: 255 }),
   backdropUrl: varchar({ length: 512 }),
   videoUrl: varchar({ length: 255 }),
-  boxoffice: bigint("boxoffice", { mode: "number" }),
-  budget: bigint("budget", { mode: "number" }),
+  boxoffice: bigint('boxoffice', { mode: 'number' }),
+  budget: bigint('budget', { mode: 'number' }),
   distribution: varchar({ length: 255 }),
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp().notNull().defaultNow(),
