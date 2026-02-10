@@ -33,10 +33,13 @@ export const screeningsTable = mysqlTable(
     updatedAt: timestamp().notNull().defaultNow(),
   },
   (table) => [
-    unique('screenings_movie_cinema_date').on(
+    unique('screenings_unique').on(
       table.movieId,
       table.cinemaId,
       table.date,
+      table.type,
+      table.isDubbing,
+      table.isSubtitled,
     ),
   ],
 );
