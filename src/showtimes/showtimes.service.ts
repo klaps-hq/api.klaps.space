@@ -1,12 +1,18 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import * as schema from '../database/schemas';
+import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
 import type { Showtime } from './showtimes.types';
 import type { CreateShowtimeDto } from './dto/create-showtime.dto';
 import type { MarkCityProcessedDto } from './dto/mark-city-processed.dto';
-import { and, eq, gte, lte } from 'drizzle-orm';
+import type { MarkShowtimeProcessedDto } from './dto/mark-showtime-processed.dto';
+import type { ProcessShowtimeDto } from './dto/process-showtime.dto';
+import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { getDatePlusMonth, getTodayInPoland } from '../lib/utils';
+import type { UnprocessedShowtimeResponse } from './showtimes.types';
+
+type FullSchema = typeof schema & typeof relations;
 
 /**
  * Service for showtime-related business logic and persistence.
@@ -15,7 +21,7 @@ import { getDatePlusMonth, getTodayInPoland } from '../lib/utils';
 export class ShowtimesService {
   constructor(
     @Inject(DRIZZLE)
-    private readonly db: MySql2Database<typeof schema>,
+    private readonly db: MySql2Database<FullSchema>,
   ) {}
 
   /**
@@ -47,7 +53,6 @@ export class ShowtimesService {
 
   /**
    * Returns distinct cityIds from processed_cities within the given date range.
-   * Includes cities that had zero showtimes but were already checked by the scrapper.
    */
   async getProcessedCityIds(
     startDate: string,
@@ -70,8 +75,6 @@ export class ShowtimesService {
 
   /**
    * Upserts a record in processed_cities for the given cityId and processedAt date.
-   * Uses Europe/Warsaw timezone to determine "today" if processedAt is not provided.
-   * If the record already exists, does nothing (no error).
    */
   async markCityProcessed(dto: MarkCityProcessedDto): Promise<void> {
     const processedAt = dto.processedAt ?? getTodayInPoland();
@@ -85,5 +88,147 @@ export class ShowtimesService {
       .onDuplicateKeyUpdate({
         set: { cityId: dto.cityId },
       });
+  }
+
+  /**
+   * Marks a showtime as processed by inserting into processed_showtimes.
+   * Idempotent — duplicate calls do nothing.
+   */
+  async markShowtimeProcessed(dto: MarkShowtimeProcessedDto): Promise<void> {
+    await this.db
+      .insert(schema.processed_showtimes)
+      .values({ showtimeId: dto.showtimeId })
+      .onDuplicateKeyUpdate({
+        set: { showtimeId: dto.showtimeId },
+      });
+  }
+
+  /**
+   * Returns showtimes that have NOT been marked as processed.
+   * Uses LEFT JOIN ... IS NULL to exclude processed ones.
+   */
+  async getUnprocessedShowtimes(): Promise<UnprocessedShowtimeResponse[]> {
+    const rows = await this.db
+      .select({
+        id: schema.showtimes.id,
+        url: schema.showtimes.url,
+        cityId: schema.showtimes.cityId,
+        date: schema.showtimes.date,
+        createdAt: schema.showtimes.createdAt,
+        updatedAt: schema.showtimes.updatedAt,
+      })
+      .from(schema.showtimes)
+      .leftJoin(
+        schema.processed_showtimes,
+        eq(schema.showtimes.id, schema.processed_showtimes.showtimeId),
+      )
+      .where(isNull(schema.processed_showtimes.id));
+
+    return rows.map((r) => ({
+      id: r.id,
+      url: r.url,
+      cityId: r.cityId,
+      date: r.date instanceof Date ? r.date.toISOString() : String(r.date),
+      createdAt:
+        r.createdAt instanceof Date
+          ? r.createdAt.toISOString()
+          : String(r.createdAt),
+      updatedAt:
+        r.updatedAt instanceof Date
+          ? r.updatedAt.toISOString()
+          : String(r.updatedAt),
+    }));
+  }
+
+  /**
+   * Bulk upserts showtimes in a single transaction with chunked multi-row INSERTs.
+   */
+  async batchCreateShowtimes(
+    showtimes: CreateShowtimeDto[],
+  ): Promise<{ count: number }> {
+    if (showtimes.length === 0) return { count: 0 };
+
+    const CHUNK_SIZE = 500;
+
+    await this.db.transaction(async (tx) => {
+      for (let i = 0; i < showtimes.length; i += CHUNK_SIZE) {
+        const chunk = showtimes.slice(i, i + CHUNK_SIZE);
+        await tx
+          .insert(schema.showtimes)
+          .values(chunk.map((s) => ({ ...s, date: new Date(s.date) })))
+          .onDuplicateKeyUpdate({
+            set: {
+              cityId: sql`VALUES(${schema.showtimes.cityId})`,
+              url: sql`VALUES(${schema.showtimes.url})`,
+              date: sql`VALUES(${schema.showtimes.date})`,
+            },
+          });
+      }
+    });
+
+    return { count: showtimes.length };
+  }
+
+  /**
+   * Inserts screenings for a showtime using the provided movieId,
+   * then marks the showtime as processed — all in one DB transaction.
+   * If movieId is null, only marks the showtime as processed (skipped movie).
+   */
+  async processShowtime(
+    showtimeId: number,
+    dto: ProcessShowtimeDto,
+  ): Promise<{ movieId: number | null; screeningsCount: number }> {
+    const showtime = await this.db.query.showtimes.findFirst({
+      where: eq(schema.showtimes.id, showtimeId),
+    });
+    if (!showtime) {
+      throw new NotFoundException(`Showtime with id ${showtimeId} not found`);
+    }
+
+    if (dto.movieId == null) {
+      await this.db
+        .insert(schema.processed_showtimes)
+        .values({ showtimeId })
+        .onDuplicateKeyUpdate({ set: { showtimeId } });
+      return { movieId: null, screeningsCount: 0 };
+    }
+
+    const movieId = dto.movieId;
+
+    await this.db.transaction(async (tx) => {
+      for (const screening of dto.screenings) {
+        await tx
+          .insert(schema.screenings)
+          .values({
+            url: screening.url ?? '',
+            movieId,
+            showtimeId,
+            cinemaId: screening.cinemaId,
+            type: screening.type,
+            date: new Date(screening.date),
+            isDubbing: screening.isDubbing,
+            isSubtitled: screening.isSubtitled,
+          })
+          .onDuplicateKeyUpdate({
+            set: {
+              url: screening.url ?? '',
+              movieId,
+              showtimeId,
+              cinemaId: screening.cinemaId,
+              type: screening.type,
+              date: new Date(screening.date),
+              isDubbing: screening.isDubbing,
+              isSubtitled: screening.isSubtitled,
+            },
+          });
+      }
+
+      await tx
+        .insert(schema.processed_showtimes)
+        .values({ showtimeId })
+        .onDuplicateKeyUpdate({ set: { showtimeId } });
+    });
+
+    return { movieId, screeningsCount: dto.screenings.length };
   }
 }

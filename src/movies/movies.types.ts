@@ -1,35 +1,15 @@
-import { genres, movies } from '../database/schemas';
+import { movies } from '../database/schemas';
 
+/** Raw DB movie row (used by POST / scrapper). */
 export type Movie = typeof movies.$inferSelect;
-export type Genre = typeof genres.$inferSelect;
 
-export type MovieWithGenres = Movie & {
-  movies_genres: Array<{ genre: Genre }>;
-};
-
-export type PaginatedMoviesResponse = {
-  data: MovieWithGenres[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-};
-
+/** Params for the paginated movies list. */
 export type GetMoviesParams = {
   page?: number;
   limit?: number;
 };
 
-export type MultiCityMovie = {
-  id: number;
-  title: string;
-  year: number;
-  posterUrl: string | null;
-  citiesCount: number;
-};
-
+/** Params for the multi-city movies endpoint. */
 export type GetMultiCityMoviesParams = {
   limit?: number;
   minCities?: number;

@@ -11,8 +11,11 @@ import {
 } from '@nestjs/common';
 import { CinemasService } from './cinemas.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
-import type { CinemaWithCityName } from './cinemas.types';
 import type { Cinema } from '../database/schemas/cinemas.schema';
+import type {
+  CinemaGroupResponse,
+  CinemaResponse,
+} from '../lib/response-types';
 import { GetCinemasQueryDto } from './dto/get-cinemas-query.dto';
 import { CreateCinemaDto } from './dto/create-cinema.dto';
 
@@ -22,13 +25,13 @@ export class CinemasController {
 
   /**
    * URL: /api/v1/cinemas
-   * Returns cinemas, optionally filtered by cityId, with a configurable limit.
+   * Returns cinemas pre-grouped by city.
    */
   @Get()
   @UseGuards(InternalApiKeyGuard)
   getCinemas(
     @Query() query: GetCinemasQueryDto,
-  ): Promise<CinemaWithCityName[]> {
+  ): Promise<{ data: CinemaGroupResponse[] }> {
     return this.cinemasService.getCinemas({
       cityId: query.cityId,
       limit: query.limit,
@@ -47,13 +50,13 @@ export class CinemasController {
 
   /**
    * URL: /api/v1/cinemas/:id
-   * Returns a single cinema by its id.
+   * Returns a single cinema with nested city, stripped of DB internals.
    */
   @Get(':id')
   @UseGuards(InternalApiKeyGuard)
   async getCinemaById(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<CinemaWithCityName> {
+  ): Promise<CinemaResponse> {
     const cinema = await this.cinemasService.getCinemaById(id);
     if (!cinema) {
       throw new NotFoundException(`Cinema with id ${id} not found`);

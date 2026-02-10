@@ -11,21 +11,26 @@ import { ScreeningsService } from './screenings.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import { GetScreeningsQueryDto } from './dto/get-screenings-query.dto';
 import { CreateScreeningDto } from './dto/create-screening.dto';
-import type { MovieWithScreenings, Screening } from './screenings.types';
+import type { Screening } from './screenings.types';
+import type {
+  ScreeningResponse,
+  ScreeningGroupResponse,
+  RandomScreeningResponse,
+} from '../lib/response-types';
 
 @Controller('screenings')
 export class ScreeningsController {
   constructor(private readonly screeningsService: ScreeningsService) {}
 
   /**
-   * Returns movies with screenings for the given date (default today) and optional filters.
-   * Query params: date (YYYY-MM-DD), cityId (optional), genreId (optional), limit (optional, default 10).
+   * When movieId is provided: returns flat ScreeningResponse[].
+   * Otherwise: returns ScreeningGroupResponse[] grouped by movie with summary.
    */
   @Get()
   @UseGuards(InternalApiKeyGuard)
   getScreenings(
     @Query() query: GetScreeningsQueryDto,
-  ): Promise<MovieWithScreenings[]> {
+  ): Promise<ScreeningResponse[] | ScreeningGroupResponse[]> {
     return this.screeningsService.getScreenings({
       dateFrom: query.dateFrom,
       dateTo: query.dateTo,
@@ -46,9 +51,12 @@ export class ScreeningsController {
     return this.screeningsService.createScreening(dto);
   }
 
+  /**
+   * Returns a single random retro screening with hero movie info.
+   */
   @Get('random-screening')
   @UseGuards(InternalApiKeyGuard)
-  async getRandomRetroScreening(): Promise<MovieWithScreenings> {
+  async getRandomRetroScreening(): Promise<RandomScreeningResponse> {
     const screening = await this.screeningsService.getRandomRetroScreening();
     if (!screening) {
       throw new NotFoundException('No retro screening found');

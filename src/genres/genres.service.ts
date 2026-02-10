@@ -2,7 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
-import type { Genre } from './genres.types';
+import type { GenreResponse } from '../lib/response-types';
+import { mapGenre } from '../lib/response-mappers';
 
 /**
  * Service for genre-related business logic and persistence.
@@ -15,9 +16,10 @@ export class GenresService {
   ) {}
 
   /**
-   * Returns all genres from the database.
+   * Returns all genres, stripped of DB internals (filmwebId, timestamps).
    */
-  getGenres(): Promise<Genre[]> {
-    return this.db.query.genres.findMany();
+  async getGenres(): Promise<GenreResponse[]> {
+    const genres = await this.db.query.genres.findMany();
+    return genres.map(mapGenre);
   }
 }

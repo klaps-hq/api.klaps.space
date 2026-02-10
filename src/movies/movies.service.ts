@@ -6,11 +6,20 @@ import type {
   GetMoviesParams,
   GetMultiCityMoviesParams,
   Movie,
-  MovieWithGenres,
-  MultiCityMovie,
-  PaginatedMoviesResponse,
 } from './movies.types';
-import type { CreateMovieDto } from './dto/create-movie.dto';
+import type {
+  CreateMovieDto,
+  ActorInsertDto,
+  CountryInsertDto,
+  GenreInsertDto,
+} from './dto/create-movie.dto';
+import type {
+  MovieSummaryResponse,
+  MovieResponse,
+  MultiCityMovieResponse,
+  PaginatedResponse,
+} from '../lib/response-types';
+import { mapMovieSummary, mapMovieDetail } from '../lib/response-mappers';
 import { count, desc, eq, gte, lte, sql } from 'drizzle-orm';
 
 const DEFAULT_PAGE = 1;
@@ -29,9 +38,11 @@ export class MoviesService {
   ) {}
 
   /**
-   * Returns a paginated list of all movies with their genres.
+   * Returns a paginated list of all movies mapped to MovieSummaryResponse.
    */
-  async getMovies(params?: GetMoviesParams): Promise<PaginatedMoviesResponse> {
+  async getMovies(
+    params?: GetMoviesParams,
+  ): Promise<PaginatedResponse<MovieSummaryResponse>> {
     const page = params?.page ?? DEFAULT_PAGE;
     const limit = params?.limit ?? DEFAULT_MOVIES_LIMIT;
     const offset = (page - 1) * limit;
@@ -52,7 +63,7 @@ export class MoviesService {
     ]);
     const total = totalResult[0]?.total ?? 0;
     return {
-      data,
+      data: data.map(mapMovieSummary),
       meta: {
         total,
         page,
@@ -63,9 +74,9 @@ export class MoviesService {
   }
 
   /**
-   * Returns a single movie by id with its genres.
+   * Returns a single movie by id mapped to full MovieResponse.
    */
-  async getMovieById(id: number): Promise<MovieWithGenres | null> {
+  async getMovieById(id: number): Promise<MovieResponse | null> {
     const movie = await this.db.query.movies.findFirst({
       where: eq(schema.movies.id, id),
       with: {
@@ -76,7 +87,8 @@ export class MoviesService {
         },
       },
     });
-    return movie ?? null;
+    if (!movie) return null;
+    return mapMovieDetail(movie);
   }
 
   /**
@@ -85,7 +97,7 @@ export class MoviesService {
    */
   async getMultiCityMovies(
     params?: GetMultiCityMoviesParams,
-  ): Promise<MultiCityMovie[]> {
+  ): Promise<MultiCityMovieResponse[]> {
     const limit = params?.limit ?? DEFAULT_MULTI_CITY_LIMIT;
     const minCities = params?.minCities ?? DEFAULT_MIN_CITIES;
     const citiesCountExpression =
@@ -94,7 +106,7 @@ export class MoviesService {
       .select({
         id: schema.movies.id,
         title: schema.movies.title,
-        year: schema.movies.productionYear,
+        productionYear: schema.movies.productionYear,
         posterUrl: schema.movies.posterUrl,
         citiesCount: citiesCountExpression,
       })
@@ -122,46 +134,238 @@ export class MoviesService {
 
   /**
    * Creates or updates a movie (upserts on duplicate filmwebId) and returns the row.
+   * Also upserts related actors, directors, scriptwriters, countries, genres
+   * and creates the corresponding junction table entries.
    */
   async createMovie(dto: CreateMovieDto): Promise<Movie> {
+    const {
+      actors,
+      directors,
+      scriptwriters,
+      countries,
+      genres,
+      ...movieFields
+    } = dto;
+
     const values = {
-      ...dto,
-      worldPremiereDate: dto.worldPremiereDate
-        ? new Date(dto.worldPremiereDate)
+      ...movieFields,
+      worldPremiereDate: movieFields.worldPremiereDate
+        ? new Date(movieFields.worldPremiereDate)
         : undefined,
-      polishPremiereDate: dto.polishPremiereDate
-        ? new Date(dto.polishPremiereDate)
+      polishPremiereDate: movieFields.polishPremiereDate
+        ? new Date(movieFields.polishPremiereDate)
         : undefined,
     };
+
     await this.db
       .insert(schema.movies)
       .values(values)
       .onDuplicateKeyUpdate({
         set: {
-          url: dto.url,
-          title: dto.title,
-          titleOriginal: dto.titleOriginal,
-          description: dto.description,
-          productionYear: dto.productionYear,
+          url: movieFields.url,
+          title: movieFields.title,
+          titleOriginal: movieFields.titleOriginal,
+          description: movieFields.description,
+          productionYear: movieFields.productionYear,
           worldPremiereDate: values.worldPremiereDate,
           polishPremiereDate: values.polishPremiereDate,
-          usersRating: dto.usersRating,
-          usersRatingVotes: dto.usersRatingVotes,
-          criticsRating: dto.criticsRating,
-          criticsRatingVotes: dto.criticsRatingVotes,
-          language: dto.language,
-          duration: dto.duration,
-          posterUrl: dto.posterUrl,
-          backdropUrl: dto.backdropUrl,
-          videoUrl: dto.videoUrl,
-          boxoffice: dto.boxoffice,
-          budget: dto.budget,
-          distribution: dto.distribution,
+          usersRating: movieFields.usersRating,
+          usersRatingVotes: movieFields.usersRatingVotes,
+          criticsRating: movieFields.criticsRating,
+          criticsRatingVotes: movieFields.criticsRatingVotes,
+          language: movieFields.language,
+          duration: movieFields.duration,
+          posterUrl: movieFields.posterUrl,
+          backdropUrl: movieFields.backdropUrl,
+          videoUrl: movieFields.videoUrl,
+          boxoffice: movieFields.boxoffice,
+          budget: movieFields.budget,
+          distribution: movieFields.distribution,
         },
       });
+
     const movie = await this.db.query.movies.findFirst({
-      where: eq(schema.movies.filmwebId, dto.filmwebId),
+      where: eq(schema.movies.filmwebId, movieFields.filmwebId),
     });
+
+    const movieId = movie!.id;
+
+    await Promise.all([
+      this.upsertActors(movieId, actors),
+      this.upsertDirectors(movieId, directors),
+      this.upsertScriptwriters(movieId, scriptwriters),
+      this.upsertCountries(movieId, countries),
+      this.upsertGenres(movieId, genres),
+    ]);
+
     return movie!;
+  }
+
+  /**
+   * Upserts actors and links them to the movie via movies_actors.
+   */
+  private async upsertActors(
+    movieId: number,
+    actors?: ActorInsertDto[],
+  ): Promise<void> {
+    if (!actors?.length) return;
+
+    for (const actor of actors) {
+      await this.db
+        .insert(schema.actors)
+        .values({
+          filmwebId: actor.filmwebId,
+          name: actor.name,
+          url: actor.url,
+        })
+        .onDuplicateKeyUpdate({
+          set: { name: actor.name, url: actor.url },
+        });
+
+      const row = await this.db.query.actors.findFirst({
+        where: eq(schema.actors.filmwebId, actor.filmwebId),
+      });
+
+      if (!row) continue;
+
+      await this.db
+        .insert(schema.movies_actors)
+        .values({ movieId, actorId: row.id })
+        .onDuplicateKeyUpdate({ set: { movieId } });
+    }
+  }
+
+  /**
+   * Upserts directors and links them to the movie via movies_directors.
+   */
+  private async upsertDirectors(
+    movieId: number,
+    directors?: ActorInsertDto[],
+  ): Promise<void> {
+    if (!directors?.length) return;
+
+    for (const director of directors) {
+      await this.db
+        .insert(schema.directors)
+        .values({
+          filmwebId: director.filmwebId,
+          name: director.name,
+          url: director.url,
+        })
+        .onDuplicateKeyUpdate({
+          set: { name: director.name, url: director.url },
+        });
+
+      const row = await this.db.query.directors.findFirst({
+        where: eq(schema.directors.filmwebId, director.filmwebId),
+      });
+
+      if (!row) continue;
+
+      await this.db
+        .insert(schema.movies_directors)
+        .values({ movieId, directorId: row.id })
+        .onDuplicateKeyUpdate({ set: { movieId } });
+    }
+  }
+
+  /**
+   * Upserts scriptwriters and links them to the movie via movies_scriptwriters.
+   */
+  private async upsertScriptwriters(
+    movieId: number,
+    scriptwriters?: ActorInsertDto[],
+  ): Promise<void> {
+    if (!scriptwriters?.length) return;
+
+    for (const sw of scriptwriters) {
+      await this.db
+        .insert(schema.scriptwriters)
+        .values({
+          filmwebId: sw.filmwebId,
+          name: sw.name,
+          url: sw.url,
+        })
+        .onDuplicateKeyUpdate({
+          set: { name: sw.name, url: sw.url },
+        });
+
+      const row = await this.db.query.scriptwriters.findFirst({
+        where: eq(schema.scriptwriters.filmwebId, sw.filmwebId),
+      });
+
+      if (!row) continue;
+
+      await this.db
+        .insert(schema.movies_scriptwriters)
+        .values({ movieId, scriptwriterId: row.id })
+        .onDuplicateKeyUpdate({ set: { movieId } });
+    }
+  }
+
+  /**
+   * Upserts countries and links them to the movie via movies_countries.
+   */
+  private async upsertCountries(
+    movieId: number,
+    countries?: CountryInsertDto[],
+  ): Promise<void> {
+    if (!countries?.length) return;
+
+    for (const country of countries) {
+      await this.db
+        .insert(schema.countries)
+        .values({
+          name: country.name,
+          countryCode: country.countryCode,
+        })
+        .onDuplicateKeyUpdate({
+          set: { name: country.name },
+        });
+
+      const row = await this.db.query.countries.findFirst({
+        where: eq(schema.countries.countryCode, country.countryCode),
+      });
+
+      if (!row) continue;
+
+      await this.db
+        .insert(schema.movies_countries)
+        .values({ movieId, countryId: row.id })
+        .onDuplicateKeyUpdate({ set: { movieId } });
+    }
+  }
+
+  /**
+   * Upserts genres and links them to the movie via movies_genres.
+   */
+  private async upsertGenres(
+    movieId: number,
+    genres?: GenreInsertDto[],
+  ): Promise<void> {
+    if (!genres?.length) return;
+
+    for (const genre of genres) {
+      await this.db
+        .insert(schema.genres)
+        .values({
+          filmwebId: genre.filmwebId,
+          name: genre.name,
+        })
+        .onDuplicateKeyUpdate({
+          set: { name: genre.name },
+        });
+
+      const row = await this.db.query.genres.findFirst({
+        where: eq(schema.genres.filmwebId, genre.filmwebId),
+      });
+
+      if (!row) continue;
+
+      await this.db
+        .insert(schema.movies_genres)
+        .values({ movieId, genreId: row.id })
+        .onDuplicateKeyUpdate({ set: { movieId } });
+    }
   }
 }

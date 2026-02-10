@@ -1,26 +1,9 @@
-import { cinemasTable } from '../database/schemas/cinemas.schema';
 import { screeningsTable } from '../database/schemas/screenings.schema';
-import type { MovieWithGenres } from '../movies/movies.types';
 
+/** Raw DB screening row (used by POST / scrapper). */
 export type Screening = typeof screeningsTable.$inferSelect;
-export type ScreeningWithMovie = Screening & {
-  movie: MovieWithGenres;
-};
-export type ScreeningWithMovieAndCinema = Screening & {
-  movie: MovieWithGenres;
-  cinema: typeof cinemasTable.$inferSelect;
-};
 
-export type ScreeningWithStartTime = Screening & {
-  startTime: Date;
-  cinemaName: string;
-};
-
-export type MovieWithScreenings = {
-  movie: MovieWithGenres;
-  screenings: ScreeningWithStartTime[];
-};
-
+/** Params for the screenings list endpoint. */
 export type GetScreeningsParams = {
   dateFrom?: string;
   dateTo?: string;

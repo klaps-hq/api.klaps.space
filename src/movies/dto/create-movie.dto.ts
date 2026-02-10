@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -6,8 +7,48 @@ import {
   IsString,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+export class ActorInsertDto {
+  @Type(() => Number)
+  @IsInt()
+  filmwebId: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  url: string;
+}
+
+export class CountryInsertDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  countryCode: string;
+}
+
+export class GenreInsertDto {
+  @Type(() => Number)
+  @IsInt()
+  filmwebId: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  name: string;
+}
 
 /**
  * Body DTO for POST /movies.
@@ -76,6 +117,7 @@ export class CreateMovieDto {
 
   @Type(() => Number)
   @IsInt()
+  @Min(1)
   duration: number;
 
   @IsOptional()
@@ -107,4 +149,34 @@ export class CreateMovieDto {
   @IsString()
   @MaxLength(255)
   distribution?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ActorInsertDto)
+  actors?: ActorInsertDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ActorInsertDto)
+  directors?: ActorInsertDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ActorInsertDto)
+  scriptwriters?: ActorInsertDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CountryInsertDto)
+  countries?: CountryInsertDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => GenreInsertDto)
+  genres?: GenreInsertDto[];
 }

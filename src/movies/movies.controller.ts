@@ -13,12 +13,13 @@ import {
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { MoviesService } from './movies.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
+import type { Movie } from './movies.types';
 import type {
-  Movie,
-  MovieWithGenres,
-  MultiCityMovie,
-  PaginatedMoviesResponse,
-} from './movies.types';
+  MovieSummaryResponse,
+  MovieResponse,
+  MultiCityMovieResponse,
+  PaginatedResponse,
+} from '../lib/response-types';
 import { GetMultiCityMoviesQueryDto } from './dto/get-multi-city-movies-query.dto';
 import { GetMoviesQueryDto } from './dto/get-movies-query.dto';
 import { CreateMovieDto } from './dto/create-movie.dto';
@@ -32,14 +33,13 @@ export class MoviesController {
 
   /**
    * URL: /api/v1/movies
-   * Returns a paginated list of all movies with their genres.
-   * Query params: page (default 1), limit (default 20, max 100).
+   * Returns a paginated list of all movies (MovieSummaryResponse).
    */
   @Get()
   @UseGuards(InternalApiKeyGuard)
   getMovies(
     @Query() query: GetMoviesQueryDto,
-  ): Promise<PaginatedMoviesResponse> {
+  ): Promise<PaginatedResponse<MovieSummaryResponse>> {
     return this.moviesService.getMovies({
       page: query.page,
       limit: query.limit,
@@ -59,7 +59,6 @@ export class MoviesController {
   /**
    * URL: /api/v1/movies/multi-city
    * Returns movies with the largest territorial reach (most unique cities).
-   * Query params: limit (default 5), minCities (default 2).
    */
   @Get('multi-city')
   @UseGuards(InternalApiKeyGuard)
@@ -67,7 +66,7 @@ export class MoviesController {
   @CacheTTL(MULTI_CITY_CACHE_TTL)
   getMultiCityMovies(
     @Query() query: GetMultiCityMoviesQueryDto,
-  ): Promise<MultiCityMovie[]> {
+  ): Promise<MultiCityMovieResponse[]> {
     return this.moviesService.getMultiCityMovies({
       limit: query.limit,
       minCities: query.minCities,
@@ -76,13 +75,13 @@ export class MoviesController {
 
   /**
    * URL: /api/v1/movies/:id
-   * Returns a single movie by its id with genres.
+   * Returns a single movie by its id (full MovieResponse with nested ratings).
    */
   @Get(':id')
   @UseGuards(InternalApiKeyGuard)
   async getMovieById(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<MovieWithGenres> {
+  ): Promise<MovieResponse> {
     const movie = await this.moviesService.getMovieById(id);
     if (!movie) {
       throw new NotFoundException(`Movie with id ${id} not found`);

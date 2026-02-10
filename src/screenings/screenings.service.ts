@@ -5,13 +5,19 @@ import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { getDateRangeUpToMonthFromNow } from '../lib/utils';
 import { randomInt } from 'node:crypto';
-import type {
-  GetScreeningsParams,
-  MovieWithScreenings,
-  Screening,
-} from './screenings.types';
+import type { GetScreeningsParams, Screening } from './screenings.types';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
 import { and, eq, gte, inArray, isNotNull, lte, ne } from 'drizzle-orm';
+import type {
+  ScreeningResponse,
+  ScreeningGroupResponse,
+  RandomScreeningResponse,
+} from '../lib/response-types';
+import {
+  mapScreening,
+  mapScreeningGroup,
+  mapMovieHero,
+} from '../lib/response-mappers';
 
 type FullSchema = typeof schema & typeof relations;
 
@@ -26,9 +32,13 @@ export class ScreeningsService {
     private readonly db: MySql2Database<FullSchema>,
   ) {}
 
+  /**
+   * When movieId is provided: returns flat ScreeningResponse[].
+   * When movieId is absent: returns ScreeningGroupResponse[] grouped by movie.
+   */
   async getScreenings(
     params?: GetScreeningsParams,
-  ): Promise<MovieWithScreenings[]> {
+  ): Promise<ScreeningResponse[] | ScreeningGroupResponse[]> {
     const { startDay, endDay } = getDateRangeUpToMonthFromNow(
       params?.dateFrom,
       params?.dateTo,
@@ -92,20 +102,21 @@ export class ScreeningsService {
       },
     });
 
-    return movies
-      .filter(({ screenings }) => screenings.length > 0)
-      .map(({ screenings, ...movie }) => ({
-        movie,
-        screenings: screenings.map(({ cinema, ...s }) => ({
-          ...s,
-          startTime: s.date,
-          cinemaName: cinema?.name ?? '',
-          cityName: cinema?.city?.name ?? '',
-        })),
-      }));
+    const filtered = movies.filter(({ screenings }) => screenings.length > 0);
+
+    if (params?.movieId) {
+      return filtered.flatMap(({ screenings }) => screenings.map(mapScreening));
+    }
+
+    return filtered.map(({ screenings, ...movie }) =>
+      mapScreeningGroup(movie as any, screenings as any),
+    );
   }
 
-  async getRandomRetroScreening(): Promise<MovieWithScreenings | null> {
+  /**
+   * Returns a random retro screening with MovieHeroResponse.
+   */
+  async getRandomRetroScreening(): Promise<RandomScreeningResponse | null> {
     const { startDay, endDay } = getDateRangeUpToMonthFromNow();
 
     const retroMovies = await this.db.query.movies.findMany({
@@ -147,30 +158,24 @@ export class ScreeningsService {
             lte(schema.screenings.date, endDay),
           ),
           with: {
-            cinema: true,
-            showtime: { with: { city: true } },
+            cinema: { with: { city: true } },
           },
         },
       },
     });
 
-    if (!movie) return null;
+    if (!movie || movie.screenings.length === 0) return null;
 
     const { screenings, ...movieData } = movie;
+    const randomScreeningIndex = randomInt(0, screenings.length);
+    const chosenScreening = screenings[randomScreeningIndex]!;
+
     return {
-      movie: movieData,
-      screenings: screenings.map(({ cinema, ...s }) => ({
-        ...s,
-        startTime: s.date,
-        cinemaName: cinema?.name ?? '',
-        cityName: s.showtime?.city?.name ?? '',
-      })),
+      movie: mapMovieHero(movieData as any),
+      screening: mapScreening(chosenScreening as any),
     };
   }
 
-  /**
-   * Creates or updates a screening (upserts on duplicate key) and returns the row.
-   */
   async createScreening(dto: CreateScreeningDto): Promise<Screening> {
     const values = { ...dto, date: new Date(dto.date) };
     const [result] = await this.db

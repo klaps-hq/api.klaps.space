@@ -1,8 +1,18 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { CitiesService } from './cities.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { City } from './cities.types';
+import type { CityResponse } from '../lib/response-types';
 import { CreateCityDto } from './dto/create-city.dto';
+import { BatchCreateCitiesDto } from './dto/batch-create-cities.dto';
 
 @Controller('cities')
 export class CitiesController {
@@ -10,12 +20,25 @@ export class CitiesController {
 
   /**
    * URL: /api/v1/cities
-   * Returns all cities.
+   * Returns all cities (clean, no DB internals).
    */
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getCities(): Promise<City[]> {
+  getCities(): Promise<CityResponse[]> {
     return this.citiesService.getCities();
+  }
+
+  /**
+   * URL: /api/v1/cities/batch
+   * Bulk upserts cities in a single transaction.
+   */
+  @Post('batch')
+  @UseGuards(InternalApiKeyGuard)
+  @HttpCode(HttpStatus.OK)
+  batchCreateCities(
+    @Body() dto: BatchCreateCitiesDto,
+  ): Promise<{ count: number }> {
+    return this.citiesService.batchCreateCities(dto.cities);
   }
 
   /**

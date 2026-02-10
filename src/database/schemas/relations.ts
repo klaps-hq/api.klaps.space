@@ -12,6 +12,7 @@ import { genresTable } from './genres.schema';
 import { moviesGenresTable } from './movies_genres.schema';
 import { moviesScriptwritersTable } from './movies_scriptwriters.schema';
 import { processedCitiesTable } from './processed_cities.schema';
+import { processedShowtimesTable } from './processed_showtimes.schema';
 import { scriptwritersTable } from './scriptwriters.schema';
 import { screeningsTable } from './screenings.schema';
 import { showtimesTable } from './showtimes.schema';
@@ -164,6 +165,20 @@ export const showtimesRelations = relations(
     city: one(citiesTable, {
       fields: [showtimesTable.cityId],
       references: [citiesTable.id],
+    }),
+    processedShowtime: one(processedShowtimesTable, {
+      fields: [showtimesTable.id],
+      references: [processedShowtimesTable.showtimeId],
+    }),
+  }),
+);
+
+export const processedShowtimesRelations = relations(
+  processedShowtimesTable,
+  ({ one }) => ({
+    showtime: one(showtimesTable, {
+      fields: [processedShowtimesTable.showtimeId],
+      references: [showtimesTable.id],
     }),
   }),
 );
