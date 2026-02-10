@@ -1,16 +1,20 @@
 import {
+  Body,
   Controller,
   Get,
   NotFoundException,
   Param,
   ParseIntPipe,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { CinemasService } from './cinemas.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { CinemaWithCityName } from './cinemas.types';
+import type { Cinema } from '../database/schemas/cinemas.schema';
 import { GetCinemasQueryDto } from './dto/get-cinemas-query.dto';
+import { CreateCinemaDto } from './dto/create-cinema.dto';
 
 @Controller('cinemas')
 export class CinemasController {
@@ -29,6 +33,16 @@ export class CinemasController {
       cityId: query.cityId,
       limit: query.limit,
     });
+  }
+
+  /**
+   * URL: /api/v1/cinemas
+   * Creates or updates a cinema (upserts on duplicate filmwebId).
+   */
+  @Post()
+  @UseGuards(InternalApiKeyGuard)
+  createCinema(@Body() dto: CreateCinemaDto): Promise<Cinema> {
+    return this.cinemasService.createCinema(dto);
   }
 
   /**

@@ -5,6 +5,8 @@ import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { CinemaWithCityName, GetCinemasParams } from './cinemas.types';
+import type { CreateCinemaDto } from './dto/create-cinema.dto';
+import type { Cinema } from '../database/schemas/cinemas.schema';
 
 type FullSchema = typeof schema & typeof relations;
 
@@ -51,6 +53,29 @@ export class CinemasService {
       ...cinema,
       cityName: city?.name ?? '',
     }));
+  }
+
+  /**
+   * Creates or updates a cinema (upserts on duplicate filmwebId) and returns the row.
+   */
+  async createCinema(dto: CreateCinemaDto): Promise<Cinema> {
+    await this.db
+      .insert(schema.cinemas)
+      .values(dto)
+      .onDuplicateKeyUpdate({
+        set: {
+          name: dto.name,
+          url: dto.url,
+          filmwebCityId: dto.filmwebCityId,
+          longitude: dto.longitude ?? null,
+          latitude: dto.latitude ?? null,
+          street: dto.street ?? null,
+        },
+      });
+    const cinema = await this.db.query.cinemas.findFirst({
+      where: eq(schema.cinemas.filmwebId, dto.filmwebId),
+    });
+    return cinema!;
   }
 
   /**

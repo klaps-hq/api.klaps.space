@@ -33,7 +33,7 @@ export class CreateMovieDto {
   titleOriginal: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   description: string;
 
   @Type(() => Number)
@@ -76,7 +76,6 @@ export class CreateMovieDto {
 
   @Type(() => Number)
   @IsInt()
-  @Min(1)
   duration: number;
 
   @IsOptional()
