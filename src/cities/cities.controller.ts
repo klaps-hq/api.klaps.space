@@ -37,9 +37,11 @@ export class CitiesController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<CityDetailResponse> {
     const city = await this.citiesService.getCityById(id);
+
     if (!city) {
       throw new NotFoundException(`City with id ${id} not found`);
     }
+
     return city;
   }
 
