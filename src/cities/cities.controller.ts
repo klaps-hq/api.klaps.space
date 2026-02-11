@@ -4,13 +4,16 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
+  Param,
+  ParseIntPipe,
   Post,
   UseGuards,
 } from '@nestjs/common';
 import { CitiesService } from './cities.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { City } from './cities.types';
-import type { CityResponse } from '../lib/response-types';
+import type { CityDetailResponse, CityResponse } from '../lib/response-types';
 import { CreateCityDto } from './dto/create-city.dto';
 import { BatchCreateCitiesDto } from './dto/batch-create-cities.dto';
 
@@ -26,6 +29,18 @@ export class CitiesController {
   @UseGuards(InternalApiKeyGuard)
   getCities(): Promise<CityResponse[]> {
     return this.citiesService.getCities();
+  }
+
+  @Get(':id')
+  @UseGuards(InternalApiKeyGuard)
+  async getCityById(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<CityDetailResponse> {
+    const city = await this.citiesService.getCityById(id);
+    if (!city) {
+      throw new NotFoundException(`City with id ${id} not found`);
+    }
+    return city;
   }
 
   /**

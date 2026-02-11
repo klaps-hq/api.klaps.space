@@ -114,6 +114,11 @@ export type RandomScreeningResponse = {
   screening: ScreeningResponse;
 };
 
+export type CityDetailResponse = {
+  city: CityResponse;
+  screenings: ScreeningResponse[] | ScreeningGroupResponse[];
+};
+
 /** Generic paginated response wrapper. */
 export type PaginatedResponse<T> = {
   data: T[];
