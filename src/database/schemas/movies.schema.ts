@@ -23,7 +23,7 @@ export const moviesTable = mysqlTable("movies", {
   usersRatingVotes: int(),
   criticsRating: float(),
   criticsRatingVotes: int(),
-  language: varchar({ length: 255 }).notNull(),
+  language: varchar({ length: 255 }).notNull().default(""),
   duration: int().notNull(),
   posterUrl: varchar({ length: 255 }),
   backdropUrl: varchar({ length: 512 }),
