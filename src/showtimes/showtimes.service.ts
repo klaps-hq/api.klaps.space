@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
@@ -19,6 +19,8 @@ type FullSchema = typeof schema & typeof relations;
  */
 @Injectable()
 export class ShowtimesService {
+  private readonly logger = new Logger(ShowtimesService.name);
+
   constructor(
     @Inject(DRIZZLE)
     private readonly db: MySql2Database<FullSchema>,
@@ -171,13 +173,20 @@ export class ShowtimesService {
 
   /**
    * Inserts screenings for a showtime using the provided movieId,
-   * then marks the showtime as processed — all in one DB transaction.
+   * then marks the showtime as processed.
+   * No explicit transaction — both operations are fully idempotent
+   * (ON DUPLICATE KEY UPDATE), so auto-commit per statement avoids
+   * the gap-lock deadlocks that explicit transactions cause.
    * If movieId is null, only marks the showtime as processed (skipped movie).
    */
   async processShowtime(
     showtimeId: number,
     dto: ProcessShowtimeDto,
   ): Promise<{ movieId: number | null; screeningsCount: number }> {
+    this.logger.log(
+      `processShowtime id=${showtimeId} movieId=${dto.movieId} screenings=${dto.screenings?.length ?? 0}`,
+    );
+
     const showtime = await this.db.query.showtimes.findFirst({
       where: eq(schema.showtimes.id, showtimeId),
     });
@@ -186,6 +195,9 @@ export class ShowtimesService {
     }
 
     if (dto.movieId == null) {
+      this.logger.warn(
+        `Showtime ${showtimeId}: movieId is null — skipping screenings`,
+      );
       await this.db
         .insert(schema.processed_showtimes)
         .values({ showtimeId })
@@ -195,39 +207,40 @@ export class ShowtimesService {
 
     const movieId = dto.movieId;
 
-    await this.db.transaction(async (tx) => {
-      for (const screening of dto.screenings) {
-        await tx
-          .insert(schema.screenings)
-          .values({
-            url: screening.url ?? '',
+    if (dto.screenings.length > 0) {
+      await this.db
+        .insert(schema.screenings)
+        .values(
+          dto.screenings.map((s) => ({
+            url: s.url ?? '',
             movieId,
             showtimeId,
-            cinemaId: screening.cinemaId,
-            type: screening.type,
-            date: new Date(screening.date),
-            isDubbing: screening.isDubbing,
-            isSubtitled: screening.isSubtitled,
-          })
-          .onDuplicateKeyUpdate({
-            set: {
-              url: screening.url ?? '',
-              movieId,
-              showtimeId,
-              cinemaId: screening.cinemaId,
-              type: screening.type,
-              date: new Date(screening.date),
-              isDubbing: screening.isDubbing,
-              isSubtitled: screening.isSubtitled,
-            },
-          });
-      }
+            cinemaId: s.cinemaId,
+            type: s.type,
+            date: new Date(s.date),
+            isDubbing: s.isDubbing,
+            isSubtitled: s.isSubtitled,
+          })),
+        )
+        .onDuplicateKeyUpdate({
+          set: {
+            url: sql`VALUES(${schema.screenings.url})`,
+            movieId: sql`VALUES(${schema.screenings.movieId})`,
+            showtimeId: sql`VALUES(${schema.screenings.showtimeId})`,
+            cinemaId: sql`VALUES(${schema.screenings.cinemaId})`,
+            type: sql`VALUES(${schema.screenings.type})`,
+            date: sql`VALUES(${schema.screenings.date})`,
+            isDubbing: sql`VALUES(${schema.screenings.isDubbing})`,
+            isSubtitled: sql`VALUES(${schema.screenings.isSubtitled})`,
+          },
+        });
+    }
 
-      await tx
-        .insert(schema.processed_showtimes)
-        .values({ showtimeId })
-        .onDuplicateKeyUpdate({ set: { showtimeId } });
-    });
+    // Mark showtime as processed (also auto-committed, idempotent).
+    await this.db
+      .insert(schema.processed_showtimes)
+      .values({ showtimeId })
+      .onDuplicateKeyUpdate({ set: { showtimeId } });
 
     return { movieId, screeningsCount: dto.screenings.length };
   }

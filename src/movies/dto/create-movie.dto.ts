@@ -111,9 +111,9 @@ export class CreateMovieDto {
   criticsRatingVotes?: number;
 
   @IsString()
-  @IsNotEmpty()
   @MaxLength(255)
-  language: string;
+  @IsOptional()
+  language?: string | null;
 
   @Type(() => Number)
   @IsInt()

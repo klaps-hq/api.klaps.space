@@ -4,9 +4,10 @@ import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
 import type { City } from './cities.types';
 import type { CreateCityDto } from './dto/create-city.dto';
-import type { CityResponse } from '../lib/response-types';
+import type { CityDetailResponse, CityResponse } from '../lib/response-types';
 import { mapCity } from '../lib/response-mappers';
 import { eq, sql } from 'drizzle-orm';
+import { ScreeningsService } from '../screenings/screenings.service';
 
 /**
  * Service for city-related business logic and persistence.
@@ -16,6 +17,7 @@ export class CitiesService {
   constructor(
     @Inject(DRIZZLE)
     private readonly db: MySql2Database<typeof schema>,
+    private readonly screeningsService: ScreeningsService,
   ) {}
 
   /**
@@ -24,6 +26,23 @@ export class CitiesService {
   async getCities(): Promise<CityResponse[]> {
     const cities = await this.db.query.cities.findMany();
     return cities.map(mapCity);
+  }
+
+  async getCityById(id: number): Promise<CityDetailResponse | null> {
+    const city = await this.db.query.cities.findFirst({
+      where: eq(schema.cities.id, id),
+    });
+
+    if (!city) return null;
+
+    const screenings = await this.screeningsService.getScreenings({
+      cityId: id,
+    });
+
+    return {
+      city: mapCity(city),
+      screenings,
+    };
   }
 
   /**
