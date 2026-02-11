@@ -80,7 +80,7 @@ type DbMovieWithGenres = {
   description: string;
   productionYear: number;
   duration: number;
-  language: string;
+  language: string | null;
   posterUrl: string | null;
   backdropUrl?: string | null;
   videoUrl?: string | null;
