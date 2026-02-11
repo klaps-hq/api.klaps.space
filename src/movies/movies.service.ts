@@ -176,7 +176,7 @@ export class MoviesService {
           usersRatingVotes: movieFields.usersRatingVotes,
           criticsRating: movieFields.criticsRating,
           criticsRatingVotes: movieFields.criticsRatingVotes,
-          language: movieFields.language,
+          language: movieFields?.language ?? null,
           duration: movieFields.duration,
           posterUrl: movieFields.posterUrl,
           backdropUrl: movieFields.backdropUrl,
