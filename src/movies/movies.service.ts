@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import * as schema from '../database/schemas';
+import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
 import type {
   GetMoviesParams,
@@ -22,6 +23,8 @@ import type {
 import { mapMovieSummary, mapMovieDetail } from '../lib/response-mappers';
 import { count, desc, eq, gte, lte, sql } from 'drizzle-orm';
 
+type FullSchema = typeof schema & typeof relations;
+
 const DEFAULT_PAGE = 1;
 const DEFAULT_MOVIES_LIMIT = 20;
 const DEFAULT_MULTI_CITY_LIMIT = 5;
@@ -34,7 +37,7 @@ const DEFAULT_MIN_CITIES = 2;
 export class MoviesService {
   constructor(
     @Inject(DRIZZLE)
-    private readonly db: MySql2Database<typeof schema>,
+    private readonly db: MySql2Database<FullSchema>,
   ) {}
 
   /**
