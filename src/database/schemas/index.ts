@@ -1,0 +1,17 @@
+export { actorsTable as actors } from './actors.schema';
+export { cinemasTable as cinemas } from './cinemas.schema';
+export { citiesTable as cities } from './cities.schema';
+export { countriesTable as countries } from './countries.schema';
+export { directorsTable as directors } from './directors.schema';
+export { genresTable as genres } from './genres.schema';
+export { moviesTable as movies } from './movies.schema';
+export { moviesActorsTable as movies_actors } from './movies_actors.schema';
+export { moviesCountriesTable as movies_countries } from './movies_countries.schema';
+export { moviesDirectorsTable as movies_directors } from './movies_directors.schema';
+export { moviesGenresTable as movies_genres } from './movies_genres.schema';
+export { moviesScriptwritersTable as movies_scriptwriters } from './movies_scriptwriters.schema';
+export { processedCitiesTable as processed_cities } from './processed_cities.schema';
+export { processedShowtimesTable as processed_showtimes } from './processed_showtimes.schema';
+export { screeningsTable as screenings } from './screenings.schema';
+export { scriptwritersTable as scriptwriters } from './scriptwriters.schema';
+export { showtimesTable as showtimes } from './showtimes.schema';
