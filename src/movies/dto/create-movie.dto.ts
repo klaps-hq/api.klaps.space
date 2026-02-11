@@ -113,7 +113,7 @@ export class CreateMovieDto {
   @IsString()
   @MaxLength(255)
   @IsOptional()
-  language?: string | null;
+  language?: string;
 
   @Type(() => Number)
   @IsInt()
