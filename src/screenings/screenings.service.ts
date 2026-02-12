@@ -67,7 +67,21 @@ export class ScreeningsService {
             ? eq(schema.screenings.movieId, params.movieId)
             : undefined,
           params?.cityId
-            ? eq(schema.showtimes.cityId, params.cityId)
+            ? inArray(
+                schema.screenings.cinemaId,
+                this.db
+                  .select({ filmwebId: schema.cinemas.filmwebId })
+                  .from(schema.cinemas)
+                  .where(
+                    inArray(
+                      schema.cinemas.filmwebCityId,
+                      this.db
+                        .select({ filmwebId: schema.cities.filmwebId })
+                        .from(schema.cities)
+                        .where(eq(schema.cities.id, params.cityId)),
+                    ),
+                  ),
+              )
             : undefined,
           params?.genreId
             ? eq(schema.movies_genres.genreId, params.genreId)
@@ -90,11 +104,19 @@ export class ScreeningsService {
             lte(schema.screenings.date, endDay),
             params?.cityId
               ? inArray(
-                  schema.screenings.showtimeId,
+                  schema.screenings.cinemaId,
                   this.db
-                    .select({ id: schema.showtimes.id })
-                    .from(schema.showtimes)
-                    .where(eq(schema.showtimes.cityId, params.cityId)),
+                    .select({ filmwebId: schema.cinemas.filmwebId })
+                    .from(schema.cinemas)
+                    .where(
+                      inArray(
+                        schema.cinemas.filmwebCityId,
+                        this.db
+                          .select({ filmwebId: schema.cities.filmwebId })
+                          .from(schema.cities)
+                          .where(eq(schema.cities.id, params.cityId)),
+                      ),
+                    ),
                 )
               : undefined,
           ),
