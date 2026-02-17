@@ -1,0 +1,124 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+env:
+  IMAGE_NAME: ghcr.io/biplo12/klatka-nest-backend
+
+jobs:
+  # ───────────────────────────────────────────────
+  # Job 1: Determine environment and image tag
+  # ───────────────────────────────────────────────
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      image_tag: ${{ steps.set-env.outputs.image_tag }}
+    steps:
+      - name: Determine environment and image tag
+        id: set-env
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "environment=production" >> "$GITHUB_OUTPUT"
+            echo "image_tag=latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "environment=development" >> "$GITHUB_OUTPUT"
+            echo "image_tag=dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Print config
+        run: |
+          echo "Branch:      ${{ github.ref_name }}"
+          echo "Environment: ${{ steps.set-env.outputs.environment }}"
+          echo "Image tag:   ${{ steps.set-env.outputs.image_tag }}"
+
+  # ───────────────────────────────────────────────
+  # Job 2: Build Docker image and push to GHCR
+  # ───────────────────────────────────────────────
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: setup
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.image_tag }}
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+  # ───────────────────────────────────────────────
+  # Job 3: Deploy to VPS
+  # ───────────────────────────────────────────────
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [setup, build-and-push]
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: docker-compose.yml
+          target: /home/${{ secrets.SERVER_USER }}/projects/klaps/backend
+
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -e
+
+            # Ensure project directory exists
+            mkdir -p /home/${{ secrets.SERVER_USER }}/projects/klaps/backend
+            cd /home/${{ secrets.SERVER_USER }}/projects/klaps/backend
+
+            # Generate .env from GitHub Secrets
+            cat > .env <<EOF
+            NODE_ENV=${{ needs.setup.outputs.environment }}
+            PORT=${{ secrets.PORT }}
+            INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            IMAGE_TAG=${{ needs.setup.outputs.image_tag }}
+            EOF
+
+            # Log in to GHCR on the server
+            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GHCR_PAT }}
+
+            # Pull the latest image
+            docker pull ${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.image_tag }}
+
+            # Stop and remove any old container (ignore errors if it doesn't exist)
+            docker compose down --remove-orphans || true
+            docker rm -f klatka-backend || true
+
+            # Start the container
+            docker compose up -d
+
+            # Clean up dangling images
+            docker image prune -f

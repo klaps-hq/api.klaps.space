@@ -4,7 +4,6 @@ import { Transform, Type } from 'class-transformer';
 /**
  * Query DTO for GET /movies/multi-city.
  * limit: optional, max number of movies to return (default 5).
- * minCities: optional, minimum unique cities required (default 2).
  */
 export class GetMultiCityMoviesQueryDto {
   @IsOptional()
@@ -17,12 +16,4 @@ export class GetMultiCityMoviesQueryDto {
   @Max(50, { message: 'limit must be at most 50' })
   limit?: number;
 
-  @IsOptional()
-  @Transform(({ value }) =>
-    value !== undefined && value !== '' ? Number(value) : undefined,
-  )
-  @Type(() => Number)
-  @IsInt({ message: 'minCities must be an integer' })
-  @Min(2, { message: 'minCities must be at least 2' })
-  minCities?: number;
 }

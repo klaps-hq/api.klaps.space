@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   ParseIntPipe,
@@ -18,6 +20,7 @@ import type {
 } from '../lib/response-types';
 import { GetCinemasQueryDto } from './dto/get-cinemas-query.dto';
 import { CreateCinemaDto } from './dto/create-cinema.dto';
+import { BatchCreateCinemasDto } from './dto/batch-create-cinemas.dto';
 
 @Controller('cinemas')
 export class CinemasController {
@@ -46,6 +49,19 @@ export class CinemasController {
   @UseGuards(InternalApiKeyGuard)
   createCinema(@Body() dto: CreateCinemaDto): Promise<Cinema> {
     return this.cinemasService.createCinema(dto);
+  }
+
+  /**
+   * URL: /api/v1/cinemas/batch
+   * Bulk upserts cinemas in a single transaction.
+   */
+  @Post('batch')
+  @UseGuards(InternalApiKeyGuard)
+  @HttpCode(HttpStatus.OK)
+  batchCreateCinemas(
+    @Body() dto: BatchCreateCinemasDto,
+  ): Promise<{ count: number }> {
+    return this.cinemasService.batchCreateCinemas(dto.cinemas);
   }
 
   /**

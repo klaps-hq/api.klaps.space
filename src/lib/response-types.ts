@@ -47,6 +47,30 @@ export type MovieSummaryResponse = {
   genres: GenreResponse[];
 };
 
+/** Actor embedded inside movie response. */
+export type ActorResponse = {
+  id: number;
+  name: string;
+};
+
+/** Director embedded inside movie response. */
+export type DirectorResponse = {
+  id: number;
+  name: string;
+};
+
+/** Scriptwriter embedded inside movie response. */
+export type ScriptwriterResponse = {
+  id: number;
+  name: string;
+};
+
+/** Country embedded inside movie response. */
+export type CountryResponse = {
+  id: number;
+  name: string;
+};
+
 /** Extended movie summary with hero fields for random screening. */
 export type MovieHeroResponse = MovieSummaryResponse & {
   description: string | null;
@@ -68,6 +92,10 @@ export type MovieResponse = {
   worldPremiereDate: string | null;
   polishPremiereDate: string | null;
   genres: GenreResponse[];
+  actors: ActorResponse[];
+  directors: DirectorResponse[];
+  scriptwriters: ScriptwriterResponse[];
+  countries: CountryResponse[];
   ratings: {
     users: { score: number; votes: number } | null;
     critics: { score: number; votes: number } | null;
@@ -82,6 +110,8 @@ export type MultiCityMovieResponse = {
   productionYear: number;
   posterUrl: string | null;
   citiesCount: number;
+  description: string | null;
+  duration: number | null;
 };
 
 /** Single screening with nested cinema. */
@@ -116,7 +146,7 @@ export type RandomScreeningResponse = {
 
 export type CityDetailResponse = {
   city: CityResponse;
-  screenings: ScreeningResponse[] | ScreeningGroupResponse[];
+  screenings: PaginatedResponse<ScreeningResponse | ScreeningGroupResponse>;
 };
 
 /** Generic paginated response wrapper. */
