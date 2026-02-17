@@ -103,7 +103,7 @@ jobs:
             NODE_ENV=${{ needs.setup.outputs.environment }}
             PORT=${{ secrets.PORT }}
             INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}
-            MYSQL_URL=${{ secrets.MYSQL_URL }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
             IMAGE_TAG=${{ needs.setup.outputs.image_tag }}
             EOF
 
