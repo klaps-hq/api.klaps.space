@@ -7,7 +7,7 @@ on:
       - dev
 
 env:
-  IMAGE_NAME: ghcr.io/biplo12/klatka-nest-backend
+  IMAGE_NAME: ghcr.io/biplo12/klaps-nest-backend
 
 jobs:
   # ───────────────────────────────────────────────
@@ -18,6 +18,7 @@ jobs:
     outputs:
       environment: ${{ steps.set-env.outputs.environment }}
       image_tag: ${{ steps.set-env.outputs.image_tag }}
+      container_name: ${{ steps.set-env.outputs.container_name }}
     steps:
       - name: Determine environment and image tag
         id: set-env
@@ -25,9 +26,11 @@ jobs:
           if [[ "${{ github.ref_name }}" == "main" ]]; then
             echo "environment=production" >> "$GITHUB_OUTPUT"
             echo "image_tag=latest" >> "$GITHUB_OUTPUT"
+            echo "container_name=klaps-backend-prod" >> "$GITHUB_OUTPUT"
           else
             echo "environment=development" >> "$GITHUB_OUTPUT"
             echo "image_tag=dev" >> "$GITHUB_OUTPUT"
+            echo "container_name=klaps-backend-dev" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Print config
@@ -35,6 +38,7 @@ jobs:
           echo "Branch:      ${{ github.ref_name }}"
           echo "Environment: ${{ steps.set-env.outputs.environment }}"
           echo "Image tag:   ${{ steps.set-env.outputs.image_tag }}"
+          echo "Container:   ${{ steps.set-env.outputs.container_name }}"
 
   # ───────────────────────────────────────────────
   # Job 2: Build Docker image and push to GHCR
@@ -105,6 +109,7 @@ jobs:
             INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             IMAGE_TAG=${{ needs.setup.outputs.image_tag }}
+            CONTAINER_NAME=${{ needs.setup.outputs.container_name }}
             EOF
 
             # Log in to GHCR on the server
@@ -115,7 +120,8 @@ jobs:
 
             # Stop and remove any old container (ignore errors if it doesn't exist)
             docker compose down --remove-orphans || true
-            docker rm -f klatka-backend || true
+            docker rm -f ${{ needs.setup.outputs.container_name }} || true
+            docker rm -f klaps-backend || true
 
             # Start the container
             docker compose up -d
