@@ -3,7 +3,25 @@ services:
     image: ghcr.io/biplo12/klaps-nest-backend:${IMAGE_TAG:-latest}
     container_name: ${CONTAINER_NAME:-klaps-backend}
     restart: always
-    ports:
-      - "${PORT}:${PORT}"
+    expose:
+      - "${PORT}"
     env_file:
       - .env
+    labels:
+      - "traefik.enable=true"
+      # HTTPS
+      - "traefik.http.routers.${CONTAINER_NAME}.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.${CONTAINER_NAME}.entrypoints=websecure"
+      - "traefik.http.routers.${CONTAINER_NAME}.tls.certresolver=leresolver"
+      # HTTP redirect
+      - "traefik.http.routers.${CONTAINER_NAME}-web.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.${CONTAINER_NAME}-web.entrypoints=web"
+      - "traefik.http.routers.${CONTAINER_NAME}-web.middlewares=redirect-to-https"
+      # Service port
+      - "traefik.http.services.${CONTAINER_NAME}.loadbalancer.server.port=${PORT}"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
