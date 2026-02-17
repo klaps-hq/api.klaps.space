@@ -21,7 +21,7 @@ import type {
   PaginatedResponse,
 } from '../lib/response-types';
 import { mapMovieSummary, mapMovieDetail } from '../lib/response-mappers';
-import { count, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray, like, lte, sql } from 'drizzle-orm';
 
 type FullSchema = typeof schema & typeof relations;
 
@@ -49,9 +49,30 @@ export class MoviesService {
     const page = params?.page ?? DEFAULT_PAGE;
     const limit = params?.limit ?? DEFAULT_MOVIES_LIMIT;
     const offset = (page - 1) * limit;
+
+    const searchCondition = params?.search
+      ? like(schema.movies.title, `%${params.search}%`)
+      : undefined;
+
+    const genreCondition = params?.genreId
+      ? inArray(
+          schema.movies.id,
+          this.db
+            .select({ movieId: schema.movies_genres.movieId })
+            .from(schema.movies_genres)
+            .where(eq(schema.movies_genres.genreId, params.genreId)),
+        )
+      : undefined;
+
+    const whereConditions = and(searchCondition, genreCondition);
+
     const [totalResult, data] = await Promise.all([
-      this.db.select({ total: count() }).from(schema.movies),
+      this.db
+        .select({ total: count() })
+        .from(schema.movies)
+        .where(whereConditions),
       this.db.query.movies.findMany({
+        where: whereConditions,
         limit,
         offset,
         orderBy: desc(schema.movies.id),
@@ -59,6 +80,26 @@ export class MoviesService {
           movies_genres: {
             with: {
               genre: true,
+            },
+          },
+          movies_actors: {
+            with: {
+              actor: true,
+            },
+          },
+          movies_directors: {
+            with: {
+              director: true,
+            },
+          },
+          movies_scriptwriters: {
+            with: {
+              scriptwriter: true,
+            },
+          },
+          movies_countries: {
+            with: {
+              country: true,
             },
           },
         },
@@ -84,12 +125,23 @@ export class MoviesService {
       where: eq(schema.movies.id, id),
       with: {
         movies_genres: {
-          with: {
-            genre: true,
-          },
+          with: { genre: true },
+        },
+        movies_actors: {
+          with: { actor: true },
+        },
+        movies_directors: {
+          with: { director: true },
+        },
+        movies_scriptwriters: {
+          with: { scriptwriter: true },
+        },
+        movies_countries: {
+          with: { country: true },
         },
       },
     });
+
     if (!movie) return null;
     return mapMovieDetail(movie);
   }
@@ -102,7 +154,6 @@ export class MoviesService {
     params?: GetMultiCityMoviesParams,
   ): Promise<MultiCityMovieResponse[]> {
     const limit = params?.limit ?? DEFAULT_MULTI_CITY_LIMIT;
-    const minCities = params?.minCities ?? DEFAULT_MIN_CITIES;
     const citiesCountExpression =
       sql<number>`COUNT(DISTINCT ${schema.cities.id})`.mapWith(Number);
     return this.db
@@ -111,6 +162,8 @@ export class MoviesService {
         title: schema.movies.title,
         productionYear: schema.movies.productionYear,
         posterUrl: schema.movies.posterUrl,
+        description: schema.movies.description,
+        duration: schema.movies.duration,
         citiesCount: citiesCountExpression,
       })
       .from(schema.screenings)
@@ -123,14 +176,16 @@ export class MoviesService {
         schema.cities,
         eq(schema.cinemas.filmwebCityId, schema.cities.filmwebId),
       )
-      .where(gte(schema.screenings.date, sql`NOW()`))
+      .where(gte(schema.screenings.date, sql`CURDATE()`))
       .groupBy(
         schema.movies.id,
         schema.movies.title,
         schema.movies.productionYear,
         schema.movies.posterUrl,
+        schema.movies.description,
+        schema.movies.duration,
       )
-      .having(sql`COUNT(DISTINCT ${schema.cities.id}) >= ${minCities}`)
+      .having(gte(citiesCountExpression, DEFAULT_MIN_CITIES))
       .orderBy(desc(citiesCountExpression))
       .limit(limit);
   }
