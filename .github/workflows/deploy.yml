@@ -114,6 +114,7 @@ jobs:
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             IMAGE_TAG=${{ needs.setup.outputs.image_tag }}
             CONTAINER_NAME=${{ needs.setup.outputs.container_name }}
+            DEPLOY_ENV=${{ needs.setup.outputs.deploy_dir }}
             EOF
 
             # Log in to GHCR on the server
@@ -123,11 +124,11 @@ jobs:
             docker pull ${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.image_tag }}
 
             # Stop and remove any old container (ignore errors if it doesn't exist)
-            docker compose down --remove-orphans || true
+            docker compose -p ${{ needs.setup.outputs.container_name }} down --remove-orphans || true
             docker rm -f ${{ needs.setup.outputs.container_name }} || true
 
             # Start the container
-            docker compose up -d
+            docker compose -p ${{ needs.setup.outputs.container_name }} up -d
 
             # Clean up dangling images
             docker image prune -f
