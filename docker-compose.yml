@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   backend:
     image: ghcr.io/biplo12/klatka-nest-backend:${IMAGE_TAG:-latest}
