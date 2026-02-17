@@ -20,6 +20,7 @@ jobs:
       image_tag: ${{ steps.set-env.outputs.image_tag }}
       container_name: ${{ steps.set-env.outputs.container_name }}
       deploy_dir: ${{ steps.set-env.outputs.deploy_dir }}
+      domain: ${{ steps.set-env.outputs.domain }}
     steps:
       - name: Determine environment and image tag
         id: set-env
@@ -29,11 +30,13 @@ jobs:
             echo "image_tag=latest" >> "$GITHUB_OUTPUT"
             echo "container_name=klaps-backend-prod" >> "$GITHUB_OUTPUT"
             echo "deploy_dir=prod" >> "$GITHUB_OUTPUT"
+            echo "domain=api.klaps.space" >> "$GITHUB_OUTPUT"
           else
             echo "environment=development" >> "$GITHUB_OUTPUT"
             echo "image_tag=dev" >> "$GITHUB_OUTPUT"
             echo "container_name=klaps-backend-dev" >> "$GITHUB_OUTPUT"
             echo "deploy_dir=dev" >> "$GITHUB_OUTPUT"
+            echo "domain=dev.api.klaps.space" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Print config
@@ -43,6 +46,7 @@ jobs:
           echo "Image tag:   ${{ steps.set-env.outputs.image_tag }}"
           echo "Container:   ${{ steps.set-env.outputs.container_name }}"
           echo "Deploy dir:  ${{ steps.set-env.outputs.deploy_dir }}"
+          echo "Domain:      ${{ steps.set-env.outputs.domain }}"
 
   # ───────────────────────────────────────────────
   # Job 2: Build Docker image and push to GHCR
@@ -115,6 +119,7 @@ jobs:
             IMAGE_TAG=${{ needs.setup.outputs.image_tag }}
             CONTAINER_NAME=${{ needs.setup.outputs.container_name }}
             DEPLOY_ENV=${{ needs.setup.outputs.deploy_dir }}
+            DOMAIN=${{ needs.setup.outputs.domain }}
             EOF
 
             # Log in to GHCR on the server
