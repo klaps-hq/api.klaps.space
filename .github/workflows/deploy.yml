@@ -113,8 +113,11 @@ jobs:
             # Pull the latest image
             docker pull ${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.image_tag }}
 
+            # Stop and remove the old container (ignore errors if it doesn't exist)
+            docker compose down --remove-orphans || true
+
             # Recreate the container
-            docker compose up -d --force-recreate
+            docker compose up -d
 
             # Clean up dangling images
             docker image prune -f
