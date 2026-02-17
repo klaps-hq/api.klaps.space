@@ -10,6 +10,7 @@ import type { MarkShowtimeProcessedDto } from './dto/mark-showtime-processed.dto
 import type { ProcessShowtimeDto } from './dto/process-showtime.dto';
 import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { getDatePlusMonth, getTodayInPoland } from '../lib/utils';
+import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
 import type { UnprocessedShowtimeResponse } from './showtimes.types';
 
 type FullSchema = typeof schema & typeof relations;
@@ -143,7 +144,9 @@ export class ShowtimesService {
   }
 
   /**
-   * Bulk upserts showtimes in a single transaction with chunked multi-row INSERTs.
+   * Bulk upserts showtimes with chunked multi-row INSERTs.
+   * Each chunk is its own statement — no wrapping transaction to avoid gap-lock deadlocks.
+   * Automatically retries each chunk on deadlock via withDeadlockRetry wrapper.
    */
   async batchCreateShowtimes(
     showtimes: CreateShowtimeDto[],
@@ -152,21 +155,23 @@ export class ShowtimesService {
 
     const CHUNK_SIZE = 500;
 
-    await this.db.transaction(async (tx) => {
-      for (let i = 0; i < showtimes.length; i += CHUNK_SIZE) {
-        const chunk = showtimes.slice(i, i + CHUNK_SIZE);
-        await tx
-          .insert(schema.showtimes)
-          .values(chunk.map((s) => ({ ...s, date: new Date(s.date) })))
-          .onDuplicateKeyUpdate({
-            set: {
-              cityId: sql`VALUES(${schema.showtimes.cityId})`,
-              url: sql`VALUES(${schema.showtimes.url})`,
-              date: sql`VALUES(${schema.showtimes.date})`,
-            },
-          });
-      }
-    });
+    for (let i = 0; i < showtimes.length; i += CHUNK_SIZE) {
+      const chunk = showtimes.slice(i, i + CHUNK_SIZE);
+      await withDeadlockRetry(
+        () =>
+          this.db
+            .insert(schema.showtimes)
+            .values(chunk.map((s) => ({ ...s, date: new Date(s.date) })))
+            .onDuplicateKeyUpdate({
+              set: {
+                cityId: sql`VALUES(${schema.showtimes.cityId})`,
+                url: sql`VALUES(${schema.showtimes.url})`,
+                date: sql`VALUES(${schema.showtimes.date})`,
+              },
+            }),
+        { label: 'batchCreateShowtimes' },
+      );
+    }
 
     return { count: showtimes.length };
   }
@@ -208,32 +213,36 @@ export class ShowtimesService {
     const movieId = dto.movieId;
 
     if (dto.screenings.length > 0) {
-      await this.db
-        .insert(schema.screenings)
-        .values(
-          dto.screenings.map((s) => ({
-            url: s.url ?? '',
-            movieId,
-            showtimeId,
-            cinemaId: s.cinemaId,
-            type: s.type,
-            date: new Date(s.date),
-            isDubbing: s.isDubbing,
-            isSubtitled: s.isSubtitled,
-          })),
-        )
-        .onDuplicateKeyUpdate({
-          set: {
-            url: sql`VALUES(${schema.screenings.url})`,
-            movieId: sql`VALUES(${schema.screenings.movieId})`,
-            showtimeId: sql`VALUES(${schema.screenings.showtimeId})`,
-            cinemaId: sql`VALUES(${schema.screenings.cinemaId})`,
-            type: sql`VALUES(${schema.screenings.type})`,
-            date: sql`VALUES(${schema.screenings.date})`,
-            isDubbing: sql`VALUES(${schema.screenings.isDubbing})`,
-            isSubtitled: sql`VALUES(${schema.screenings.isSubtitled})`,
-          },
-        });
+      await withDeadlockRetry(
+        () =>
+          this.db
+            .insert(schema.screenings)
+            .values(
+              dto.screenings.map((s) => ({
+                url: s.url ?? '',
+                movieId,
+                showtimeId,
+                cinemaId: s.cinemaId,
+                type: s.type,
+                date: new Date(s.date),
+                isDubbing: s.isDubbing,
+                isSubtitled: s.isSubtitled,
+              })),
+            )
+            .onDuplicateKeyUpdate({
+              set: {
+                url: sql`VALUES(${schema.screenings.url})`,
+                movieId: sql`VALUES(${schema.screenings.movieId})`,
+                showtimeId: sql`VALUES(${schema.screenings.showtimeId})`,
+                cinemaId: sql`VALUES(${schema.screenings.cinemaId})`,
+                type: sql`VALUES(${schema.screenings.type})`,
+                date: sql`VALUES(${schema.screenings.date})`,
+                isDubbing: sql`VALUES(${schema.screenings.isDubbing})`,
+                isSubtitled: sql`VALUES(${schema.screenings.isSubtitled})`,
+              },
+            }),
+        { label: 'processShowtime:screenings' },
+      );
     }
 
     // Mark showtime as processed (also auto-committed, idempotent).

@@ -5,6 +5,8 @@ export type Movie = typeof movies.$inferSelect;
 
 /** Params for the paginated movies list. */
 export type GetMoviesParams = {
+  search?: string;
+  genreId?: number;
   page?: number;
   limit?: number;
 };
@@ -12,5 +14,4 @@ export type GetMoviesParams = {
 /** Params for the multi-city movies endpoint. */
 export type GetMultiCityMoviesParams = {
   limit?: number;
-  minCities?: number;
 };

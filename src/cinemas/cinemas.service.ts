@@ -3,7 +3,7 @@ import type { MySql2Database } from 'drizzle-orm/mysql2';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { GetCinemasParams } from './cinemas.types';
 import type { CreateCinemaDto } from './dto/create-cinema.dto';
 import type { Cinema } from '../database/schemas/cinemas.schema';
@@ -12,6 +12,7 @@ import type {
   CinemaResponse,
 } from '../lib/response-types';
 import { mapCity, mapCinemaDetail } from '../lib/response-mappers';
+import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
 
 type FullSchema = typeof schema & typeof relations;
 
@@ -99,6 +100,39 @@ export class CinemasService {
       where: eq(schema.cinemas.filmwebId, dto.filmwebId),
     });
     return cinema!;
+  }
+
+  /**
+   * Bulk upserts cinemas with a single multi-row INSERT.
+   * No explicit transaction — INSERT … ON DUPLICATE KEY UPDATE is already
+   * atomic and idempotent, so auto-commit avoids the gap-lock deadlocks
+   * that explicit transactions cause under concurrent requests.
+   * Automatically retries on deadlock via withDeadlockRetry wrapper.
+   */
+  async batchCreateCinemas(
+    cinemas: CreateCinemaDto[],
+  ): Promise<{ count: number }> {
+    if (cinemas.length === 0) return { count: 0 };
+
+    await withDeadlockRetry(
+      () =>
+        this.db
+          .insert(schema.cinemas)
+          .values(cinemas)
+          .onDuplicateKeyUpdate({
+            set: {
+              name: sql`VALUES(${schema.cinemas.name})`,
+              url: sql`VALUES(${schema.cinemas.url})`,
+              filmwebCityId: sql`VALUES(${schema.cinemas.filmwebCityId})`,
+              longitude: sql`VALUES(${schema.cinemas.longitude})`,
+              latitude: sql`VALUES(${schema.cinemas.latitude})`,
+              street: sql`VALUES(${schema.cinemas.street})`,
+            },
+          }),
+      { label: 'batchCreateCinemas' },
+    );
+
+    return { count: cinemas.length };
   }
 
   /**

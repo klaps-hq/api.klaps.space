@@ -7,11 +7,22 @@ import { getDateRangeUpToMonthFromNow } from '../lib/utils';
 import { randomInt } from 'node:crypto';
 import type { GetScreeningsParams, Screening } from './screenings.types';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
-import { and, eq, gte, inArray, isNotNull, lte, ne } from 'drizzle-orm';
+import {
+  and,
+  countDistinct,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  like,
+  lte,
+  ne,
+} from 'drizzle-orm';
 import type {
   ScreeningResponse,
   ScreeningGroupResponse,
   RandomScreeningResponse,
+  PaginatedResponse,
 } from '../lib/response-types';
 import {
   mapScreening,
@@ -21,6 +32,7 @@ import {
 
 type FullSchema = typeof schema & typeof relations;
 
+const DEFAULT_PAGE = 1;
 const DEFAULT_MOVIE_LIMIT = 10;
 const MAX_MOVIE_LIMIT = 100;
 const RETRO_YEAR_THRESHOLD = 2026;
@@ -33,65 +45,109 @@ export class ScreeningsService {
   ) {}
 
   /**
-   * When movieId is provided: returns flat ScreeningResponse[].
-   * When movieId is absent: returns ScreeningGroupResponse[] grouped by movie.
+   * When movieId is provided: returns paginated flat ScreeningResponse[].
+   * When movieId is absent: returns paginated ScreeningGroupResponse[] grouped by movie.
    */
   async getScreenings(
     params?: GetScreeningsParams,
-  ): Promise<ScreeningResponse[] | ScreeningGroupResponse[]> {
+  ): Promise<
+    PaginatedResponse<ScreeningResponse | ScreeningGroupResponse>
+  > {
     const { startDay, endDay } = getDateRangeUpToMonthFromNow(
       params?.dateFrom,
       params?.dateTo,
     );
-    const limit = Math.min(
-      params?.limit ?? DEFAULT_MOVIE_LIMIT,
-      MAX_MOVIE_LIMIT,
+    const page = params?.page ?? DEFAULT_PAGE;
+    const limit = params?.limit
+      ? Math.min(params.limit, MAX_MOVIE_LIMIT)
+      : DEFAULT_MOVIE_LIMIT;
+    const offset = (page - 1) * limit;
+
+    const citySubquery = params?.cityId
+      ? inArray(
+          schema.screenings.cinemaId,
+          this.db
+            .select({ filmwebId: schema.cinemas.filmwebId })
+            .from(schema.cinemas)
+            .where(
+              inArray(
+                schema.cinemas.filmwebCityId,
+                this.db
+                  .select({ filmwebId: schema.cities.filmwebId })
+                  .from(schema.cities)
+                  .where(eq(schema.cities.id, params.cityId)),
+              ),
+            ),
+        )
+      : undefined;
+
+    const searchSubquery = params?.search
+      ? inArray(
+          schema.screenings.movieId,
+          this.db
+            .select({ id: schema.movies.id })
+            .from(schema.movies)
+            .where(like(schema.movies.title, `%${params.search}%`)),
+        )
+      : undefined;
+
+    const whereConditions = and(
+      gte(schema.screenings.date, startDay),
+      lte(schema.screenings.date, endDay),
+      params?.movieId
+        ? eq(schema.screenings.movieId, params.movieId)
+        : undefined,
+      citySubquery,
+      searchSubquery,
+      params?.genreId
+        ? eq(schema.movies_genres.genreId, params.genreId)
+        : undefined,
     );
 
-    const movieIdsResult = await this.db
-      .selectDistinct({ movieId: schema.screenings.movieId })
-      .from(schema.screenings)
-      .innerJoin(
-        schema.showtimes,
-        eq(schema.screenings.showtimeId, schema.showtimes.id),
-      )
-      .leftJoin(
-        schema.movies_genres,
-        eq(schema.screenings.movieId, schema.movies_genres.movieId),
-      )
-      .where(
-        and(
-          gte(schema.screenings.date, startDay),
-          lte(schema.screenings.date, endDay),
-          params?.movieId
-            ? eq(schema.screenings.movieId, params.movieId)
-            : undefined,
-          params?.cityId
-            ? inArray(
-                schema.screenings.cinemaId,
-                this.db
-                  .select({ filmwebId: schema.cinemas.filmwebId })
-                  .from(schema.cinemas)
-                  .where(
-                    inArray(
-                      schema.cinemas.filmwebCityId,
-                      this.db
-                        .select({ filmwebId: schema.cities.filmwebId })
-                        .from(schema.cities)
-                        .where(eq(schema.cities.id, params.cityId)),
-                    ),
-                  ),
-              )
-            : undefined,
-          params?.genreId
-            ? eq(schema.movies_genres.genreId, params.genreId)
-            : undefined,
-        ),
-      )
-      .limit(limit);
+    const [totalResult, movieIdsResult] = await Promise.all([
+      this.db
+        .select({
+          total: countDistinct(schema.screenings.movieId),
+        })
+        .from(schema.screenings)
+        .innerJoin(
+          schema.showtimes,
+          eq(schema.screenings.showtimeId, schema.showtimes.id),
+        )
+        .leftJoin(
+          schema.movies_genres,
+          eq(schema.screenings.movieId, schema.movies_genres.movieId),
+        )
+        .where(whereConditions),
+
+      this.db
+        .selectDistinct({ movieId: schema.screenings.movieId })
+        .from(schema.screenings)
+        .innerJoin(
+          schema.showtimes,
+          eq(schema.screenings.showtimeId, schema.showtimes.id),
+        )
+        .leftJoin(
+          schema.movies_genres,
+          eq(schema.screenings.movieId, schema.movies_genres.movieId),
+        )
+        .where(whereConditions)
+        .limit(limit)
+        .offset(offset),
+    ]);
+
+    const total = totalResult[0]?.total ?? 0;
+    const meta = {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
 
     const movieIds = movieIdsResult.map((r) => r.movieId);
-    if (movieIds.length === 0) return [];
+    if (movieIds.length === 0) {
+      return { data: [], meta };
+    }
 
     const movies = await this.db.query.movies.findMany({
       where: inArray(schema.movies.id, movieIds),
@@ -102,23 +158,7 @@ export class ScreeningsService {
           where: and(
             gte(schema.screenings.date, startDay),
             lte(schema.screenings.date, endDay),
-            params?.cityId
-              ? inArray(
-                  schema.screenings.cinemaId,
-                  this.db
-                    .select({ filmwebId: schema.cinemas.filmwebId })
-                    .from(schema.cinemas)
-                    .where(
-                      inArray(
-                        schema.cinemas.filmwebCityId,
-                        this.db
-                          .select({ filmwebId: schema.cities.filmwebId })
-                          .from(schema.cities)
-                          .where(eq(schema.cities.id, params.cityId)),
-                      ),
-                    ),
-                )
-              : undefined,
+            citySubquery,
           ),
         },
       },
@@ -127,12 +167,20 @@ export class ScreeningsService {
     const filtered = movies.filter(({ screenings }) => screenings.length > 0);
 
     if (params?.movieId) {
-      return filtered.flatMap(({ screenings }) => screenings.map(mapScreening));
+      return {
+        data: filtered.flatMap(({ screenings }) =>
+          screenings.map(mapScreening),
+        ),
+        meta,
+      };
     }
 
-    return filtered.map(({ screenings, ...movie }) =>
-      mapScreeningGroup(movie as any, screenings as any),
-    );
+    return {
+      data: filtered.map(({ screenings, ...movie }) =>
+        mapScreeningGroup(movie as any, screenings as any),
+      ),
+      meta,
+    };
   }
 
   /**

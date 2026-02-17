@@ -1,6 +1,10 @@
 import type {
   CityResponse,
   GenreResponse,
+  ActorResponse,
+  DirectorResponse,
+  ScriptwriterResponse,
+  CountryResponse,
   CinemaSummaryResponse,
   CinemaResponse,
   MovieSummaryResponse,
@@ -32,6 +36,38 @@ export const mapGenre = (genre: {
 }): GenreResponse => ({
   id: genre.id,
   name: genre.name,
+});
+
+export const mapActor = (actor: {
+  id: number;
+  name: string;
+}): ActorResponse => ({
+  id: actor.id,
+  name: actor.name,
+});
+
+export const mapDirector = (director: {
+  id: number;
+  name: string;
+}): DirectorResponse => ({
+  id: director.id,
+  name: director.name,
+});
+
+export const mapScriptwriter = (scriptwriter: {
+  id: number;
+  name: string;
+}): ScriptwriterResponse => ({
+  id: scriptwriter.id,
+  name: scriptwriter.name,
+});
+
+export const mapCountry = (country: {
+  id: number;
+  name: string;
+}): CountryResponse => ({
+  id: country.id,
+  name: country.name,
 });
 
 // ── Cinema ──────────────────────────────────────────────────
@@ -92,6 +128,12 @@ type DbMovieWithGenres = {
   criticsRating?: number | null;
   criticsRatingVotes?: number | null;
   movies_genres: Array<{ genre: { id: number; name: string } }>;
+  movies_actors: Array<{ actor: { id: number; name: string } }>;
+  movies_directors: Array<{ director: { id: number; name: string } }>;
+  movies_scriptwriters: Array<{
+    scriptwriter: { id: number; name: string };
+  }>;
+  movies_countries: Array<{ country: { id: number; name: string } }>;
 };
 
 /** Flattens genres and strips DB internals for cards/lists. */
@@ -132,6 +174,12 @@ export const mapMovieDetail = (movie: DbMovieWithGenres): MovieResponse => ({
   productionYear: movie.productionYear,
   duration: movie.duration > 0 ? movie.duration : null,
   language: movie.language || null,
+  actors: movie.movies_actors.map((ma) => mapActor(ma.actor)),
+  directors: movie.movies_directors.map((md) => mapDirector(md.director)),
+  scriptwriters: movie.movies_scriptwriters.map((ms) =>
+    mapScriptwriter(ms.scriptwriter),
+  ),
+  countries: movie.movies_countries.map((mc) => mapCountry(mc.country)),
   posterUrl: movie.posterUrl,
   backdropUrl: movie.backdropUrl ?? null,
   videoUrl: movie.videoUrl ?? null,
