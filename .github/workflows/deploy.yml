@@ -114,6 +114,7 @@ jobs:
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             IMAGE_TAG=${{ needs.setup.outputs.image_tag }}
             CONTAINER_NAME=${{ needs.setup.outputs.container_name }}
+            DEPLOY_ENV=${{ needs.setup.outputs.deploy_dir }}
             EOF
 
             # Log in to GHCR on the server
