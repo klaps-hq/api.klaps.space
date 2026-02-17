@@ -1,5 +1,3 @@
-name: klaps-nest-backend-${DEPLOY_ENV}
-
 services:
   klaps-backend:
     image: ghcr.io/biplo12/klaps-nest-backend:${IMAGE_TAG:-latest}
