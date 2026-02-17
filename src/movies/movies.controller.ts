@@ -41,6 +41,8 @@ export class MoviesController {
     @Query() query: GetMoviesQueryDto,
   ): Promise<PaginatedResponse<MovieSummaryResponse>> {
     return this.moviesService.getMovies({
+      search: query.search,
+      genreId: query.genreId,
       page: query.page,
       limit: query.limit,
     });
@@ -69,7 +71,6 @@ export class MoviesController {
   ): Promise<MultiCityMovieResponse[]> {
     return this.moviesService.getMultiCityMovies({
       limit: query.limit,
-      minCities: query.minCities,
     });
   }
 

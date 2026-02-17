@@ -1,0 +1,11 @@
+version: "3"
+
+services:
+  backend:
+    image: ghcr.io/biplo12/klatka-nest-backend:${IMAGE_TAG:-latest}
+    container_name: klatka-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env

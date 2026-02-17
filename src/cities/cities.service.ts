@@ -8,6 +8,7 @@ import type { CityDetailResponse, CityResponse } from '../lib/response-types';
 import { mapCity } from '../lib/response-mappers';
 import { eq, sql } from 'drizzle-orm';
 import { ScreeningsService } from '../screenings/screenings.service';
+import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
 
 /**
  * Service for city-related business logic and persistence.
@@ -66,23 +67,26 @@ export class CitiesService {
   }
 
   /**
-   * Bulk upserts cities in a single transaction with one multi-row INSERT.
+   * Bulk upserts cities with a single multi-row INSERT.
+   * Automatically retries on deadlock via withDeadlockRetry wrapper.
    */
   async batchCreateCities(cities: CreateCityDto[]): Promise<{ count: number }> {
     if (cities.length === 0) return { count: 0 };
 
-    await this.db.transaction(async (tx) => {
-      await tx
-        .insert(schema.cities)
-        .values(cities)
-        .onDuplicateKeyUpdate({
-          set: {
-            name: sql`VALUES(${schema.cities.name})`,
-            nameDeclinated: sql`VALUES(${schema.cities.nameDeclinated})`,
-            areacode: sql`VALUES(${schema.cities.areacode})`,
-          },
-        });
-    });
+    await withDeadlockRetry(
+      () =>
+        this.db
+          .insert(schema.cities)
+          .values(cities)
+          .onDuplicateKeyUpdate({
+            set: {
+              name: sql`VALUES(${schema.cities.name})`,
+              nameDeclinated: sql`VALUES(${schema.cities.nameDeclinated})`,
+              areacode: sql`VALUES(${schema.cities.areacode})`,
+            },
+          }),
+      { label: 'batchCreateCities' },
+    );
 
     return { count: cities.length };
   }

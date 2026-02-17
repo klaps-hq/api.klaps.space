@@ -16,6 +16,7 @@ import type {
   ScreeningResponse,
   ScreeningGroupResponse,
   RandomScreeningResponse,
+  PaginatedResponse,
 } from '../lib/response-types';
 
 @Controller('screenings')
@@ -23,20 +24,22 @@ export class ScreeningsController {
   constructor(private readonly screeningsService: ScreeningsService) {}
 
   /**
-   * When movieId is provided: returns flat ScreeningResponse[].
-   * Otherwise: returns ScreeningGroupResponse[] grouped by movie with summary.
+   * When movieId is provided: returns paginated flat ScreeningResponse[].
+   * Otherwise: returns paginated ScreeningGroupResponse[] grouped by movie with summary.
    */
   @Get()
   @UseGuards(InternalApiKeyGuard)
   getScreenings(
     @Query() query: GetScreeningsQueryDto,
-  ): Promise<ScreeningResponse[] | ScreeningGroupResponse[]> {
+  ): Promise<PaginatedResponse<ScreeningResponse | ScreeningGroupResponse>> {
     return this.screeningsService.getScreenings({
       dateFrom: query.dateFrom,
       dateTo: query.dateTo,
       movieId: query.movieId,
       cityId: query.cityId,
       genreId: query.genreId,
+      search: query.search,
+      page: query.page,
       limit: query.limit,
     });
   }
