@@ -19,6 +19,7 @@ jobs:
       environment: ${{ steps.set-env.outputs.environment }}
       image_tag: ${{ steps.set-env.outputs.image_tag }}
       container_name: ${{ steps.set-env.outputs.container_name }}
+      deploy_dir: ${{ steps.set-env.outputs.deploy_dir }}
     steps:
       - name: Determine environment and image tag
         id: set-env
@@ -27,10 +28,12 @@ jobs:
             echo "environment=production" >> "$GITHUB_OUTPUT"
             echo "image_tag=latest" >> "$GITHUB_OUTPUT"
             echo "container_name=klaps-backend-prod" >> "$GITHUB_OUTPUT"
+            echo "deploy_dir=prod" >> "$GITHUB_OUTPUT"
           else
             echo "environment=development" >> "$GITHUB_OUTPUT"
             echo "image_tag=dev" >> "$GITHUB_OUTPUT"
             echo "container_name=klaps-backend-dev" >> "$GITHUB_OUTPUT"
+            echo "deploy_dir=dev" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Print config
@@ -39,6 +42,7 @@ jobs:
           echo "Environment: ${{ steps.set-env.outputs.environment }}"
           echo "Image tag:   ${{ steps.set-env.outputs.image_tag }}"
           echo "Container:   ${{ steps.set-env.outputs.container_name }}"
+          echo "Deploy dir:  ${{ steps.set-env.outputs.deploy_dir }}"
 
   # ───────────────────────────────────────────────
   # Job 2: Build Docker image and push to GHCR
@@ -87,7 +91,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: docker-compose.yml
-          target: /home/${{ secrets.SERVER_USER }}/projects/klaps/backend
+          target: /home/${{ secrets.SERVER_USER }}/projects/klaps/backend/${{ needs.setup.outputs.deploy_dir }}
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1
@@ -99,8 +103,8 @@ jobs:
             set -e
 
             # Ensure project directory exists
-            mkdir -p /home/${{ secrets.SERVER_USER }}/projects/klaps/backend
-            cd /home/${{ secrets.SERVER_USER }}/projects/klaps/backend
+            mkdir -p /home/${{ secrets.SERVER_USER }}/projects/klaps/backend/${{ needs.setup.outputs.deploy_dir }}
+            cd /home/${{ secrets.SERVER_USER }}/projects/klaps/backend/${{ needs.setup.outputs.deploy_dir }}
 
             # Generate .env from GitHub Secrets
             cat > .env <<EOF
@@ -121,7 +125,6 @@ jobs:
             # Stop and remove any old container (ignore errors if it doesn't exist)
             docker compose down --remove-orphans || true
             docker rm -f ${{ needs.setup.outputs.container_name }} || true
-            docker rm -f klaps-backend || true
 
             # Start the container
             docker compose up -d
