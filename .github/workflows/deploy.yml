@@ -113,10 +113,11 @@ jobs:
             # Pull the latest image
             docker pull ${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.image_tag }}
 
-            # Stop and remove the old container (ignore errors if it doesn't exist)
+            # Stop and remove any old container (ignore errors if it doesn't exist)
             docker compose down --remove-orphans || true
+            docker rm -f klatka-backend || true
 
-            # Recreate the container
+            # Start the container
             docker compose up -d
 
             # Clean up dangling images
