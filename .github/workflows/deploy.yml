@@ -128,12 +128,8 @@ jobs:
             # Pull the latest image
             docker pull ${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.image_tag }}
 
-            # Stop and remove any old container (ignore errors if it doesn't exist)
-            docker compose -p ${{ needs.setup.outputs.container_name }} down --remove-orphans || true
-            docker rm -f ${{ needs.setup.outputs.container_name }} || true
-
-            # Start the container
-            docker compose -p ${{ needs.setup.outputs.container_name }} up -d
+            # Recreate only the backend container
+            docker compose -p ${{ needs.setup.outputs.container_name }} up -d --force-recreate --no-deps
 
             # Clean up dangling images
             docker image prune -f
