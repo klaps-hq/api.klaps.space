@@ -1,11 +1,11 @@
-/** Clean city response -- no filmwebId or areacode. */
+/** Clean city response -- no sourceId or areacode. */
 export type CityResponse = {
   id: number;
   name: string;
   nameDeclinated: string;
 };
 
-/** Clean genre response -- no filmwebId or timestamps. */
+/** Clean genre response -- no sourceId or timestamps. */
 export type GenreResponse = {
   id: number;
   name: string;

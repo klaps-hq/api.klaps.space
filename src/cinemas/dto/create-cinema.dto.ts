@@ -14,9 +14,9 @@ import { Type } from 'class-transformer';
  */
 export class CreateCinemaDto {
   @Type(() => Number)
-  @IsInt({ message: 'filmwebId must be an integer' })
+  @IsInt({ message: 'sourceId must be an integer' })
   @Min(1)
-  filmwebId: number;
+  sourceId: number;
 
   @IsString()
   @IsNotEmpty()
@@ -29,9 +29,9 @@ export class CreateCinemaDto {
   url: string;
 
   @Type(() => Number)
-  @IsInt({ message: 'filmwebCityId must be an integer' })
+  @IsInt({ message: 'sourceCityId must be an integer' })
   @Min(1)
-  filmwebCityId: number;
+  sourceCityId: number;
 
   @IsOptional()
   @Type(() => Number)

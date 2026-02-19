@@ -19,8 +19,8 @@ import { showtimesTable } from './showtimes.schema';
 
 export const cinemasRelations = relations(cinemasTable, ({ one, many }) => ({
   city: one(citiesTable, {
-    fields: [cinemasTable.filmwebCityId],
-    references: [citiesTable.filmwebId],
+    fields: [cinemasTable.sourceCityId],
+    references: [citiesTable.sourceId],
   }),
   screenings: many(screeningsTable),
 }));
@@ -146,7 +146,7 @@ export const scriptwritersRelations = relations(
 export const screeningsRelations = relations(screeningsTable, ({ one }) => ({
   cinema: one(cinemasTable, {
     fields: [screeningsTable.cinemaId],
-    references: [cinemasTable.filmwebId],
+    references: [cinemasTable.sourceId],
   }),
   movie: one(moviesTable, {
     fields: [screeningsTable.movieId],
