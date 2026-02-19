@@ -16,7 +16,7 @@ export class GenresService {
   ) {}
 
   /**
-   * Returns all genres, stripped of DB internals (filmwebId, timestamps).
+   * Returns all genres, stripped of DB internals (sourceId, timestamps).
    */
   async getGenres(): Promise<GenreResponse[]> {
     const genres = await this.db.query.genres.findMany();

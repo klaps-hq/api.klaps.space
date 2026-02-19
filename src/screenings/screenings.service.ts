@@ -67,13 +67,13 @@ export class ScreeningsService {
       ? inArray(
           schema.screenings.cinemaId,
           this.db
-            .select({ filmwebId: schema.cinemas.filmwebId })
+            .select({ sourceId: schema.cinemas.sourceId })
             .from(schema.cinemas)
             .where(
               inArray(
-                schema.cinemas.filmwebCityId,
+                schema.cinemas.sourceCityId,
                 this.db
-                  .select({ filmwebId: schema.cities.filmwebId })
+                  .select({ sourceId: schema.cities.sourceId })
                   .from(schema.cities)
                   .where(eq(schema.cities.id, params.cityId)),
               ),
