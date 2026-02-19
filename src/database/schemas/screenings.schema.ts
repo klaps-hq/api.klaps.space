@@ -23,7 +23,7 @@ export const screeningsTable = mysqlTable(
       .references(() => showtimesTable.id)
       .notNull(),
     cinemaId: int()
-      .references(() => cinemasTable.filmwebId)
+      .references(() => cinemasTable.sourceId)
       .notNull(),
     type: varchar({ length: 255 }).notNull(),
     date: datetime('date').notNull(),

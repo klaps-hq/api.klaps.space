@@ -16,7 +16,7 @@ import type {
 
 // ── City ────────────────────────────────────────────────────
 
-/** Strips filmwebId and areacode from a city row. */
+/** Strips sourceId and areacode from a city row. */
 export const mapCity = (city: {
   id: number;
   name: string;
@@ -29,7 +29,7 @@ export const mapCity = (city: {
 
 // ── Genre ───────────────────────────────────────────────────
 
-/** Strips filmwebId and timestamps from a genre row. */
+/** Strips sourceId and timestamps from a genre row. */
 export const mapGenre = (genre: {
   id: number;
   name: string;

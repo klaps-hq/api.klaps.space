@@ -2,7 +2,7 @@ import { int, mysqlTable, varchar } from "drizzle-orm/mysql-core";
 
 export const citiesTable = mysqlTable("cities", {
   id: int().primaryKey().autoincrement(),
-  filmwebId: int().notNull().unique(),
+  sourceId: int().notNull().unique(),
   name: varchar({ length: 255 }).notNull(),
   nameDeclinated: varchar({ length: 255 }).notNull(),
   areacode: int(),

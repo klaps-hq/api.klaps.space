@@ -13,7 +13,7 @@ import { Type } from 'class-transformer';
 export class CreateCityDto {
   @Type(() => Number)
   @IsInt()
-  filmwebId: number;
+  sourceId: number;
 
   @IsString()
   @IsNotEmpty()

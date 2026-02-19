@@ -43,7 +43,7 @@ export class CinemasController {
 
   /**
    * URL: /api/v1/cinemas
-   * Creates or updates a cinema (upserts on duplicate filmwebId).
+   * Creates or updates a cinema (upserts on duplicate sourceId).
    */
   @Post()
   @UseGuards(InternalApiKeyGuard)

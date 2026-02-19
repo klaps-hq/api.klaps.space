@@ -22,7 +22,7 @@ export class CitiesService {
   ) {}
 
   /**
-   * Returns all cities, stripped of DB internals (filmwebId, areacode).
+   * Returns all cities, stripped of DB internals (sourceId, areacode).
    */
   async getCities(): Promise<CityResponse[]> {
     const cities = await this.db.query.cities.findMany();
@@ -47,7 +47,7 @@ export class CitiesService {
   }
 
   /**
-   * Creates or updates a city (upserts on duplicate filmwebId) and returns the row.
+   * Creates or updates a city (upserts on duplicate sourceId) and returns the row.
    */
   async createCity(dto: CreateCityDto): Promise<City> {
     await this.db
@@ -61,7 +61,7 @@ export class CitiesService {
         },
       });
     const city = await this.db.query.cities.findFirst({
-      where: eq(schema.cities.filmwebId, dto.filmwebId),
+      where: eq(schema.cities.sourceId, dto.sourceId),
     });
     return city!;
   }

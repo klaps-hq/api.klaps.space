@@ -15,6 +15,7 @@ import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { Showtime, UnprocessedShowtimeResponse } from './showtimes.types';
 import { CreateShowtimeDto } from './dto/create-showtime.dto';
 import { GetProcessedCityIdsQueryDto } from './dto/get-processed-city-ids-query.dto';
+import { GetUnprocessedQueryDto } from './dto/get-unprocessed-query.dto';
 import { MarkCityProcessedDto } from './dto/mark-city-processed.dto';
 import { MarkShowtimeProcessedDto } from './dto/mark-showtime-processed.dto';
 import { ProcessShowtimeDto } from './dto/process-showtime.dto';
@@ -35,17 +36,20 @@ export class ShowtimesController {
   }
 
   /**
-   * URL: /api/v1/showtimes/unprocessed
-   * Returns showtimes that have not been marked as processed.
+   * URL: /api/v1/showtimes/unprocessed?from=YYYY-MM-DD&to=YYYY-MM-DD
+   * Returns showtimes that have not been marked as processed
+   * within the given date range.
    */
   @Get('unprocessed')
   @UseGuards(InternalApiKeyGuard)
-  getUnprocessedShowtimes(): Promise<UnprocessedShowtimeResponse[]> {
-    return this.showtimesService.getUnprocessedShowtimes();
+  getUnprocessedShowtimes(
+    @Query() query: GetUnprocessedQueryDto,
+  ): Promise<UnprocessedShowtimeResponse[]> {
+    return this.showtimesService.getUnprocessedShowtimes(query.from, query.to);
   }
 
   /**
-   * URL: /api/v1/showtimes/processed-city-ids?startDate=...&endDate=...
+   * URL: /api/v1/showtimes/processed-city-ids?from=YYYY-MM-DD&to=YYYY-MM-DD
    * Returns distinct cityIds from processed_cities within the given date range.
    */
   @Get('processed-city-ids')
@@ -53,10 +57,7 @@ export class ShowtimesController {
   getProcessedCityIds(
     @Query() query: GetProcessedCityIdsQueryDto,
   ): Promise<number[]> {
-    return this.showtimesService.getProcessedCityIds(
-      query.startDate,
-      query.endDate,
-    );
+    return this.showtimesService.getProcessedCityIds(query.from, query.to);
   }
 
   /**

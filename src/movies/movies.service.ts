@@ -170,11 +170,11 @@ export class MoviesService {
       .innerJoin(schema.movies, eq(schema.screenings.movieId, schema.movies.id))
       .innerJoin(
         schema.cinemas,
-        eq(schema.screenings.cinemaId, schema.cinemas.filmwebId),
+        eq(schema.screenings.cinemaId, schema.cinemas.sourceId),
       )
       .innerJoin(
         schema.cities,
-        eq(schema.cinemas.filmwebCityId, schema.cities.filmwebId),
+        eq(schema.cinemas.sourceCityId, schema.cities.sourceId),
       )
       .where(gte(schema.screenings.date, sql`CURDATE()`))
       .groupBy(
@@ -191,7 +191,7 @@ export class MoviesService {
   }
 
   /**
-   * Creates or updates a movie (upserts on duplicate filmwebId) and returns the row.
+   * Creates or updates a movie (upserts on duplicate sourceId) and returns the row.
    * Also upserts related actors, directors, scriptwriters, countries, genres
    * and creates the corresponding junction table entries.
    */
@@ -243,7 +243,7 @@ export class MoviesService {
       });
 
     const movie = await this.db.query.movies.findFirst({
-      where: eq(schema.movies.filmwebId, movieFields.filmwebId),
+      where: eq(schema.movies.sourceId, movieFields.sourceId),
     });
 
     const movieId = movie!.id;
@@ -272,7 +272,7 @@ export class MoviesService {
       await this.db
         .insert(schema.actors)
         .values({
-          filmwebId: actor.filmwebId,
+          sourceId: actor.sourceId,
           name: actor.name,
           url: actor.url,
         })
@@ -281,7 +281,7 @@ export class MoviesService {
         });
 
       const row = await this.db.query.actors.findFirst({
-        where: eq(schema.actors.filmwebId, actor.filmwebId),
+        where: eq(schema.actors.sourceId, actor.sourceId),
       });
 
       if (!row) continue;
@@ -306,7 +306,7 @@ export class MoviesService {
       await this.db
         .insert(schema.directors)
         .values({
-          filmwebId: director.filmwebId,
+          sourceId: director.sourceId,
           name: director.name,
           url: director.url,
         })
@@ -315,7 +315,7 @@ export class MoviesService {
         });
 
       const row = await this.db.query.directors.findFirst({
-        where: eq(schema.directors.filmwebId, director.filmwebId),
+        where: eq(schema.directors.sourceId, director.sourceId),
       });
 
       if (!row) continue;
@@ -340,7 +340,7 @@ export class MoviesService {
       await this.db
         .insert(schema.scriptwriters)
         .values({
-          filmwebId: sw.filmwebId,
+          sourceId: sw.sourceId,
           name: sw.name,
           url: sw.url,
         })
@@ -349,7 +349,7 @@ export class MoviesService {
         });
 
       const row = await this.db.query.scriptwriters.findFirst({
-        where: eq(schema.scriptwriters.filmwebId, sw.filmwebId),
+        where: eq(schema.scriptwriters.sourceId, sw.sourceId),
       });
 
       if (!row) continue;
@@ -407,7 +407,7 @@ export class MoviesService {
       await this.db
         .insert(schema.genres)
         .values({
-          filmwebId: genre.filmwebId,
+          sourceId: genre.sourceId,
           name: genre.name,
         })
         .onDuplicateKeyUpdate({
@@ -415,7 +415,7 @@ export class MoviesService {
         });
 
       const row = await this.db.query.genres.findFirst({
-        where: eq(schema.genres.filmwebId, genre.filmwebId),
+        where: eq(schema.genres.sourceId, genre.sourceId),
       });
 
       if (!row) continue;
