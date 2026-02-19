@@ -41,9 +41,9 @@ export class CinemasService {
     );
     const cityCondition = params?.cityId
       ? inArray(
-          schema.cinemas.filmwebCityId,
+          schema.cinemas.sourceCityId,
           this.db
-            .select({ filmwebId: schema.cities.filmwebId })
+            .select({ sourceId: schema.cities.sourceId })
             .from(schema.cities)
             .where(eq(schema.cities.id, params.cityId)),
         )
@@ -80,7 +80,7 @@ export class CinemasService {
   }
 
   /**
-   * Creates or updates a cinema (upserts on duplicate filmwebId) and returns the raw row.
+   * Creates or updates a cinema (upserts on duplicate sourceId) and returns the raw row.
    */
   async createCinema(dto: CreateCinemaDto): Promise<Cinema> {
     await this.db
@@ -90,14 +90,14 @@ export class CinemasService {
         set: {
           name: dto.name,
           url: dto.url,
-          filmwebCityId: dto.filmwebCityId,
+          sourceCityId: dto.sourceCityId,
           longitude: dto.longitude ?? null,
           latitude: dto.latitude ?? null,
           street: dto.street ?? null,
         },
       });
     const cinema = await this.db.query.cinemas.findFirst({
-      where: eq(schema.cinemas.filmwebId, dto.filmwebId),
+      where: eq(schema.cinemas.sourceId, dto.sourceId),
     });
     return cinema!;
   }
@@ -123,7 +123,7 @@ export class CinemasService {
             set: {
               name: sql`VALUES(${schema.cinemas.name})`,
               url: sql`VALUES(${schema.cinemas.url})`,
-              filmwebCityId: sql`VALUES(${schema.cinemas.filmwebCityId})`,
+              sourceCityId: sql`VALUES(${schema.cinemas.sourceCityId})`,
               longitude: sql`VALUES(${schema.cinemas.longitude})`,
               latitude: sql`VALUES(${schema.cinemas.latitude})`,
               street: sql`VALUES(${schema.cinemas.street})`,

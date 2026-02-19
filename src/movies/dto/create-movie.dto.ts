@@ -14,7 +14,7 @@ import { Type } from 'class-transformer';
 export class ActorInsertDto {
   @Type(() => Number)
   @IsInt()
-  filmwebId: number;
+  sourceId: number;
 
   @IsString()
   @IsNotEmpty()
@@ -42,7 +42,7 @@ export class CountryInsertDto {
 export class GenreInsertDto {
   @Type(() => Number)
   @IsInt()
-  filmwebId: number;
+  sourceId: number;
 
   @IsString()
   @IsNotEmpty()
@@ -56,7 +56,7 @@ export class GenreInsertDto {
 export class CreateMovieDto {
   @Type(() => Number)
   @IsInt()
-  filmwebId: number;
+  sourceId: number;
 
   @IsString()
   @IsNotEmpty()

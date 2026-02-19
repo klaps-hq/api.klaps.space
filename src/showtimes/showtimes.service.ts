@@ -9,7 +9,7 @@ import type { MarkCityProcessedDto } from './dto/mark-city-processed.dto';
 import type { MarkShowtimeProcessedDto } from './dto/mark-showtime-processed.dto';
 import type { ProcessShowtimeDto } from './dto/process-showtime.dto';
 import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm';
-import { getDatePlusMonth, getTodayInPoland } from '../lib/utils';
+import { getTodayInPoland } from '../lib/utils';
 import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
 import type { UnprocessedShowtimeResponse } from './showtimes.types';
 
@@ -57,20 +57,14 @@ export class ShowtimesService {
   /**
    * Returns distinct cityIds from processed_cities within the given date range.
    */
-  async getProcessedCityIds(
-    startDate: string,
-    endDate: string,
-  ): Promise<number[]> {
-    const start = startDate ?? getTodayInPoland();
-    const end = endDate ?? getDatePlusMonth(start);
-
+  async getProcessedCityIds(from: string, to: string): Promise<number[]> {
     const rows = await this.db
       .selectDistinct({ cityId: schema.processed_cities.cityId })
       .from(schema.processed_cities)
       .where(
         and(
-          gte(schema.processed_cities.processedAt, start),
-          lte(schema.processed_cities.processedAt, end),
+          gte(schema.processed_cities.processedAt, from),
+          lte(schema.processed_cities.processedAt, to),
         ),
       );
     return rows.map((r) => r.cityId);
@@ -107,10 +101,14 @@ export class ShowtimesService {
   }
 
   /**
-   * Returns showtimes that have NOT been marked as processed.
+   * Returns showtimes that have NOT been marked as processed
+   * and whose date falls within [from, to].
    * Uses LEFT JOIN ... IS NULL to exclude processed ones.
    */
-  async getUnprocessedShowtimes(): Promise<UnprocessedShowtimeResponse[]> {
+  async getUnprocessedShowtimes(
+    from: string,
+    to: string,
+  ): Promise<UnprocessedShowtimeResponse[]> {
     const rows = await this.db
       .select({
         id: schema.showtimes.id,
@@ -125,7 +123,13 @@ export class ShowtimesService {
         schema.processed_showtimes,
         eq(schema.showtimes.id, schema.processed_showtimes.showtimeId),
       )
-      .where(isNull(schema.processed_showtimes.id));
+      .where(
+        and(
+          isNull(schema.processed_showtimes.id),
+          gte(schema.showtimes.date, new Date(from)),
+          lte(schema.showtimes.date, new Date(to)),
+        ),
+      );
 
     return rows.map((r) => ({
       id: r.id,

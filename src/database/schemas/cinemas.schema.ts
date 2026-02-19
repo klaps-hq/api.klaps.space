@@ -9,11 +9,11 @@ import { citiesTable } from "./cities.schema";
 
 export const cinemasTable = mysqlTable("cinemas", {
   id: int().primaryKey().autoincrement(),
-  filmwebId: int().notNull().unique(),
+  sourceId: int().notNull().unique(),
   name: varchar({ length: 255 }).notNull(),
   url: varchar({ length: 255 }).notNull(),
-  filmwebCityId: int()
-    .references(() => citiesTable.filmwebId)
+  sourceCityId: int()
+    .references(() => citiesTable.sourceId)
     .notNull(),
   longitude: float(),
   latitude: float(),
