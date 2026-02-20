@@ -137,6 +137,11 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Baseline existing tables (idempotent)
+        run: yarn db:baseline
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Run database migrations
         run: npx drizzle-kit migrate
         env:
