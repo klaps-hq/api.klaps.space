@@ -1,6 +1,6 @@
 services:
   klaps-backend:
-    image: ghcr.io/biplo12/klaps-nest-backend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_NAME}:${IMAGE_TAG:-latest}
     container_name: ${CONTAINER_NAME:-klaps-backend}
     restart: always
     expose:
