@@ -105,6 +105,7 @@ jobs:
 
             mysqldump -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" \
               --single-transaction \
+              --no-tablespaces \
               --routines \
               --triggers \
               "$DB_NAME" | gzip > "$BACKUP_DIR/pre-deploy_${TIMESTAMP}.sql.gz"
