@@ -7,7 +7,7 @@ on:
       - dev
 
 env:
-  IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+  IMAGE_NAME: ${{ secrets.IMAGE_NAME }}
 
 jobs:
   # ───────────────────────────────────────────────
@@ -180,11 +180,11 @@ jobs:
             PORT=${{ secrets.PORT }}
             INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
-            IMAGE_NAME=${{ vars.IMAGE_NAME }}
+            IMAGE_NAME=${{ secrets.IMAGE_NAME }}
             IMAGE_TAG=${{ needs.setup.outputs.image_tag }}
             CONTAINER_NAME=${{ needs.setup.outputs.container_name }}
             DEPLOY_ENV=${{ needs.setup.outputs.deploy_dir }}
-            DOMAIN=${{ vars.DOMAIN }}
+            DOMAIN=${{ secrets.DOMAIN }}
             EOF
 
             # Log in to GHCR on the server
