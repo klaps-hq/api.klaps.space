@@ -7,7 +7,7 @@ on:
       - dev
 
 env:
-  IMAGE_NAME: ghcr.io/biplo12/klaps-nest-backend
+  IMAGE_NAME: ${{ vars.IMAGE_NAME }}
 
 jobs:
   # ───────────────────────────────────────────────
@@ -20,7 +20,6 @@ jobs:
       image_tag: ${{ steps.set-env.outputs.image_tag }}
       container_name: ${{ steps.set-env.outputs.container_name }}
       deploy_dir: ${{ steps.set-env.outputs.deploy_dir }}
-      domain: ${{ steps.set-env.outputs.domain }}
     steps:
       - name: Determine environment and image tag
         id: set-env
@@ -30,13 +29,11 @@ jobs:
             echo "image_tag=latest" >> "$GITHUB_OUTPUT"
             echo "container_name=klaps-backend-prod" >> "$GITHUB_OUTPUT"
             echo "deploy_dir=prod" >> "$GITHUB_OUTPUT"
-            echo "domain=api.klaps.space" >> "$GITHUB_OUTPUT"
           else
             echo "environment=development" >> "$GITHUB_OUTPUT"
             echo "image_tag=dev" >> "$GITHUB_OUTPUT"
             echo "container_name=klaps-backend-dev" >> "$GITHUB_OUTPUT"
             echo "deploy_dir=dev" >> "$GITHUB_OUTPUT"
-            echo "domain=dev.api.klaps.space" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Print config
@@ -46,7 +43,6 @@ jobs:
           echo "Image tag:   ${{ steps.set-env.outputs.image_tag }}"
           echo "Container:   ${{ steps.set-env.outputs.container_name }}"
           echo "Deploy dir:  ${{ steps.set-env.outputs.deploy_dir }}"
-          echo "Domain:      ${{ steps.set-env.outputs.domain }}"
 
   # ───────────────────────────────────────────────
   # Job 2: Build Docker image and push to GHCR
@@ -78,9 +74,9 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   # ───────────────────────────────────────────────
-  # Job 3: Push database schema with Drizzle
+  # Job 3: Run database migrations with Drizzle
   # ───────────────────────────────────────────────
-  db-push:
+  db-migrate:
     runs-on: ubuntu-latest
     needs: [setup, build-and-push]
     environment: ${{ needs.setup.outputs.environment }}
@@ -97,8 +93,8 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Push database schema
-        run: npx drizzle-kit push --force
+      - name: Run database migrations
+        run: npx drizzle-kit migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
@@ -107,7 +103,7 @@ jobs:
   # ───────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
-    needs: [setup, build-and-push, db-push]
+    needs: [setup, build-and-push, db-migrate]
     environment: ${{ needs.setup.outputs.environment }}
     steps:
       - name: Checkout repository
@@ -141,10 +137,11 @@ jobs:
             PORT=${{ secrets.PORT }}
             INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
+            IMAGE_NAME=${{ vars.IMAGE_NAME }}
             IMAGE_TAG=${{ needs.setup.outputs.image_tag }}
             CONTAINER_NAME=${{ needs.setup.outputs.container_name }}
             DEPLOY_ENV=${{ needs.setup.outputs.deploy_dir }}
-            DOMAIN=${{ needs.setup.outputs.domain }}
+            DOMAIN=${{ vars.DOMAIN }}
             EOF
 
             # Log in to GHCR on the server
