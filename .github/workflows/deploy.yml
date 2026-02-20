@@ -89,7 +89,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           envs: DATABASE_URL
           script: |
-            set -e
+            set -eo pipefail
 
             BACKUP_DIR="${{ secrets.PROJECT_DIR }}/db/${{ needs.setup.outputs.deploy_dir }}/backups"
             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
