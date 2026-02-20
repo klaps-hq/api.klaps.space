@@ -74,11 +74,54 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   # ───────────────────────────────────────────────
-  # Job 3: Run database migrations with Drizzle
+  # Job 3: Backup database before migration
+  # ───────────────────────────────────────────────
+  db-backup:
+    runs-on: ubuntu-latest
+    needs: [setup, build-and-push]
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - name: Backup database via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: DATABASE_URL
+          script: |
+            set -e
+
+            BACKUP_DIR="${{ secrets.PROJECT_DIR }}/db/${{ needs.setup.outputs.deploy_dir }}/backups"
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            mkdir -p "$BACKUP_DIR"
+
+            DB_USER=$(echo "$DATABASE_URL" | sed -E 's|mysql://([^:]+):.*|\1|')
+            DB_PASS=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^:]+:([^@]+)@.*|\1|')
+            DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^@]+@([^:]+):.*|\1|')
+            DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^@]+@[^:]+:([0-9]+)/.*|\1|')
+            DB_NAME=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^/]+/([^?]+).*|\1|')
+
+            echo "Backing up database '$DB_NAME' to $BACKUP_DIR..."
+
+            mysqldump -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" \
+              --single-transaction \
+              --routines \
+              --triggers \
+              "$DB_NAME" | gzip > "$BACKUP_DIR/pre-deploy_${TIMESTAMP}.sql.gz"
+
+            # Keep only the last 10 pre-deploy backups
+            ls -tp "$BACKUP_DIR"/pre-deploy_*.sql.gz 2>/dev/null | tail -n +11 | xargs -r rm --
+
+            echo "Backup complete: pre-deploy_${TIMESTAMP}.sql.gz ($(du -h "$BACKUP_DIR/pre-deploy_${TIMESTAMP}.sql.gz" | cut -f1))"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  # ───────────────────────────────────────────────
+  # Job 4: Run database migrations with Drizzle
   # ───────────────────────────────────────────────
   db-migrate:
     runs-on: ubuntu-latest
-    needs: [setup, build-and-push]
+    needs: [setup, build-and-push, db-backup]
     environment: ${{ needs.setup.outputs.environment }}
     steps:
       - name: Checkout repository
@@ -99,11 +142,11 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # ───────────────────────────────────────────────
-  # Job 4: Deploy to VPS
+  # Job 5: Deploy to VPS
   # ───────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
-    needs: [setup, build-and-push, db-migrate]
+    needs: [setup, build-and-push, db-backup, db-migrate]
     environment: ${{ needs.setup.outputs.environment }}
     steps:
       - name: Checkout repository
@@ -116,7 +159,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: docker-compose.yml
-          target: /home/${{ secrets.SERVER_USER }}/projects/klaps/backend/${{ needs.setup.outputs.deploy_dir }}
+          target: ${{ secrets.PROJECT_DIR }}/backend/${{ needs.setup.outputs.deploy_dir }}
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1
@@ -128,8 +171,8 @@ jobs:
             set -e
 
             # Ensure project directory exists
-            mkdir -p /home/${{ secrets.SERVER_USER }}/projects/klaps/backend/${{ needs.setup.outputs.deploy_dir }}
-            cd /home/${{ secrets.SERVER_USER }}/projects/klaps/backend/${{ needs.setup.outputs.deploy_dir }}
+            mkdir -p ${{ secrets.PROJECT_DIR }}/backend/${{ needs.setup.outputs.deploy_dir }}
+            cd ${{ secrets.PROJECT_DIR }}/backend/${{ needs.setup.outputs.deploy_dir }}
 
             # Generate .env from GitHub Secrets
             cat > .env <<EOF
