@@ -10,7 +10,9 @@ import type { Params } from 'nestjs-pino';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService): Params => {
-        const isProduction = config.get('NODE_ENV') === 'production';
+        const isProduction =
+          process.env.NODE_ENV === 'production' ||
+          config.get('NODE_ENV') === 'production';
         const logLevel = config.get(
           'LOG_LEVEL',
           isProduction ? 'info' : 'debug',
