@@ -1,9 +1,9 @@
-import { int, mysqlTable, timestamp, unique } from "drizzle-orm/mysql-core";
-import { moviesTable } from "./movies.schema";
-import { directorsTable } from "./directors.schema";
+import { int, mysqlTable, timestamp, unique } from 'drizzle-orm/mysql-core';
+import { moviesTable } from './movies.schema';
+import { directorsTable } from './directors.schema';
 
 export const moviesDirectorsTable = mysqlTable(
-  "movies_directors",
+  'movies_directors',
   {
     id: int().primaryKey().autoincrement(),
     movieId: int()
@@ -17,5 +17,5 @@ export const moviesDirectorsTable = mysqlTable(
   },
   (table) => ({
     uniqueMovieDirector: unique().on(table.movieId, table.directorId),
-  })
+  }),
 );

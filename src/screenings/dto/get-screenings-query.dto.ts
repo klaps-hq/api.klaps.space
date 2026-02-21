@@ -20,12 +20,18 @@ import { Transform, Type } from 'class-transformer';
 export class GetScreeningsQueryDto {
   @IsOptional()
   @IsDateString({})
-  @Transform(({ value }) => value ?? new Date().toISOString().slice(0, 10))
+  @Transform(
+    ({ value }: { value: unknown }) =>
+      (value as string) ?? new Date().toISOString().slice(0, 10),
+  )
   dateFrom?: string;
 
   @IsOptional()
   @IsDateString({})
-  @Transform(({ value }) => value ?? new Date().toISOString().slice(0, 10))
+  @Transform(
+    ({ value }: { value: unknown }) =>
+      (value as string) ?? new Date().toISOString().slice(0, 10),
+  )
   dateTo?: string;
 
   @IsOptional()

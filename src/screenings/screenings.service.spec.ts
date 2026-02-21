@@ -82,10 +82,7 @@ describe('ScreeningsService', () => {
     };
 
     const module = await Test.createTestingModule({
-      providers: [
-        ScreeningsService,
-        { provide: DRIZZLE, useValue: mockDb },
-      ],
+      providers: [ScreeningsService, { provide: DRIZZLE, useValue: mockDb }],
     }).compile();
 
     service = module.get(ScreeningsService);
@@ -93,7 +90,9 @@ describe('ScreeningsService', () => {
 
   describe('getScreenings', () => {
     it('returns paginated screening groups', async () => {
-      mockDb.query.movies.findMany.mockResolvedValue([sampleMovieWithScreenings]);
+      mockDb.query.movies.findMany.mockResolvedValue([
+        sampleMovieWithScreenings,
+      ]);
 
       const result = await service.getScreenings();
 

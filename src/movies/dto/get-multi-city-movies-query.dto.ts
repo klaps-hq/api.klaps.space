@@ -15,5 +15,4 @@ export class GetMultiCityMoviesQueryDto {
   @Min(1, { message: 'limit must be at least 1' })
   @Max(50, { message: 'limit must be at most 50' })
   limit?: number;
-
 }

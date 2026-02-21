@@ -1,5 +1,6 @@
 import { ExecutionContext } from '@nestjs/common';
-import { CustomThrottlerGuard } from './custom-throttler.guard';
+import { ConfigService } from '@nestjs/config';
+import { InternalBypassThrottlerGuard } from './internal-bypass-throttler.guard';
 import { INTERNAL_API_KEY_HEADER } from './internal-api-key.guard';
 
 const buildContext = (
@@ -11,21 +12,20 @@ const buildContext = (
     }),
   }) as unknown as ExecutionContext;
 
-describe('CustomThrottlerGuard', () => {
-  let guard: CustomThrottlerGuard;
-  const originalEnv = process.env;
+describe('InternalBypassThrottlerGuard', () => {
+  let guard: InternalBypassThrottlerGuard;
+  let configGet: jest.Mock;
 
   beforeEach(() => {
-    process.env = { ...originalEnv };
-    guard = Object.create(CustomThrottlerGuard.prototype);
-  });
-
-  afterEach(() => {
-    process.env = originalEnv;
+    configGet = jest.fn();
+    guard = Object.create(InternalBypassThrottlerGuard.prototype);
+    (guard as any).configService = {
+      get: configGet,
+    } as unknown as ConfigService;
   });
 
   it('skips throttle when internal key matches', async () => {
-    process.env.INTERNAL_API_KEY = 'secret-123';
+    configGet.mockReturnValue('secret-123');
     const ctx = buildContext({ [INTERNAL_API_KEY_HEADER]: 'secret-123' });
 
     const result = await guard['shouldSkip'](ctx);
@@ -33,7 +33,7 @@ describe('CustomThrottlerGuard', () => {
   });
 
   it('does not skip when key is wrong', async () => {
-    process.env.INTERNAL_API_KEY = 'secret-123';
+    configGet.mockReturnValue('secret-123');
     const ctx = buildContext({ [INTERNAL_API_KEY_HEADER]: 'wrong' });
 
     const result = await guard['shouldSkip'](ctx);
@@ -41,15 +41,15 @@ describe('CustomThrottlerGuard', () => {
   });
 
   it('does not skip when header is missing', async () => {
-    process.env.INTERNAL_API_KEY = 'secret-123';
+    configGet.mockReturnValue('secret-123');
     const ctx = buildContext({});
 
     const result = await guard['shouldSkip'](ctx);
     expect(result).toBe(false);
   });
 
-  it('does not skip when env var is not set', async () => {
-    delete process.env.INTERNAL_API_KEY;
+  it('does not skip when INTERNAL_API_KEY is not configured', async () => {
+    configGet.mockReturnValue(undefined);
     const ctx = buildContext({ [INTERNAL_API_KEY_HEADER]: 'anything' });
 
     const result = await guard['shouldSkip'](ctx);

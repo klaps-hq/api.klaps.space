@@ -35,7 +35,7 @@ Klaps Backend is the NestJS REST API that serves the [Klaps](https://klaps.space
 | Security        | [Helmet](https://helmetjs.github.io)                                                                                                          |
 | Testing         | [Jest](https://jestjs.io) + [@nestjs/testing](https://docs.nestjs.com/fundamentals/testing) + [Supertest](https://github.com/ladjs/supertest) |
 | Package Manager | [Yarn](https://yarnpkg.com)                                                                                                                   |
-| Runtime         | [Node.js 20](https://nodejs.org) (LTS)                                                                                                        |
+| Runtime         | [Node.js 22](https://nodejs.org) (LTS)                                                                                                        |
 | Deployment      | Docker (multi-stage Alpine) via GitHub Actions to GHCR                                                                                        |
 
 ## Architecture
@@ -43,12 +43,12 @@ Klaps Backend is the NestJS REST API that serves the [Klaps](https://klaps.space
 ```
 Request ──► Helmet ──► CORS ──► ThrottlerGuard ──► Controller ──► Service ──► Drizzle ──► MySQL
                                      │
-                        CustomThrottlerGuard
+                        InternalBypassThrottlerGuard
                      (skips limit for internal key)
 ```
 
 - **Global prefix:** `/api/v1`
-- **Global guard:** `CustomThrottlerGuard` — rate limits public traffic, skips for requests with valid `x-internal-api-key`
+- **Global guard:** `InternalBypassThrottlerGuard` — rate limits public traffic, skips for requests with valid `x-internal-api-key`
 - **Per-route guard:** `InternalApiKeyGuard` — restricts write endpoints (POST) and some reads to the internal scrapper
 - **Validation pipe:** `whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`
 
@@ -63,7 +63,7 @@ src/
 │   ├── migrations/         # Generated SQL migrations
 │   └── constants.ts        # DRIZZLE injection token
 ├── genres/                 # Genres module
-├── guards/                 # InternalApiKeyGuard, CustomThrottlerGuard
+├── guards/                 # InternalApiKeyGuard, InternalBypassThrottlerGuard
 ├── health/                 # Health check (Terminus + Drizzle indicator)
 ├── lib/                    # Response types, mappers, utilities
 ├── logger/                 # Pino logger module
@@ -147,7 +147,7 @@ All routes are prefixed with `/api/v1`. Endpoints marked with a lock require the
 
 ### Prerequisites
 
-- [Node.js 20+](https://nodejs.org)
+- [Node.js 22+](https://nodejs.org)
 - [Yarn](https://yarnpkg.com)
 - [MySQL 8](https://www.mysql.com) (or a compatible server)
 
@@ -276,6 +276,10 @@ Klaps is an open-source project. The source code is publicly available on GitHub
 
 > The scrapper responsible for collecting screening data is not publicly available for legal reasons.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute.
+
 ## License
 
-This project is open source. See the repository for license details.
+This project is licensed under the [MIT License](LICENSE).

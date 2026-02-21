@@ -21,7 +21,7 @@ import type {
   PaginatedResponse,
 } from '../lib/response-types';
 import { mapMovieSummary, mapMovieDetail } from '../lib/response-mappers';
-import { and, count, desc, eq, gte, inArray, like, lte, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray, like, sql } from 'drizzle-orm';
 
 type FullSchema = typeof schema & typeof relations;
 

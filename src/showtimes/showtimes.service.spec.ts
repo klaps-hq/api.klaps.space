@@ -36,10 +36,7 @@ describe('ShowtimesService', () => {
     };
 
     const module = await Test.createTestingModule({
-      providers: [
-        ShowtimesService,
-        { provide: DRIZZLE, useValue: mockDb },
-      ],
+      providers: [ShowtimesService, { provide: DRIZZLE, useValue: mockDb }],
     }).compile();
 
     service = module.get(ShowtimesService);
@@ -47,7 +44,9 @@ describe('ShowtimesService', () => {
 
   describe('getShowtimes', () => {
     it('returns all showtimes', async () => {
-      const showtimes = [{ id: 1, url: 'http://a', cityId: 1, date: new Date() }];
+      const showtimes = [
+        { id: 1, url: 'http://a', cityId: 1, date: new Date() },
+      ];
       mockDb.query.showtimes.findMany.mockResolvedValue(showtimes);
 
       const result = await service.getShowtimes();
@@ -77,7 +76,10 @@ describe('ShowtimesService', () => {
         }),
       });
 
-      const result = await service.getProcessedCityIds('2024-01-01', '2024-12-31');
+      const result = await service.getProcessedCityIds(
+        '2024-01-01',
+        '2024-12-31',
+      );
 
       expect(result).toEqual([1, 2]);
     });

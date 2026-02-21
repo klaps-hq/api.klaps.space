@@ -14,10 +14,7 @@ describe('GenresService', () => {
     };
 
     const module = await Test.createTestingModule({
-      providers: [
-        GenresService,
-        { provide: DRIZZLE, useValue: mockDb },
-      ],
+      providers: [GenresService, { provide: DRIZZLE, useValue: mockDb }],
     }).compile();
 
     service = module.get(GenresService);
@@ -26,8 +23,20 @@ describe('GenresService', () => {
   describe('getGenres', () => {
     it('returns mapped genres', async () => {
       mockDb.query.genres.findMany.mockResolvedValue([
-        { id: 1, name: 'Drama', sourceId: 100, createdAt: new Date(), updatedAt: new Date() },
-        { id: 2, name: 'Comedy', sourceId: 101, createdAt: new Date(), updatedAt: new Date() },
+        {
+          id: 1,
+          name: 'Drama',
+          sourceId: 100,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 2,
+          name: 'Comedy',
+          sourceId: 101,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       ]);
 
       const result = await service.getGenres();

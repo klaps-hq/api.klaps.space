@@ -11,7 +11,7 @@ import { GenresModule } from './genres/genres.module';
 import { ScreeningsModule } from './screenings/screenings.module';
 import { CinemasModule } from './cinemas/cinemas.module';
 import { ShowtimesModule } from './showtimes/showtimes.module';
-import { CustomThrottlerGuard } from './guards/custom-throttler.guard';
+import { InternalBypassThrottlerGuard } from './guards/internal-bypass-throttler.guard';
 import { AppLoggerModule } from './logger/logger.module';
 import { HealthModule } from './health/health.module';
 
@@ -35,7 +35,7 @@ import { HealthModule } from './health/health.module';
   controllers: [AppController],
   providers: [
     AppService,
-    { provide: APP_GUARD, useClass: CustomThrottlerGuard },
+    { provide: APP_GUARD, useClass: InternalBypassThrottlerGuard },
   ],
 })
 export class AppModule {}
