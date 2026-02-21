@@ -6,15 +6,15 @@ import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 
 describe('CinemasController', () => {
   let controller: CinemasController;
-  let service: jest.Mocked<CinemasService>;
+  const mockService = {
+    getCinemas: jest.fn(),
+    createCinema: jest.fn(),
+    batchCreateCinemas: jest.fn(),
+    getCinemaById: jest.fn(),
+  };
 
   beforeEach(async () => {
-    const mockService = {
-      getCinemas: jest.fn(),
-      createCinema: jest.fn(),
-      batchCreateCinemas: jest.fn(),
-      getCinemaById: jest.fn(),
-    };
+    jest.clearAllMocks();
 
     const module = await Test.createTestingModule({
       controllers: [CinemasController],
@@ -25,18 +25,17 @@ describe('CinemasController', () => {
       .compile();
 
     controller = module.get(CinemasController);
-    service = module.get(CinemasService) as jest.Mocked<CinemasService>;
   });
 
   describe('getCinemas', () => {
     it('delegates to service with query params', async () => {
       const expected = { data: [] };
-      service.getCinemas.mockResolvedValue(expected);
+      mockService.getCinemas.mockResolvedValue(expected);
 
       const result = await controller.getCinemas({ cityId: 1, limit: 10 });
 
       expect(result).toEqual(expected);
-      expect(service.getCinemas).toHaveBeenCalledWith({
+      expect(mockService.getCinemas).toHaveBeenCalledWith({
         cityId: 1,
         limit: 10,
       });
@@ -45,9 +44,14 @@ describe('CinemasController', () => {
 
   describe('createCinema', () => {
     it('delegates to service', async () => {
-      const dto = { sourceId: 1, name: 'Kino', url: 'http://a', sourceCityId: 1 } as any;
+      const dto = {
+        sourceId: 1,
+        name: 'Kino',
+        url: 'http://a',
+        sourceCityId: 1,
+      } as any;
       const cinema = { id: 1, ...dto };
-      service.createCinema.mockResolvedValue(cinema);
+      mockService.createCinema.mockResolvedValue(cinema);
 
       const result = await controller.createCinema(dto);
 
@@ -57,7 +61,7 @@ describe('CinemasController', () => {
 
   describe('batchCreateCinemas', () => {
     it('delegates to service and returns count', async () => {
-      service.batchCreateCinemas.mockResolvedValue({ count: 2 });
+      mockService.batchCreateCinemas.mockResolvedValue({ count: 2 });
 
       const result = await controller.batchCreateCinemas({
         cinemas: [{} as any, {} as any],
@@ -78,7 +82,7 @@ describe('CinemasController', () => {
         longitude: null,
         filmwebUrl: '',
       };
-      service.getCinemaById.mockResolvedValue(cinema);
+      mockService.getCinemaById.mockResolvedValue(cinema);
 
       const result = await controller.getCinemaById(1);
 
@@ -86,7 +90,7 @@ describe('CinemasController', () => {
     });
 
     it('throws NotFoundException when not found', async () => {
-      service.getCinemaById.mockResolvedValue(null);
+      mockService.getCinemaById.mockResolvedValue(null);
 
       await expect(controller.getCinemaById(999)).rejects.toThrow(
         NotFoundException,
