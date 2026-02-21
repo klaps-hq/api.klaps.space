@@ -2,7 +2,9 @@ import { withDeadlockRetry } from './with-deadlock-retry';
 
 const makeDeadlockError = (nested = false): Error => {
   if (nested) {
-    const cause = Object.assign(new Error('deadlock'), { code: 'ER_LOCK_DEADLOCK' });
+    const cause = Object.assign(new Error('deadlock'), {
+      code: 'ER_LOCK_DEADLOCK',
+    });
     return Object.assign(new Error('DrizzleQueryError'), { cause });
   }
   return Object.assign(new Error('deadlock'), { code: 'ER_LOCK_DEADLOCK' });

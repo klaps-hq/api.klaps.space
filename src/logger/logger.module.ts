@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
@@ -10,7 +11,10 @@ import type { Params } from 'nestjs-pino';
       inject: [ConfigService],
       useFactory: (config: ConfigService): Params => {
         const isProduction = config.get('NODE_ENV') === 'production';
-        const logLevel = config.get('LOG_LEVEL', isProduction ? 'info' : 'debug');
+        const logLevel = config.get(
+          'LOG_LEVEL',
+          isProduction ? 'info' : 'debug',
+        );
 
         const targets: Array<{
           target: string;
@@ -45,7 +49,11 @@ import type { Params } from 'nestjs-pino';
           pinoHttp: {
             level: logLevel,
             transport: { targets },
-            redact: ['req.headers.authorization', 'req.headers["x-api-key"]'],
+            redact: [
+              'req.headers.authorization',
+              'req.headers["x-api-key"]',
+              'req.headers["x-internal-api-key"]',
+            ],
             serializers: {
               req: (req) => ({
                 method: req.method,

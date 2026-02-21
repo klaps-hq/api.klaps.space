@@ -28,10 +28,7 @@ describe('CinemasService', () => {
     };
 
     const module = await Test.createTestingModule({
-      providers: [
-        CinemasService,
-        { provide: DRIZZLE, useValue: mockDb },
-      ],
+      providers: [CinemasService, { provide: DRIZZLE, useValue: mockDb }],
     }).compile();
 
     service = module.get(CinemasService);

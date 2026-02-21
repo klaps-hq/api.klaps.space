@@ -42,8 +42,20 @@ describe('CitiesService', () => {
   describe('getCities', () => {
     it('returns mapped cities', async () => {
       mockDb.query.cities.findMany.mockResolvedValue([
-        { id: 1, name: 'Warszawa', nameDeclinated: 'Warszawie', sourceId: 10, areacode: '22' },
-        { id: 2, name: 'Kraków', nameDeclinated: 'Krakowie', sourceId: 11, areacode: '12' },
+        {
+          id: 1,
+          name: 'Warszawa',
+          nameDeclinated: 'Warszawie',
+          sourceId: 10,
+          areacode: '22',
+        },
+        {
+          id: 2,
+          name: 'Kraków',
+          nameDeclinated: 'Krakowie',
+          sourceId: 11,
+          areacode: '12',
+        },
       ]);
 
       const result = await service.getCities();
@@ -76,9 +88,14 @@ describe('CitiesService', () => {
 
       expect(result).toEqual({
         city: { id: 1, name: 'Warszawa', nameDeclinated: 'Warszawie' },
-        screenings: { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 0 } },
+        screenings: {
+          data: [],
+          meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
+        },
       });
-      expect(mockScreeningsService.getScreenings).toHaveBeenCalledWith({ cityId: 1 });
+      expect(mockScreeningsService.getScreenings).toHaveBeenCalledWith({
+        cityId: 1,
+      });
     });
 
     it('returns null when city not found', async () => {
@@ -93,7 +110,12 @@ describe('CitiesService', () => {
 
   describe('createCity', () => {
     it('upserts and returns the city', async () => {
-      const dto = { sourceId: 10, name: 'Gdańsk', nameDeclinated: 'Gdańsku', areacode: 58 };
+      const dto = {
+        sourceId: 10,
+        name: 'Gdańsk',
+        nameDeclinated: 'Gdańsku',
+        areacode: 58,
+      };
       const cityRow = { id: 3, ...dto };
       mockDb.query.cities.findFirst.mockResolvedValue(cityRow);
 

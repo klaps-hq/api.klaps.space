@@ -57,7 +57,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: yarn
 
       - name: Install dependencies
@@ -68,6 +68,9 @@ jobs:
 
       - name: Unit tests
         run: yarn test --ci --coverage
+
+      - name: E2E tests
+        run: yarn test:e2e --ci
 
   # ───────────────────────────────────────────────
   # Job 3: Build Docker image and push to GHCR
@@ -156,7 +159,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: yarn
 
       - name: Install dependencies
@@ -209,6 +212,7 @@ jobs:
             cat > .env <<EOF
             NODE_ENV=${{ needs.setup.outputs.environment }}
             PORT=${{ secrets.PORT }}
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
             INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             IMAGE_NAME=${{ secrets.IMAGE_NAME }}
