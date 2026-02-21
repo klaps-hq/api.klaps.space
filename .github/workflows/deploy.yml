@@ -131,7 +131,8 @@ jobs:
 
             echo "Backing up database '$DB_NAME' to $BACKUP_DIR..."
 
-            mysqldump -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" \
+            docker run --rm --network traefik_public mysql:8 \
+              mysqldump -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" \
               --single-transaction \
               --no-tablespaces \
               --routines \
