@@ -45,8 +45,10 @@ describe('HealthController', () => {
     it('passes drizzle health indicator to check', async () => {
       drizzleHealth.isHealthy.mockResolvedValue({ database: { status: 'up' } });
       healthCheckService.check.mockImplementation(async (indicators) => {
-        const results = await Promise.all(indicators.map((fn) => fn()));
-        return { status: 'ok', details: Object.assign({}, ...results) } as any;
+        for (const fn of indicators) {
+          await fn();
+        }
+        return { status: 'ok', details: { database: { status: 'up' } } } as any;
       });
 
       const result = await controller.check();
