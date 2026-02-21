@@ -3,12 +3,18 @@ import { drizzle } from 'drizzle-orm/mysql2';
 import { getTableName, sql } from 'drizzle-orm';
 import * as schema from '../database/schemas';
 
-/**
- * Wipes all rows from every table in the database.
- * Tables are deleted in order to respect foreign key constraints
- * (junction/child tables first, then parent tables).
- */
+const BLOCKED_ENVS = ['production', 'prod'];
+
 const run = async () => {
+  const nodeEnv = (process.env.NODE_ENV ?? '').toLowerCase();
+
+  if (BLOCKED_ENVS.includes(nodeEnv)) {
+    console.error(
+      `Aborted — db:wipe is not allowed when NODE_ENV="${process.env.NODE_ENV}".`,
+    );
+    process.exit(1);
+  }
+
   const db = drizzle(process.env.DATABASE_URL!, { schema, mode: 'default' });
 
   // Order matters: delete from child/junction tables before parent tables.

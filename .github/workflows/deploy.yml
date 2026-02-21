@@ -7,7 +7,7 @@ on:
       - dev
 
 env:
-  IMAGE_NAME: ghcr.io/biplo12/klaps-nest-backend
+  IMAGE_NAME: ${{ secrets.IMAGE_NAME }}
 
 jobs:
   # ───────────────────────────────────────────────
@@ -20,7 +20,6 @@ jobs:
       image_tag: ${{ steps.set-env.outputs.image_tag }}
       container_name: ${{ steps.set-env.outputs.container_name }}
       deploy_dir: ${{ steps.set-env.outputs.deploy_dir }}
-      domain: ${{ steps.set-env.outputs.domain }}
     steps:
       - name: Determine environment and image tag
         id: set-env
@@ -30,13 +29,11 @@ jobs:
             echo "image_tag=latest" >> "$GITHUB_OUTPUT"
             echo "container_name=klaps-backend-prod" >> "$GITHUB_OUTPUT"
             echo "deploy_dir=prod" >> "$GITHUB_OUTPUT"
-            echo "domain=api.klaps.space" >> "$GITHUB_OUTPUT"
           else
             echo "environment=development" >> "$GITHUB_OUTPUT"
             echo "image_tag=dev" >> "$GITHUB_OUTPUT"
             echo "container_name=klaps-backend-dev" >> "$GITHUB_OUTPUT"
             echo "deploy_dir=dev" >> "$GITHUB_OUTPUT"
-            echo "domain=dev.api.klaps.space" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Print config
@@ -46,14 +43,41 @@ jobs:
           echo "Image tag:   ${{ steps.set-env.outputs.image_tag }}"
           echo "Container:   ${{ steps.set-env.outputs.container_name }}"
           echo "Deploy dir:  ${{ steps.set-env.outputs.deploy_dir }}"
-          echo "Domain:      ${{ steps.set-env.outputs.domain }}"
 
   # ───────────────────────────────────────────────
-  # Job 2: Build Docker image and push to GHCR
+  # Job 2: Lint and test
+  # ───────────────────────────────────────────────
+  lint-and-test:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Unit tests
+        run: yarn test --ci --coverage
+
+      - name: E2E tests
+        run: yarn test:e2e --ci
+
+  # ───────────────────────────────────────────────
+  # Job 3: Build Docker image and push to GHCR
   # ───────────────────────────────────────────────
   build-and-push:
     runs-on: ubuntu-latest
-    needs: setup
+    needs: [setup, lint-and-test]
     permissions:
       contents: read
       packages: write
@@ -78,11 +102,55 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   # ───────────────────────────────────────────────
-  # Job 3: Push database schema with Drizzle
+  # Job 4: Backup database before migration
   # ───────────────────────────────────────────────
-  db-push:
+  db-backup:
     runs-on: ubuntu-latest
     needs: [setup, build-and-push]
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - name: Backup database via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: DATABASE_URL
+          script: |
+            set -eo pipefail
+
+            BACKUP_DIR="${{ secrets.PROJECT_DIR }}/db/${{ needs.setup.outputs.deploy_dir }}/backups/pre-deploy"
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            mkdir -p "$BACKUP_DIR"
+
+            DB_USER=$(echo "$DATABASE_URL" | sed -E 's|mysql://([^:]+):.*|\1|')
+            DB_PASS=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^:]+:([^@]+)@.*|\1|')
+            DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^@]+@([^:]+):.*|\1|')
+            DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^@]+@[^:]+:([0-9]+)/.*|\1|')
+            DB_NAME=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^/]+/([^?]+).*|\1|')
+
+            echo "Backing up database '$DB_NAME' to $BACKUP_DIR..."
+
+            mysqldump -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" \
+              --single-transaction \
+              --no-tablespaces \
+              --routines \
+              --triggers \
+              "$DB_NAME" | gzip > "$BACKUP_DIR/pre-deploy_${TIMESTAMP}.sql.gz"
+
+            # Keep only the last 10 pre-deploy backups
+            ls -tp "$BACKUP_DIR"/pre-deploy_*.sql.gz 2>/dev/null | tail -n +11 | xargs -r rm --
+
+            echo "Backup complete: pre-deploy_${TIMESTAMP}.sql.gz ($(du -h "$BACKUP_DIR/pre-deploy_${TIMESTAMP}.sql.gz" | cut -f1))"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  # ───────────────────────────────────────────────
+  # Job 5: Run database migrations with Drizzle
+  # ───────────────────────────────────────────────
+  db-migrate:
+    runs-on: ubuntu-latest
+    needs: [setup, build-and-push, db-backup]
     environment: ${{ needs.setup.outputs.environment }}
     steps:
       - name: Checkout repository
@@ -91,23 +159,28 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: yarn
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Push database schema
-        run: npx drizzle-kit push --force
+      - name: Baseline existing tables (idempotent)
+        run: yarn db:baseline
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run database migrations
+        run: npx drizzle-kit migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # ───────────────────────────────────────────────
-  # Job 4: Deploy to VPS
+  # Job 6: Deploy to VPS
   # ───────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
-    needs: [setup, build-and-push, db-push]
+    needs: [setup, build-and-push, db-backup, db-migrate]
     environment: ${{ needs.setup.outputs.environment }}
     steps:
       - name: Checkout repository
@@ -120,7 +193,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: docker-compose.yml
-          target: /home/${{ secrets.SERVER_USER }}/projects/klaps/backend/${{ needs.setup.outputs.deploy_dir }}
+          target: ${{ secrets.PROJECT_DIR }}/backend/${{ needs.setup.outputs.deploy_dir }}
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1
@@ -132,19 +205,21 @@ jobs:
             set -e
 
             # Ensure project directory exists
-            mkdir -p /home/${{ secrets.SERVER_USER }}/projects/klaps/backend/${{ needs.setup.outputs.deploy_dir }}
-            cd /home/${{ secrets.SERVER_USER }}/projects/klaps/backend/${{ needs.setup.outputs.deploy_dir }}
+            mkdir -p ${{ secrets.PROJECT_DIR }}/backend/${{ needs.setup.outputs.deploy_dir }}
+            cd ${{ secrets.PROJECT_DIR }}/backend/${{ needs.setup.outputs.deploy_dir }}
 
             # Generate .env from GitHub Secrets
             cat > .env <<EOF
             NODE_ENV=${{ needs.setup.outputs.environment }}
             PORT=${{ secrets.PORT }}
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
             INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
+            IMAGE_NAME=${{ secrets.IMAGE_NAME }}
             IMAGE_TAG=${{ needs.setup.outputs.image_tag }}
             CONTAINER_NAME=${{ needs.setup.outputs.container_name }}
             DEPLOY_ENV=${{ needs.setup.outputs.deploy_dir }}
-            DOMAIN=${{ needs.setup.outputs.domain }}
+            DOMAIN=${{ secrets.DOMAIN }}
             EOF
 
             # Log in to GHCR on the server

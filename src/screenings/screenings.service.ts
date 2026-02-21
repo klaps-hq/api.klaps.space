@@ -50,9 +50,7 @@ export class ScreeningsService {
    */
   async getScreenings(
     params?: GetScreeningsParams,
-  ): Promise<
-    PaginatedResponse<ScreeningResponse | ScreeningGroupResponse>
-  > {
+  ): Promise<PaginatedResponse<ScreeningResponse | ScreeningGroupResponse>> {
     const { startDay, endDay } = getDateRangeUpToMonthFromNow(
       params?.dateFrom,
       params?.dateTo,
@@ -216,7 +214,7 @@ export class ScreeningsService {
     if (candidateMovies.length === 0) return null;
 
     const chosenIndex = randomInt(0, candidateMovies.length);
-    const chosenMovieId = candidateMovies[chosenIndex]!.movieId;
+    const chosenMovieId = candidateMovies[chosenIndex].movieId;
 
     const movie = await this.db.query.movies.findFirst({
       where: eq(schema.movies.id, chosenMovieId),
@@ -238,7 +236,7 @@ export class ScreeningsService {
 
     const { screenings, ...movieData } = movie;
     const randomScreeningIndex = randomInt(0, screenings.length);
-    const chosenScreening = screenings[randomScreeningIndex]!;
+    const chosenScreening = screenings[randomScreeningIndex];
 
     return {
       movie: mapMovieHero(movieData as any),

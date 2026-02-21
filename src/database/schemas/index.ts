@@ -16,4 +16,4 @@ export { screeningsTable as screenings } from './screenings.schema';
 export { scriptwritersTable as scriptwriters } from './scriptwriters.schema';
 export { showtimesTable as showtimes } from './showtimes.schema';
 
- export * from './relations';
+export * from './relations';
