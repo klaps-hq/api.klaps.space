@@ -85,6 +85,95 @@ describe('ShowtimesService', () => {
     });
   });
 
+  describe('markCityProcessed', () => {
+    it('inserts processed city record', async () => {
+      await service.markCityProcessed({ cityId: 1, processedAt: '2024-08-15' });
+
+      expect(mockDb.insert).toHaveBeenCalled();
+    });
+
+    it('defaults processedAt to today when not provided', async () => {
+      await service.markCityProcessed({ cityId: 1 } as any);
+
+      expect(mockDb.insert).toHaveBeenCalled();
+    });
+  });
+
+  describe('markShowtimeProcessed', () => {
+    it('inserts processed showtime record', async () => {
+      await service.markShowtimeProcessed({ showtimeId: 42 });
+
+      expect(mockDb.insert).toHaveBeenCalled();
+    });
+  });
+
+  describe('getUnprocessedShowtimes', () => {
+    it('returns mapped showtime rows', async () => {
+      const now = new Date('2024-08-15T12:00:00Z');
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          leftJoin: jest.fn().mockReturnValue({
+            where: jest.fn().mockResolvedValue([
+              {
+                id: 1,
+                url: 'http://a',
+                cityId: 5,
+                date: now,
+                createdAt: now,
+                updatedAt: now,
+              },
+            ]),
+          }),
+        }),
+      });
+
+      const result = await service.getUnprocessedShowtimes(
+        '2024-01-01',
+        '2024-12-31',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(1);
+      expect(result[0].url).toBe('http://a');
+      expect(result[0].date).toBe(now.toISOString());
+    });
+
+    it('returns empty array when none found', async () => {
+      const result = await service.getUnprocessedShowtimes(
+        '2024-01-01',
+        '2024-12-31',
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('handles string dates in rows', async () => {
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          leftJoin: jest.fn().mockReturnValue({
+            where: jest.fn().mockResolvedValue([
+              {
+                id: 2,
+                url: 'http://b',
+                cityId: 3,
+                date: '2024-08-15T12:00:00Z',
+                createdAt: '2024-08-15T12:00:00Z',
+                updatedAt: '2024-08-15T12:00:00Z',
+              },
+            ]),
+          }),
+        }),
+      });
+
+      const result = await service.getUnprocessedShowtimes(
+        '2024-01-01',
+        '2024-12-31',
+      );
+
+      expect(result[0].date).toBe('2024-08-15T12:00:00Z');
+    });
+  });
+
   describe('batchCreateShowtimes', () => {
     it('returns count 0 for empty array', async () => {
       const result = await service.batchCreateShowtimes([]);
