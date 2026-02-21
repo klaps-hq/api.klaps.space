@@ -224,7 +224,10 @@ jobs:
             EOF
 
             # Log in to GHCR on the server
-            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GHCR_PAT }}
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Remove old image to avoid corrupted layer cache
+            docker rmi ${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.image_tag }} 2>/dev/null || true
 
             # Pull the latest image
             docker pull ${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.image_tag }}
