@@ -45,11 +45,36 @@ jobs:
           echo "Deploy dir:  ${{ steps.set-env.outputs.deploy_dir }}"
 
   # ───────────────────────────────────────────────
-  # Job 2: Build Docker image and push to GHCR
+  # Job 2: Lint and test
+  # ───────────────────────────────────────────────
+  lint-and-test:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Unit tests
+        run: yarn test --ci --coverage
+
+  # ───────────────────────────────────────────────
+  # Job 3: Build Docker image and push to GHCR
   # ───────────────────────────────────────────────
   build-and-push:
     runs-on: ubuntu-latest
-    needs: setup
+    needs: [setup, lint-and-test]
     permissions:
       contents: read
       packages: write
@@ -74,7 +99,7 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   # ───────────────────────────────────────────────
-  # Job 3: Backup database before migration
+  # Job 4: Backup database before migration
   # ───────────────────────────────────────────────
   db-backup:
     runs-on: ubuntu-latest
@@ -118,7 +143,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # ───────────────────────────────────────────────
-  # Job 4: Run database migrations with Drizzle
+  # Job 5: Run database migrations with Drizzle
   # ───────────────────────────────────────────────
   db-migrate:
     runs-on: ubuntu-latest
@@ -148,7 +173,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # ───────────────────────────────────────────────
-  # Job 5: Deploy to VPS
+  # Job 6: Deploy to VPS
   # ───────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
