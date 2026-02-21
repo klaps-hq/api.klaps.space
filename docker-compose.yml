@@ -8,7 +8,15 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT}/api/v1/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:${PORT}/api/v1/health",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -26,8 +34,8 @@ services:
       # Service port
       - "traefik.http.services.${CONTAINER_NAME}.loadbalancer.server.port=${PORT}"
     networks:
-      - proxy
+      - traefik_public
 
 networks:
-  proxy:
+  traefik_public:
     external: true
