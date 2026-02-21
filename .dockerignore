@@ -2,4 +2,13 @@ node_modules
 dist
 .git
 .env
+.github
+.vscode
+.cursor
+coverage
+test
 *.md
+*.log
+Dockerfile
+docker-compose.yml
+.dockerignore

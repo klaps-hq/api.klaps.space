@@ -1,6 +1,6 @@
-import { int, mysqlTable, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlTable, varchar } from 'drizzle-orm/mysql-core';
 
-export const citiesTable = mysqlTable("cities", {
+export const citiesTable = mysqlTable('cities', {
   id: int().primaryKey().autoincrement(),
   sourceId: int().notNull().unique(),
   name: varchar({ length: 255 }).notNull(),

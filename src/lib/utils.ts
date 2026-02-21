@@ -33,7 +33,7 @@ export const getDateRangeUpToMonthFromNow = (
 
 export const pickRandomElement = <T>(array: T[]): T => {
   const index = Math.floor(Math.random() * array.length);
-  return array[index]!;
+  return array[index];
 };
 
 /** Returns today's date as YYYY-MM-DD in the Europe/Warsaw (CET/CEST) timezone. */

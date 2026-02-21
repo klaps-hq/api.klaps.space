@@ -4,10 +4,10 @@ import {
   mysqlTable,
   timestamp,
   varchar,
-} from "drizzle-orm/mysql-core";
-import { citiesTable } from "./cities.schema";
+} from 'drizzle-orm/mysql-core';
+import { citiesTable } from './cities.schema';
 
-export const cinemasTable = mysqlTable("cinemas", {
+export const cinemasTable = mysqlTable('cinemas', {
   id: int().primaryKey().autoincrement(),
   sourceId: int().notNull().unique(),
   name: varchar({ length: 255 }).notNull(),

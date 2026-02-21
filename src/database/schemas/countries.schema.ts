@@ -1,6 +1,6 @@
-import { int, mysqlTable, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlTable, timestamp, varchar } from 'drizzle-orm/mysql-core';
 
-export const countriesTable = mysqlTable("countries", {
+export const countriesTable = mysqlTable('countries', {
   id: int().primaryKey().autoincrement(),
   name: varchar({ length: 255 }).notNull(),
   countryCode: varchar({ length: 255 }).notNull().unique(),
