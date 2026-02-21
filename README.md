@@ -1,98 +1,281 @@
 <p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  <img src="klaps-backend-og.png" alt="Klaps Backend" width="800" />
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+<h1 align="center">Klaps Backend</h1>
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+<p align="center">
+  <em>REST API powering Klaps — the Polish nationwide guide to special screenings, classic cinema, and retrospectives.</em>
 </p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+<p align="center">
+  <a href="#getting-started">Getting Started</a> ·
+  <a href="#project-structure">Project Structure</a> ·
+  <a href="#deployment">Deployment</a>
+</p>
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+Klaps Backend is the NestJS REST API that serves the [Klaps](https://klaps.space) frontend. It manages movies, cinemas, cities, genres, screenings, and showtimes — all ingested by an external scrapper and exposed through a versioned API behind rate limiting and API key authentication.
 
-```bash
-$ yarn install
+## Tech Stack
+
+| Layer           | Technology                                                                                                                                    |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework       | [NestJS 11](https://nestjs.com) (Express)                                                                                                     |
+| Language        | [TypeScript 5](https://www.typescriptlang.org)                                                                                                |
+| ORM             | [Drizzle ORM](https://orm.drizzle.team) (MySQL dialect)                                                                                       |
+| Database        | [MySQL 8](https://www.mysql.com) via `mysql2`                                                                                                 |
+| Validation      | [class-validator](https://github.com/typestack/class-validator) + class-transformer                                                           |
+| Auth            | API key guard (`x-internal-api-key` header)                                                                                                   |
+| Rate Limiting   | [@nestjs/throttler](https://docs.nestjs.com/security/rate-limiting) (30/10s, 100/60s)                                                         |
+| Caching         | [@nestjs/cache-manager](https://docs.nestjs.com/techniques/caching)                                                                           |
+| Logging         | [nestjs-pino](https://github.com/iamolegga/nestjs-pino) (structured JSON)                                                                     |
+| Health Checks   | [@nestjs/terminus](https://docs.nestjs.com/recipes/terminus)                                                                                  |
+| Security        | [Helmet](https://helmetjs.github.io)                                                                                                          |
+| Testing         | [Jest](https://jestjs.io) + [@nestjs/testing](https://docs.nestjs.com/fundamentals/testing) + [Supertest](https://github.com/ladjs/supertest) |
+| Package Manager | [Yarn](https://yarnpkg.com)                                                                                                                   |
+| Runtime         | [Node.js 20](https://nodejs.org) (LTS)                                                                                                        |
+| Deployment      | Docker (multi-stage Alpine) via GitHub Actions to GHCR                                                                                        |
+
+## Architecture
+
+```
+Request ──► Helmet ──► CORS ──► ThrottlerGuard ──► Controller ──► Service ──► Drizzle ──► MySQL
+                                     │
+                        CustomThrottlerGuard
+                     (skips limit for internal key)
 ```
 
-## Compile and run the project
+- **Global prefix:** `/api/v1`
+- **Global guard:** `CustomThrottlerGuard` — rate limits public traffic, skips for requests with valid `x-internal-api-key`
+- **Per-route guard:** `InternalApiKeyGuard` — restricts write endpoints (POST) and some reads to the internal scrapper
+- **Validation pipe:** `whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`
 
-```bash
-# development
-$ yarn run start
+## Project Structure
 
-# watch mode
-$ yarn run start:dev
-
-# production mode
-$ yarn run start:prod
+```
+src/
+├── cinemas/                # Cinemas module (controller, service, DTOs)
+├── cities/                 # Cities module
+├── database/               # Drizzle setup, schemas, migrations
+│   ├── schemas/            # Table definitions & relations
+│   ├── migrations/         # Generated SQL migrations
+│   └── constants.ts        # DRIZZLE injection token
+├── genres/                 # Genres module
+├── guards/                 # InternalApiKeyGuard, CustomThrottlerGuard
+├── health/                 # Health check (Terminus + Drizzle indicator)
+├── lib/                    # Response types, mappers, utilities
+├── logger/                 # Pino logger module
+├── movies/                 # Movies module
+├── screenings/             # Screenings module
+├── scripts/                # DB baseline & wipe scripts
+├── showtimes/              # Showtimes module (ingestion pipeline)
+├── wrappers/               # withDeadlockRetry utility
+├── app.module.ts           # Root module
+└── main.ts                 # Bootstrap (port, CORS, Helmet, pipes)
+test/
+├── app.e2e-spec.ts         # E2E health check test
+└── jest-e2e.json           # E2E Jest config
 ```
 
-## Run tests
+## API Endpoints
+
+All routes are prefixed with `/api/v1`. Endpoints marked with a lock require the `x-internal-api-key` header.
+
+### Health
+
+| Method | Route     | Description       |
+| ------ | --------- | ----------------- |
+| GET    | `/health` | Health check (DB) |
+
+### Cities
+
+| Method | Route           | Params / Body                                     | Description              |
+| ------ | --------------- | ------------------------------------------------- | ------------------------ |
+| GET    | `/cities`       | —                                                 | List all cities          |
+| GET    | `/cities/:id`   | `:id` (number)                                    | City detail + screenings |
+| POST   | `/cities`       | `sourceId`, `name`, `nameDeclinated`, `areacode?` | Create/update city       |
+| POST   | `/cities/batch` | `cities: CreateCityDto[]`                         | Batch upsert cities      |
+
+### Cinemas
+
+| Method | Route            | Params / Body                                                                   | Description                  |
+| ------ | ---------------- | ------------------------------------------------------------------------------- | ---------------------------- |
+| GET    | `/cinemas`       | `?cityId`, `?limit`                                                             | List cinemas grouped by city |
+| GET    | `/cinemas/:id`   | `:id` (number)                                                                  | Cinema detail with city      |
+| POST   | `/cinemas`       | `sourceId`, `name`, `url`, `sourceCityId`, `longitude?`, `latitude?`, `street?` | Create/update cinema         |
+| POST   | `/cinemas/batch` | `cinemas: CreateCinemaDto[]`                                                    | Batch upsert cinemas         |
+
+### Genres
+
+| Method | Route     | Description     |
+| ------ | --------- | --------------- |
+| GET    | `/genres` | List all genres |
+
+### Movies
+
+| Method | Route                | Params / Body                                      | Description                                       |
+| ------ | -------------------- | -------------------------------------------------- | ------------------------------------------------- |
+| GET    | `/movies`            | `?search`, `?genreId`, `?page`, `?limit`           | Paginated movie list                              |
+| GET    | `/movies/multi-city` | `?limit` (1–50)                                    | Movies screened in the most cities (cached 15min) |
+| GET    | `/movies/:id`        | `:id` (number)                                     | Full movie detail with relations                  |
+| POST   | `/movies`            | `CreateMovieDto` (actors, directors, genres, etc.) | Create/update movie with relations                |
+
+### Screenings
+
+| Method | Route                          | Params / Body                                                                           | Description                                     |
+| ------ | ------------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| GET    | `/screenings`                  | `?dateFrom`, `?dateTo`, `?movieId`, `?cityId`, `?genreId`, `?search`, `?page`, `?limit` | Paginated screenings (grouped by movie or flat) |
+| GET    | `/screenings/random-screening` | —                                                                                       | Random retro screening for hero                 |
+| POST   | `/screenings`                  | `CreateScreeningDto`                                                                    | Create/update screening                         |
+
+### Showtimes
+
+| Method | Route                            | Params / Body                    | Description                      |
+| ------ | -------------------------------- | -------------------------------- | -------------------------------- |
+| GET    | `/showtimes`                     | —                                | List all showtimes               |
+| GET    | `/showtimes/unprocessed`         | `?from`, `?to` (YYYY-MM-DD)      | Unprocessed showtimes in range   |
+| GET    | `/showtimes/processed-city-ids`  | `?from`, `?to` (YYYY-MM-DD)      | City IDs already processed       |
+| POST   | `/showtimes`                     | `CreateShowtimeDto`              | Create/update showtime           |
+| POST   | `/showtimes/batch`               | `showtimes: CreateShowtimeDto[]` | Batch upsert showtimes           |
+| POST   | `/showtimes/mark-city-processed` | `cityId`, `processedAt?`         | Mark city as processed           |
+| POST   | `/showtimes/mark-processed`      | `showtimeId`                     | Mark showtime as processed       |
+| POST   | `/showtimes/:id/process`         | `movieId?`, `screenings[]`       | Process showtime into screenings |
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js 20+](https://nodejs.org)
+- [Yarn](https://yarnpkg.com)
+- [MySQL 8](https://www.mysql.com) (or a compatible server)
+
+### Environment Variables
+
+Create a `.env` file in the project root:
+
+```env
+PORT=5000
+DATABASE_URL=mysql://user:password@localhost:3306/klaps_dev
+INTERNAL_API_KEY=your-secret-api-key
+FRONTEND_URL=http://localhost:3000
+```
+
+| Variable           | Required | Description                                           |
+| ------------------ | -------- | ----------------------------------------------------- |
+| `PORT`             | No       | Server port (default: `5000`)                         |
+| `DATABASE_URL`     | Yes      | MySQL connection string                               |
+| `INTERNAL_API_KEY` | Yes      | API key for authenticating internal/scrapper requests |
+| `FRONTEND_URL`     | No       | Allowed CORS origin for the frontend                  |
+
+### Install & Run
 
 ```bash
-# unit tests
-$ yarn run test
+# Install dependencies
+yarn install
 
-# e2e tests
-$ yarn run test:e2e
+# Generate Drizzle migrations (if schema changed)
+yarn db:generate
 
-# test coverage
-$ yarn run test:cov
+# Run migrations
+yarn db:migrate
+
+# Start in development (watch mode)
+yarn start:dev
+
+# Build for production
+yarn build
+
+# Start production
+yarn start:prod
+
+# Lint
+yarn lint
+
+# Unit tests
+yarn test
+
+# E2E tests
+yarn test:e2e
+
+# Test coverage
+yarn test:cov
 ```
+
+The API will be available at [http://localhost:5000/api/v1](http://localhost:5000/api/v1).
+
+## Docker
+
+### Build
+
+```bash
+docker build -t klaps-backend .
+```
+
+### Run
+
+```bash
+docker run -p 5000:5000 \
+  -e DATABASE_URL=mysql://user:pass@host:3306/klaps \
+  -e INTERNAL_API_KEY=your-key \
+  -e FRONTEND_URL=https://klaps.space \
+  klaps-backend
+```
+
+### Docker Compose
+
+The included `docker-compose.yml` is configured for deployment behind [Traefik](https://traefik.io) reverse proxy with automatic HTTPS and a built-in healthcheck:
+
+```bash
+docker compose up -d
+```
+
+The compose file expects a `.env` file and an external `proxy` network for Traefik.
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+The project uses **GitHub Actions** for CI/CD (`.github/workflows/deploy.yml`):
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+| Branch | Environment | Image Tag |
+| ------ | ----------- | --------- |
+| `main` | Production  | `latest`  |
+| `dev`  | Development | `dev`     |
 
-```bash
-$ yarn install -g @nestjs/mau
-$ mau deploy
-```
+**Pipeline steps:**
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+1. **Lint & Test** — ESLint + Jest unit tests (gates the build)
+2. **Build & Push** — Docker image to GitHub Container Registry
+3. **DB Backup** — `mysqldump` via SSH before migration
+4. **DB Migrate** — Drizzle baseline + migrations
+5. **Deploy** — SCP compose file, pull image, recreate container
 
-## Resources
+**Required GitHub Secrets:**
 
-Check out a few resources that may come in handy when working with NestJS:
+| Secret             | Description                                    |
+| ------------------ | ---------------------------------------------- |
+| `IMAGE_NAME`       | GHCR image (e.g. `ghcr.io/user/klaps-backend`) |
+| `DATABASE_URL`     | MySQL connection string                        |
+| `INTERNAL_API_KEY` | API authentication key                         |
+| `SERVER_IP`        | Deployment server IP                           |
+| `SERVER_USER`      | SSH user                                       |
+| `SERVER_SSH_KEY`   | SSH private key                                |
+| `PROJECT_DIR`      | Remote project root path                       |
+| `PORT`             | Application port                               |
+| `DOMAIN`           | Domain for Traefik routing                     |
+| `GHCR_PAT`         | GitHub Container Registry token                |
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Open Source
 
-## Support
+Klaps is an open-source project. The source code is publicly available on GitHub:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+| Component              | Repository                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| **Frontend** (Next.js) | [github.com/Biplo12/klaps](https://github.com/Biplo12/klaps)                           |
+| **Backend** (NestJS)   | [github.com/Biplo12/klaps-nest-backend](https://github.com/Biplo12/klaps-nest-backend) |
 
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+> The scrapper responsible for collecting screening data is not publicly available for legal reasons.
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is open source. See the repository for license details.
