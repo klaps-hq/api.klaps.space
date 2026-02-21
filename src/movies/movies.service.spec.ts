@@ -97,6 +97,153 @@ describe('MoviesService', () => {
     });
   });
 
+  describe('getMultiCityMovies', () => {
+    it('returns movies from chain', async () => {
+      const expected = [
+        { id: 1, title: 'Film', productionYear: 2024, posterUrl: null, description: 'Desc', duration: 120, citiesCount: 3 },
+      ];
+      const mockChain = {
+        from: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        having: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue(expected),
+      };
+      mockDb.select.mockReturnValue(mockChain);
+
+      const result = await service.getMultiCityMovies({ limit: 5 });
+
+      expect(result).toEqual(expected);
+    });
+
+    it('uses default limit when none provided', async () => {
+      const mockChain = {
+        from: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        having: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue([]),
+      };
+      mockDb.select.mockReturnValue(mockChain);
+
+      const result = await service.getMultiCityMovies();
+
+      expect(result).toEqual([]);
+      expect(mockChain.limit).toHaveBeenCalledWith(5);
+    });
+  });
+
+  describe('createMovie', () => {
+    it('upserts movie and related entities', async () => {
+      const dto = {
+        sourceId: 100,
+        title: 'Test',
+        titleOriginal: 'Original',
+        description: 'Desc',
+        productionYear: 2024,
+        duration: 120,
+        language: 'pl',
+        posterUrl: null,
+        backdropUrl: null,
+        videoUrl: null,
+        url: 'https://filmweb.pl/1',
+        worldPremiereDate: '2024-01-01',
+        polishPremiereDate: '2024-02-01',
+        usersRating: 7.0,
+        usersRatingVotes: 500,
+        criticsRating: 6.0,
+        criticsRatingVotes: 20,
+        boxoffice: null,
+        budget: null,
+        distribution: null,
+        actors: [{ sourceId: 1, name: 'Actor A', url: 'http://a' }],
+        directors: [{ sourceId: 2, name: 'Director A', url: 'http://d' }],
+        scriptwriters: [{ sourceId: 3, name: 'Writer A', url: 'http://s' }],
+        countries: [{ name: 'Poland', countryCode: 'PL' }],
+        genres: [{ sourceId: 10, name: 'Drama' }],
+      };
+
+      mockDb.query.movies.findFirst.mockResolvedValue({ id: 1, ...dto });
+      mockDb.query.actors.findFirst.mockResolvedValue({ id: 10 });
+      mockDb.query.directors.findFirst.mockResolvedValue({ id: 20 });
+      mockDb.query.scriptwriters.findFirst.mockResolvedValue({ id: 30 });
+      mockDb.query.countries.findFirst.mockResolvedValue({ id: 40 });
+      mockDb.query.genres.findFirst.mockResolvedValue({ id: 50 });
+
+      const result = await service.createMovie(dto as any);
+
+      expect(result.id).toBe(1);
+      expect(mockDb.insert).toHaveBeenCalled();
+    });
+
+    it('handles movie with no related entities', async () => {
+      const dto = {
+        sourceId: 100,
+        title: 'Minimal',
+        titleOriginal: '',
+        description: '',
+        productionYear: 2024,
+        duration: 90,
+        language: null,
+        posterUrl: null,
+        backdropUrl: null,
+        videoUrl: null,
+        url: 'https://filmweb.pl/2',
+        worldPremiereDate: null,
+        polishPremiereDate: null,
+        usersRating: null,
+        usersRatingVotes: null,
+        criticsRating: null,
+        criticsRatingVotes: null,
+        boxoffice: null,
+        budget: null,
+        distribution: null,
+      };
+
+      mockDb.query.movies.findFirst.mockResolvedValue({ id: 2, ...dto });
+
+      const result = await service.createMovie(dto as any);
+
+      expect(result.id).toBe(2);
+    });
+
+    it('skips junction insert when entity lookup returns null', async () => {
+      const dto = {
+        sourceId: 100,
+        title: 'Test',
+        titleOriginal: '',
+        description: '',
+        productionYear: 2024,
+        duration: 90,
+        language: null,
+        posterUrl: null,
+        backdropUrl: null,
+        videoUrl: null,
+        url: 'https://filmweb.pl/3',
+        actors: [{ sourceId: 999, name: 'Ghost', url: '' }],
+        directors: [{ sourceId: 998, name: 'Ghost', url: '' }],
+        scriptwriters: [{ sourceId: 997, name: 'Ghost', url: '' }],
+        countries: [{ name: 'Unknown', countryCode: 'XX' }],
+        genres: [{ sourceId: 996, name: 'Unknown' }],
+      };
+
+      mockDb.query.movies.findFirst.mockResolvedValue({ id: 3, ...dto });
+      mockDb.query.actors.findFirst.mockResolvedValue(undefined);
+      mockDb.query.directors.findFirst.mockResolvedValue(undefined);
+      mockDb.query.scriptwriters.findFirst.mockResolvedValue(undefined);
+      mockDb.query.countries.findFirst.mockResolvedValue(undefined);
+      mockDb.query.genres.findFirst.mockResolvedValue(undefined);
+
+      const result = await service.createMovie(dto as any);
+
+      expect(result.id).toBe(3);
+    });
+  });
+
   describe('getMovieById', () => {
     it('returns full movie detail when found', async () => {
       mockDb.query.movies.findFirst.mockResolvedValue(sampleMovie);
