@@ -141,6 +141,9 @@ type DbMovieWithGenres = {
   criticsRating?: number | null;
   criticsRatingVotes?: number | null;
   movies_genres: Array<{ genre: { id: number; slug: string; name: string } }>;
+};
+
+type DbMovieWithRelations = DbMovieWithGenres & {
   movies_actors: Array<{ actor: { id: number; name: string } }>;
   movies_directors: Array<{ director: { id: number; name: string } }>;
   movies_scriptwriters: Array<{
@@ -180,7 +183,7 @@ const formatDateField = (
 };
 
 /** Full movie detail with nested ratings. */
-export const mapMovieDetail = (movie: DbMovieWithGenres): MovieResponse => ({
+export const mapMovieDetail = (movie: DbMovieWithRelations): MovieResponse => ({
   id: movie.id,
   slug: movie.slug,
   title: movie.title,
