@@ -22,6 +22,16 @@ describe('CitiesService', () => {
         },
       },
       insert: jest.fn().mockReturnValue(mockInsertChain),
+      select: jest.fn().mockImplementation(() => ({
+        from: jest.fn().mockImplementation(() => {
+          const rows: Array<{ slug: string }> = [];
+          return {
+            where: jest.fn().mockResolvedValue(rows),
+            then: (resolve: (value: Array<{ slug: string }>) => unknown) =>
+              Promise.resolve(rows).then(resolve),
+          };
+        }),
+      })),
     };
 
     mockScreeningsService = {
