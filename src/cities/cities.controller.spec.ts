@@ -11,7 +11,7 @@ describe('CitiesController', () => {
   beforeEach(async () => {
     const mockService = {
       getCities: jest.fn(),
-      getCityById: jest.fn(),
+      getCityByIdOrSlug: jest.fn(),
       batchCreateCities: jest.fn(),
       createCity: jest.fn(),
     };
@@ -30,7 +30,7 @@ describe('CitiesController', () => {
 
   describe('getCities', () => {
     it('returns cities from service', async () => {
-      const cities = [{ id: 1, name: 'Warszawa', nameDeclinated: 'Warszawie' }];
+      const cities = [{ id: 1, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' }];
       service.getCities.mockResolvedValue(cities);
 
       const result = await controller.getCities();
@@ -39,26 +39,26 @@ describe('CitiesController', () => {
     });
   });
 
-  describe('getCityById', () => {
-    it('returns city detail when found', async () => {
+  describe('getCityByIdOrSlug', () => {
+    it('returns city detail when found by id', async () => {
       const detail = {
-        city: { id: 1, name: 'Warszawa', nameDeclinated: 'Warszawie' },
+        city: { id: 1, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
         screenings: {
           data: [],
           meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
         },
       };
-      service.getCityById.mockResolvedValue(detail);
+      service.getCityByIdOrSlug.mockResolvedValue(detail);
 
-      const result = await controller.getCityById(1);
+      const result = await controller.getCityByIdOrSlug('1');
 
       expect(result).toEqual(detail);
     });
 
     it('throws NotFoundException when not found', async () => {
-      service.getCityById.mockResolvedValue(null);
+      service.getCityByIdOrSlug.mockResolvedValue(null);
 
-      await expect(controller.getCityById(999)).rejects.toThrow(
+      await expect(controller.getCityByIdOrSlug('999')).rejects.toThrow(
         NotFoundException,
       );
     });

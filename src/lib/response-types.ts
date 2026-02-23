@@ -1,6 +1,7 @@
 /** Clean city response -- no sourceId or areacode. */
 export type CityResponse = {
   id: number;
+  slug: string;
   name: string;
   nameDeclinated: string;
 };
@@ -8,12 +9,14 @@ export type CityResponse = {
 /** Clean genre response -- no sourceId or timestamps. */
 export type GenreResponse = {
   id: number;
+  slug: string;
   name: string;
 };
 
 /** Cinema embedded inside screening responses. */
 export type CinemaSummaryResponse = {
   id: number;
+  slug: string;
   name: string;
   street: string | null;
   city: CityResponse;
@@ -22,6 +25,7 @@ export type CinemaSummaryResponse = {
 /** Full cinema for the detail endpoint. */
 export type CinemaResponse = {
   id: number;
+  slug: string;
   name: string;
   street: string | null;
   city: CityResponse;
@@ -39,6 +43,7 @@ export type CinemaGroupResponse = {
 /** Movie summary for lists and cards. */
 export type MovieSummaryResponse = {
   id: number;
+  slug: string;
   title: string;
   titleOriginal: string | null;
   productionYear: number;
@@ -80,6 +85,7 @@ export type MovieHeroResponse = MovieSummaryResponse & {
 /** Full movie for the detail page. */
 export type MovieResponse = {
   id: number;
+  slug: string;
   title: string;
   titleOriginal: string | null;
   description: string | null;
@@ -106,6 +112,7 @@ export type MovieResponse = {
 /** Multi-city movie for territorial reach endpoint. */
 export type MultiCityMovieResponse = {
   id: number;
+  slug: string;
   title: string;
   productionYear: number;
   posterUrl: string | null;

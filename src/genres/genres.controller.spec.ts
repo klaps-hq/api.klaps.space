@@ -10,6 +10,7 @@ describe('GenresController', () => {
   beforeEach(async () => {
     const mockService = {
       getGenres: jest.fn(),
+      getGenreByIdOrSlug: jest.fn(),
     };
 
     const module = await Test.createTestingModule({
@@ -27,8 +28,8 @@ describe('GenresController', () => {
   describe('getGenres', () => {
     it('returns genres from service', async () => {
       const genres = [
-        { id: 1, name: 'Drama' },
-        { id: 2, name: 'Comedy' },
+        { id: 1, slug: 'drama', name: 'Drama' },
+        { id: 2, slug: 'comedy', name: 'Comedy' },
       ];
       service.getGenres.mockResolvedValue(genres);
 

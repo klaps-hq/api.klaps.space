@@ -10,6 +10,7 @@ import { citiesTable } from './cities.schema';
 export const cinemasTable = mysqlTable('cinemas', {
   id: int().primaryKey().autoincrement(),
   sourceId: int().notNull().unique(),
+  slug: varchar({ length: 255 }).notNull().unique(),
   name: varchar({ length: 255 }).notNull(),
   url: varchar({ length: 255 }).notNull(),
   sourceCityId: int()

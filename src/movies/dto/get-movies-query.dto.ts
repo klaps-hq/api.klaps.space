@@ -8,11 +8,6 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
-/**
- * Query DTO for GET /movies.
- * page: optional, page number (default 1).
- * limit: optional, items per page (default 20, max 100).
- */
 export class GetMoviesQueryDto {
   @IsOptional()
   @IsString({ message: 'search must be a string' })
@@ -27,6 +22,10 @@ export class GetMoviesQueryDto {
   @IsInt({ message: 'genreId must be an integer' })
   @Min(1, { message: 'genreId must be a positive integer' })
   genreId?: number;
+
+  @IsOptional()
+  @IsString({ message: 'genreSlug must be a string' })
+  genreSlug?: string;
 
   @IsOptional()
   @Transform(({ value }) =>

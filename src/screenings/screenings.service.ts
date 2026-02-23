@@ -61,7 +61,13 @@ export class ScreeningsService {
       : DEFAULT_MOVIE_LIMIT;
     const offset = (page - 1) * limit;
 
-    const citySubquery = params?.cityId
+    const cityCondition = params?.cityId
+      ? eq(schema.cities.id, params.cityId)
+      : params?.citySlug
+        ? eq(schema.cities.slug, params.citySlug)
+        : undefined;
+
+    const citySubquery = cityCondition
       ? inArray(
           schema.screenings.cinemaId,
           this.db
@@ -73,11 +79,19 @@ export class ScreeningsService {
                 this.db
                   .select({ sourceId: schema.cities.sourceId })
                   .from(schema.cities)
-                  .where(eq(schema.cities.id, params.cityId)),
+                  .where(cityCondition),
               ),
             ),
         )
-      : undefined;
+      : params?.cinemaSlug
+        ? inArray(
+            schema.screenings.cinemaId,
+            this.db
+              .select({ sourceId: schema.cinemas.sourceId })
+              .from(schema.cinemas)
+              .where(eq(schema.cinemas.slug, params.cinemaSlug)),
+          )
+        : undefined;
 
     const searchSubquery = params?.search
       ? inArray(
@@ -89,6 +103,18 @@ export class ScreeningsService {
         )
       : undefined;
 
+    const genreCondition = params?.genreId
+      ? eq(schema.movies_genres.genreId, params.genreId)
+      : params?.genreSlug
+        ? inArray(
+            schema.movies_genres.genreId,
+            this.db
+              .select({ id: schema.genres.id })
+              .from(schema.genres)
+              .where(eq(schema.genres.slug, params.genreSlug)),
+          )
+        : undefined;
+
     const whereConditions = and(
       gte(schema.screenings.date, startDay),
       lte(schema.screenings.date, endDay),
@@ -97,9 +123,7 @@ export class ScreeningsService {
         : undefined,
       citySubquery,
       searchSubquery,
-      params?.genreId
-        ? eq(schema.movies_genres.genreId, params.genreId)
-        : undefined,
+      genreCondition,
     );
 
     const [totalResult, movieIdsResult] = await Promise.all([

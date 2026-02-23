@@ -6,9 +6,10 @@ import type { City } from './cities.types';
 import type { CreateCityDto } from './dto/create-city.dto';
 import type { CityDetailResponse, CityResponse } from '../lib/response-types';
 import { mapCity } from '../lib/response-mappers';
-import { eq, sql } from 'drizzle-orm';
+import { eq, like, sql } from 'drizzle-orm';
 import { ScreeningsService } from '../screenings/screenings.service';
 import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
+import { toSlug, uniqueSlug } from '../lib/slug';
 
 /**
  * Service for city-related business logic and persistence.
@@ -29,15 +30,20 @@ export class CitiesService {
     return cities.map(mapCity);
   }
 
-  async getCityById(id: number): Promise<CityDetailResponse | null> {
+  async getCityByIdOrSlug(idOrSlug: string): Promise<CityDetailResponse | null> {
+    const numericId = Number(idOrSlug);
+    const condition = Number.isInteger(numericId) && numericId > 0
+      ? eq(schema.cities.id, numericId)
+      : eq(schema.cities.slug, idOrSlug);
+
     const city = await this.db.query.cities.findFirst({
-      where: eq(schema.cities.id, id),
+      where: condition,
     });
 
     if (!city) return null;
 
     const screenings = await this.screeningsService.getScreenings({
-      cityId: id,
+      cityId: city.id,
     });
 
     return {
@@ -50,11 +56,14 @@ export class CitiesService {
    * Creates or updates a city (upserts on duplicate sourceId) and returns the row.
    */
   async createCity(dto: CreateCityDto): Promise<City> {
+    const slug = await this.generateCitySlug(dto.name);
+
     await this.db
       .insert(schema.cities)
-      .values(dto)
+      .values({ ...dto, slug })
       .onDuplicateKeyUpdate({
         set: {
+          slug,
           name: dto.name,
           nameDeclinated: dto.nameDeclinated,
           areacode: dto.areacode,
@@ -73,13 +82,24 @@ export class CitiesService {
   async batchCreateCities(cities: CreateCityDto[]): Promise<{ count: number }> {
     if (cities.length === 0) return { count: 0 };
 
+    const existingSlugs = await this.db
+      .select({ slug: schema.cities.slug })
+      .from(schema.cities);
+    const taken = new Set(existingSlugs.map((r) => r.slug));
+    const values = cities.map((c) => {
+      const slug = uniqueSlug(toSlug(c.name), taken);
+      taken.add(slug);
+      return { ...c, slug };
+    });
+
     await withDeadlockRetry(
       () =>
         this.db
           .insert(schema.cities)
-          .values(cities)
+          .values(values)
           .onDuplicateKeyUpdate({
             set: {
+              slug: sql`VALUES(${schema.cities.slug})`,
               name: sql`VALUES(${schema.cities.name})`,
               nameDeclinated: sql`VALUES(${schema.cities.nameDeclinated})`,
               areacode: sql`VALUES(${schema.cities.areacode})`,
@@ -89,5 +109,17 @@ export class CitiesService {
     );
 
     return { count: cities.length };
+  }
+
+  private async generateCitySlug(name: string): Promise<string> {
+    const base = toSlug(name);
+    const existing = await this.db
+      .select({ slug: schema.cities.slug })
+      .from(schema.cities)
+      .where(like(schema.cities.slug, `${base}%`));
+    return uniqueSlug(
+      base,
+      existing.map((r) => r.slug),
+    );
   }
 }

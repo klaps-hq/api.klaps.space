@@ -39,21 +39,24 @@ describe('CinemasService', () => {
       mockDb.query.cinemas.findMany.mockResolvedValue([
         {
           id: 1,
+          slug: 'kino-a',
           name: 'Kino A',
           street: 'ul. A',
-          city: { id: 10, name: 'Warszawa', nameDeclinated: 'Warszawie' },
+          city: { id: 10, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
         },
         {
           id: 2,
+          slug: 'kino-b',
           name: 'Kino B',
           street: 'ul. B',
-          city: { id: 10, name: 'Warszawa', nameDeclinated: 'Warszawie' },
+          city: { id: 10, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
         },
         {
           id: 3,
+          slug: 'kino-c',
           name: 'Kino C',
           street: null,
-          city: { id: 11, name: 'Kraków', nameDeclinated: 'Krakowie' },
+          city: { id: 11, slug: 'krakow', name: 'Kraków', nameDeclinated: 'Krakowie' },
         },
       ]);
 
@@ -75,19 +78,20 @@ describe('CinemasService', () => {
     });
   });
 
-  describe('getCinemaById', () => {
-    it('returns mapped cinema when found', async () => {
+  describe('getCinemaByIdOrSlug', () => {
+    it('returns mapped cinema when found by id', async () => {
       mockDb.query.cinemas.findFirst.mockResolvedValue({
         id: 1,
+        slug: 'kino-luna',
         name: 'Kino Luna',
         street: 'ul. Test',
         url: 'https://filmweb.pl/cinema/1',
         latitude: 52.2,
         longitude: 21.0,
-        city: { id: 10, name: 'Warszawa', nameDeclinated: 'Warszawie' },
+        city: { id: 10, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
       });
 
-      const result = await service.getCinemaById(1);
+      const result = await service.getCinemaByIdOrSlug('1');
 
       expect(result).not.toBeNull();
       expect(result!.filmwebUrl).toBe('https://filmweb.pl/cinema/1');
@@ -97,7 +101,7 @@ describe('CinemasService', () => {
     it('returns null when cinema not found', async () => {
       mockDb.query.cinemas.findFirst.mockResolvedValue(undefined);
 
-      const result = await service.getCinemaById(999);
+      const result = await service.getCinemaByIdOrSlug('999');
 
       expect(result).toBeNull();
     });

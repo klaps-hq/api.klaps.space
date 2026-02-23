@@ -12,6 +12,7 @@ import {
 export const moviesTable = mysqlTable('movies', {
   id: int().primaryKey().autoincrement(),
   sourceId: int().notNull().unique(),
+  slug: varchar({ length: 255 }).notNull().unique(),
   url: varchar({ length: 255 }).notNull(),
   title: varchar({ length: 255 }).notNull(),
   titleOriginal: varchar({ length: 255 }).notNull(),

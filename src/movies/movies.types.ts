@@ -7,6 +7,7 @@ export type Movie = typeof movies.$inferSelect;
 export type GetMoviesParams = {
   search?: string;
   genreId?: number;
+  genreSlug?: string;
   page?: number;
   limit?: number;
 };
