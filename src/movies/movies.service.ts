@@ -22,6 +22,7 @@ import type {
 } from '../lib/response-types';
 import { mapMovieSummary, mapMovieDetail } from '../lib/response-mappers';
 import { and, count, desc, eq, gte, inArray, like, sql } from 'drizzle-orm';
+import { toSlug, movieSlug, uniqueSlug } from '../lib/slug';
 
 type FullSchema = typeof schema & typeof relations;
 
@@ -54,13 +55,25 @@ export class MoviesService {
       ? like(schema.movies.title, `%${params.search}%`)
       : undefined;
 
-    const genreCondition = params?.genreId
+    const genreFilter = params?.genreId
+      ? eq(schema.movies_genres.genreId, params.genreId)
+      : params?.genreSlug
+        ? inArray(
+            schema.movies_genres.genreId,
+            this.db
+              .select({ id: schema.genres.id })
+              .from(schema.genres)
+              .where(eq(schema.genres.slug, params.genreSlug)),
+          )
+        : undefined;
+
+    const genreCondition = genreFilter
       ? inArray(
           schema.movies.id,
           this.db
             .select({ movieId: schema.movies_genres.movieId })
             .from(schema.movies_genres)
-            .where(eq(schema.movies_genres.genreId, params.genreId)),
+            .where(genreFilter),
         )
       : undefined;
 
@@ -118,11 +131,16 @@ export class MoviesService {
   }
 
   /**
-   * Returns a single movie by id mapped to full MovieResponse.
+   * Returns a single movie by numeric id or slug, mapped to full MovieResponse.
    */
-  async getMovieById(id: number): Promise<MovieResponse | null> {
+  async getMovieByIdOrSlug(idOrSlug: string): Promise<MovieResponse | null> {
+    const numericId = Number(idOrSlug);
+    const condition = Number.isInteger(numericId) && numericId > 0
+      ? eq(schema.movies.id, numericId)
+      : eq(schema.movies.slug, idOrSlug);
+
     const movie = await this.db.query.movies.findFirst({
-      where: eq(schema.movies.id, id),
+      where: condition,
       with: {
         movies_genres: {
           with: { genre: true },
@@ -159,6 +177,7 @@ export class MoviesService {
     return this.db
       .select({
         id: schema.movies.id,
+        slug: schema.movies.slug,
         title: schema.movies.title,
         productionYear: schema.movies.productionYear,
         posterUrl: schema.movies.posterUrl,
@@ -179,6 +198,7 @@ export class MoviesService {
       .where(gte(schema.screenings.date, sql`CURDATE()`))
       .groupBy(
         schema.movies.id,
+        schema.movies.slug,
         schema.movies.title,
         schema.movies.productionYear,
         schema.movies.posterUrl,
@@ -205,8 +225,14 @@ export class MoviesService {
       ...movieFields
     } = dto;
 
+    const slug = await this.generateMovieSlug(
+      movieFields.title,
+      movieFields.productionYear,
+    );
+
     const values = {
       ...movieFields,
+      slug,
       worldPremiereDate: movieFields.worldPremiereDate
         ? new Date(movieFields.worldPremiereDate)
         : undefined,
@@ -220,6 +246,7 @@ export class MoviesService {
       .values(values)
       .onDuplicateKeyUpdate({
         set: {
+          slug,
           url: movieFields.url,
           title: movieFields.title,
           titleOriginal: movieFields.titleOriginal,
@@ -396,6 +423,7 @@ export class MoviesService {
 
   /**
    * Upserts genres and links them to the movie via movies_genres.
+   * Also generates and persists a slug for each genre.
    */
   private async upsertGenres(
     movieId: number,
@@ -404,14 +432,17 @@ export class MoviesService {
     if (!genres?.length) return;
 
     for (const genre of genres) {
+      const genreSlug = toSlug(genre.name);
+
       await this.db
         .insert(schema.genres)
         .values({
           sourceId: genre.sourceId,
+          slug: genreSlug,
           name: genre.name,
         })
         .onDuplicateKeyUpdate({
-          set: { name: genre.name },
+          set: { name: genre.name, slug: genreSlug },
         });
 
       const row = await this.db.query.genres.findFirst({
@@ -425,5 +456,20 @@ export class MoviesService {
         .values({ movieId, genreId: row.id })
         .onDuplicateKeyUpdate({ set: { movieId } });
     }
+  }
+
+  private async generateMovieSlug(
+    title: string,
+    productionYear: number,
+  ): Promise<string> {
+    const base = movieSlug(title, productionYear);
+    const existing = await this.db
+      .select({ slug: schema.movies.slug })
+      .from(schema.movies)
+      .where(like(schema.movies.slug, `${base}%`));
+    return uniqueSlug(
+      base,
+      existing.map((r) => r.slug),
+    );
   }
 }

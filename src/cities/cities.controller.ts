@@ -6,7 +6,6 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
-  ParseIntPipe,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -31,15 +30,15 @@ export class CitiesController {
     return this.citiesService.getCities();
   }
 
-  @Get(':id')
+  @Get(':idOrSlug')
   @UseGuards(InternalApiKeyGuard)
-  async getCityById(
-    @Param('id', ParseIntPipe) id: number,
+  async getCityByIdOrSlug(
+    @Param('idOrSlug') idOrSlug: string,
   ): Promise<CityDetailResponse> {
-    const city = await this.citiesService.getCityById(id);
+    const city = await this.citiesService.getCityByIdOrSlug(idOrSlug);
 
     if (!city) {
-      throw new NotFoundException(`City with id ${id} not found`);
+      throw new NotFoundException(`City "${idOrSlug}" not found`);
     }
 
     return city;

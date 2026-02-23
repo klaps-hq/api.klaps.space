@@ -4,15 +4,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import type { Params } from 'nestjs-pino';
 
-const hasPinoPretty = (() => {
-  try {
-    require.resolve('pino-pretty');
-    return true;
-  } catch {
-    return false;
-  }
-})();
-
 @Module({
   imports: [
     PinoLoggerModule.forRootAsync({
@@ -31,17 +22,17 @@ const hasPinoPretty = (() => {
           options: Record<string, unknown>;
         }> = [];
 
-        if (!isProduction && hasPinoPretty) {
-          targets.push({
-            target: 'pino-pretty',
-            level: logLevel,
-            options: { colorize: true, singleLine: true },
-          });
-        } else {
+        if (isProduction) {
           targets.push({
             target: 'pino/file',
             level: logLevel,
             options: { destination: 1 },
+          });
+        } else {
+          targets.push({
+            target: 'pino-pretty',
+            level: logLevel,
+            options: { colorize: true, singleLine: true },
           });
         }
 

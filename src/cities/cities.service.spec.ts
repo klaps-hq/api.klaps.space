@@ -44,6 +44,7 @@ describe('CitiesService', () => {
       mockDb.query.cities.findMany.mockResolvedValue([
         {
           id: 1,
+          slug: 'warszawa',
           name: 'Warszawa',
           nameDeclinated: 'Warszawie',
           sourceId: 10,
@@ -51,6 +52,7 @@ describe('CitiesService', () => {
         },
         {
           id: 2,
+          slug: 'krakow',
           name: 'Kraków',
           nameDeclinated: 'Krakowie',
           sourceId: 11,
@@ -61,8 +63,8 @@ describe('CitiesService', () => {
       const result = await service.getCities();
 
       expect(result).toEqual([
-        { id: 1, name: 'Warszawa', nameDeclinated: 'Warszawie' },
-        { id: 2, name: 'Kraków', nameDeclinated: 'Krakowie' },
+        { id: 1, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
+        { id: 2, slug: 'krakow', name: 'Kraków', nameDeclinated: 'Krakowie' },
       ]);
     });
 
@@ -72,10 +74,11 @@ describe('CitiesService', () => {
     });
   });
 
-  describe('getCityById', () => {
-    it('returns city with screenings when found', async () => {
+  describe('getCityByIdOrSlug', () => {
+    it('returns city with screenings when found by id', async () => {
       mockDb.query.cities.findFirst.mockResolvedValue({
         id: 1,
+        slug: 'warszawa',
         name: 'Warszawa',
         nameDeclinated: 'Warszawie',
       });
@@ -84,10 +87,10 @@ describe('CitiesService', () => {
         meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
       });
 
-      const result = await service.getCityById(1);
+      const result = await service.getCityByIdOrSlug('1');
 
       expect(result).toEqual({
-        city: { id: 1, name: 'Warszawa', nameDeclinated: 'Warszawie' },
+        city: { id: 1, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
         screenings: {
           data: [],
           meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
@@ -101,7 +104,7 @@ describe('CitiesService', () => {
     it('returns null when city not found', async () => {
       mockDb.query.cities.findFirst.mockResolvedValue(undefined);
 
-      const result = await service.getCityById(999);
+      const result = await service.getCityByIdOrSlug('999');
 
       expect(result).toBeNull();
       expect(mockScreeningsService.getScreenings).not.toHaveBeenCalled();

@@ -14,7 +14,7 @@ describe('MoviesController', () => {
       getMovies: jest.fn(),
       createMovie: jest.fn(),
       getMultiCityMovies: jest.fn(),
-      getMovieById: jest.fn(),
+      getMovieByIdOrSlug: jest.fn(),
     };
 
     const module = await Test.createTestingModule({
@@ -51,6 +51,7 @@ describe('MoviesController', () => {
       expect(service.getMovies).toHaveBeenCalledWith({
         search: 'test',
         genreId: 1,
+        genreSlug: undefined,
         page: 2,
         limit: 10,
       });
@@ -83,20 +84,29 @@ describe('MoviesController', () => {
     });
   });
 
-  describe('getMovieById', () => {
-    it('returns movie when found', async () => {
+  describe('getMovieByIdOrSlug', () => {
+    it('returns movie when found by id', async () => {
       const movie = { id: 1, title: 'Film' } as any;
-      service.getMovieById.mockResolvedValue(movie);
+      service.getMovieByIdOrSlug.mockResolvedValue(movie);
 
-      const result = await controller.getMovieById(1);
+      const result = await controller.getMovieByIdOrSlug('1');
+
+      expect(result).toEqual(movie);
+    });
+
+    it('returns movie when found by slug', async () => {
+      const movie = { id: 1, slug: 'film-2024', title: 'Film' } as any;
+      service.getMovieByIdOrSlug.mockResolvedValue(movie);
+
+      const result = await controller.getMovieByIdOrSlug('film-2024');
 
       expect(result).toEqual(movie);
     });
 
     it('throws NotFoundException when not found', async () => {
-      service.getMovieById.mockResolvedValue(null);
+      service.getMovieByIdOrSlug.mockResolvedValue(null);
 
-      await expect(controller.getMovieById(999)).rejects.toThrow(
+      await expect(controller.getMovieByIdOrSlug('999')).rejects.toThrow(
         NotFoundException,
       );
     });

@@ -8,6 +8,7 @@ describe('ScreeningsService', () => {
 
   const sampleMovieWithScreenings = {
     id: 1,
+    slug: 'test-movie-2024',
     title: 'Test Movie',
     titleOriginal: '',
     description: '',
@@ -16,7 +17,7 @@ describe('ScreeningsService', () => {
     language: 'pl',
     posterUrl: null,
     url: 'https://filmweb.pl/1',
-    movies_genres: [{ genre: { id: 1, name: 'Drama' } }],
+    movies_genres: [{ genre: { id: 1, slug: 'drama', name: 'Drama' } }],
     movies_actors: [],
     movies_directors: [],
     movies_scriptwriters: [],
@@ -30,12 +31,13 @@ describe('ScreeningsService', () => {
         isSubtitled: false,
         cinema: {
           id: 5,
+          slug: 'kino-a',
           name: 'Kino A',
           street: null,
           url: '',
           latitude: null,
           longitude: null,
-          city: { id: 1, name: 'Warszawa', nameDeclinated: 'Warszawie' },
+          city: { id: 1, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
         },
       },
     ],

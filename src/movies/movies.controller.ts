@@ -4,7 +4,6 @@ import {
   Get,
   NotFoundException,
   Param,
-  ParseIntPipe,
   Post,
   Query,
   UseGuards,
@@ -43,6 +42,7 @@ export class MoviesController {
     return this.moviesService.getMovies({
       search: query.search,
       genreId: query.genreId,
+      genreSlug: query.genreSlug,
       page: query.page,
       limit: query.limit,
     });
@@ -75,17 +75,17 @@ export class MoviesController {
   }
 
   /**
-   * URL: /api/v1/movies/:id
-   * Returns a single movie by its id (full MovieResponse with nested ratings).
+   * URL: /api/v1/movies/:idOrSlug
+   * Returns a single movie by its numeric id or slug.
    */
-  @Get(':id')
+  @Get(':idOrSlug')
   @UseGuards(InternalApiKeyGuard)
-  async getMovieById(
-    @Param('id', ParseIntPipe) id: number,
+  async getMovieByIdOrSlug(
+    @Param('idOrSlug') idOrSlug: string,
   ): Promise<MovieResponse> {
-    const movie = await this.moviesService.getMovieById(id);
+    const movie = await this.moviesService.getMovieByIdOrSlug(idOrSlug);
     if (!movie) {
-      throw new NotFoundException(`Movie with id ${id} not found`);
+      throw new NotFoundException(`Movie "${idOrSlug}" not found`);
     }
     return movie;
   }

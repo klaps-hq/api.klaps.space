@@ -10,7 +10,7 @@ describe('CinemasController', () => {
     getCinemas: jest.fn(),
     createCinema: jest.fn(),
     batchCreateCinemas: jest.fn(),
-    getCinemaById: jest.fn(),
+    getCinemaByIdOrSlug: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -37,6 +37,7 @@ describe('CinemasController', () => {
       expect(result).toEqual(expected);
       expect(mockService.getCinemas).toHaveBeenCalledWith({
         cityId: 1,
+        citySlug: undefined,
         limit: 10,
       });
     });
@@ -71,28 +72,29 @@ describe('CinemasController', () => {
     });
   });
 
-  describe('getCinemaById', () => {
-    it('returns cinema when found', async () => {
+  describe('getCinemaByIdOrSlug', () => {
+    it('returns cinema when found by id', async () => {
       const cinema = {
         id: 1,
+        slug: 'kino',
         name: 'Kino',
         street: null,
-        city: { id: 1, name: 'W', nameDeclinated: 'W' },
+        city: { id: 1, slug: 'w', name: 'W', nameDeclinated: 'W' },
         latitude: null,
         longitude: null,
         filmwebUrl: '',
       };
-      mockService.getCinemaById.mockResolvedValue(cinema);
+      mockService.getCinemaByIdOrSlug.mockResolvedValue(cinema);
 
-      const result = await controller.getCinemaById(1);
+      const result = await controller.getCinemaByIdOrSlug('1');
 
       expect(result).toEqual(cinema);
     });
 
     it('throws NotFoundException when not found', async () => {
-      mockService.getCinemaById.mockResolvedValue(null);
+      mockService.getCinemaByIdOrSlug.mockResolvedValue(null);
 
-      await expect(controller.getCinemaById(999)).rejects.toThrow(
+      await expect(controller.getCinemaByIdOrSlug('999')).rejects.toThrow(
         NotFoundException,
       );
     });

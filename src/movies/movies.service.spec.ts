@@ -8,6 +8,7 @@ describe('MoviesService', () => {
 
   const sampleMovie = {
     id: 1,
+    slug: 'test-movie-2024',
     title: 'Test Movie',
     titleOriginal: 'Original',
     description: 'Desc',
@@ -25,7 +26,7 @@ describe('MoviesService', () => {
     criticsRating: 6.0,
     criticsRatingVotes: 20,
     sourceId: 100,
-    movies_genres: [{ genre: { id: 1, name: 'Drama' } }],
+    movies_genres: [{ genre: { id: 1, slug: 'drama', name: 'Drama' } }],
     movies_actors: [{ actor: { id: 10, name: 'Actor' } }],
     movies_directors: [{ director: { id: 20, name: 'Director' } }],
     movies_scriptwriters: [{ scriptwriter: { id: 30, name: 'Writer' } }],
@@ -244,22 +245,31 @@ describe('MoviesService', () => {
     });
   });
 
-  describe('getMovieById', () => {
-    it('returns full movie detail when found', async () => {
+  describe('getMovieByIdOrSlug', () => {
+    it('returns full movie detail when found by id', async () => {
       mockDb.query.movies.findFirst.mockResolvedValue(sampleMovie);
 
-      const result = await service.getMovieById(1);
+      const result = await service.getMovieByIdOrSlug('1');
 
       expect(result).not.toBeNull();
       expect(result!.id).toBe(1);
-      expect(result!.genres).toEqual([{ id: 1, name: 'Drama' }]);
+      expect(result!.genres).toEqual([{ id: 1, slug: 'drama', name: 'Drama' }]);
       expect(result!.actors).toEqual([{ id: 10, name: 'Actor' }]);
+    });
+
+    it('returns full movie detail when found by slug', async () => {
+      mockDb.query.movies.findFirst.mockResolvedValue(sampleMovie);
+
+      const result = await service.getMovieByIdOrSlug('test-movie-2024');
+
+      expect(result).not.toBeNull();
+      expect(result!.slug).toBe('test-movie-2024');
     });
 
     it('returns null when movie not found', async () => {
       mockDb.query.movies.findFirst.mockResolvedValue(undefined);
 
-      const result = await service.getMovieById(999);
+      const result = await service.getMovieByIdOrSlug('999');
 
       expect(result).toBeNull();
     });

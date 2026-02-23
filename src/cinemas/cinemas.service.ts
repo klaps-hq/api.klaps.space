@@ -3,7 +3,7 @@ import type { MySql2Database } from 'drizzle-orm/mysql2';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, like, sql } from 'drizzle-orm';
 import type { GetCinemasParams } from './cinemas.types';
 import type { CreateCinemaDto } from './dto/create-cinema.dto';
 import type { Cinema } from '../database/schemas/cinemas.schema';
@@ -13,6 +13,7 @@ import type {
 } from '../lib/response-types';
 import { mapCity, mapCinemaDetail } from '../lib/response-mappers';
 import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
+import { toSlug, uniqueSlug } from '../lib/slug';
 
 type FullSchema = typeof schema & typeof relations;
 
@@ -39,13 +40,19 @@ export class CinemasService {
       params?.limit ?? DEFAULT_CINEMA_LIMIT,
       MAX_CINEMA_LIMIT,
     );
-    const cityCondition = params?.cityId
+    const cityFilter = params?.cityId
+      ? eq(schema.cities.id, params.cityId)
+      : params?.citySlug
+        ? eq(schema.cities.slug, params.citySlug)
+        : undefined;
+
+    const cityCondition = cityFilter
       ? inArray(
           schema.cinemas.sourceCityId,
           this.db
             .select({ sourceId: schema.cities.sourceId })
             .from(schema.cities)
-            .where(eq(schema.cities.id, params.cityId)),
+            .where(cityFilter),
         )
       : undefined;
     const cinemas = await this.db.query.cinemas.findMany({
@@ -59,6 +66,7 @@ export class CinemasService {
       const existing = grouped.get(cityId);
       const cinemaSummary = {
         id: cinema.id,
+        slug: cinema.slug,
         name: cinema.name,
         street: cinema.street,
       };
@@ -68,7 +76,7 @@ export class CinemasService {
         grouped.set(cityId, {
           city: cinema.city
             ? mapCity(cinema.city)
-            : { id: 0, name: '', nameDeclinated: '' },
+            : { id: 0, slug: '', name: '', nameDeclinated: '' },
           cinemas: [cinemaSummary],
         });
       }
@@ -83,11 +91,14 @@ export class CinemasService {
    * Creates or updates a cinema (upserts on duplicate sourceId) and returns the raw row.
    */
   async createCinema(dto: CreateCinemaDto): Promise<Cinema> {
+    const slug = await this.generateCinemaSlug(dto.name);
+
     await this.db
       .insert(schema.cinemas)
-      .values(dto)
+      .values({ ...dto, slug })
       .onDuplicateKeyUpdate({
         set: {
+          slug,
           name: dto.name,
           url: dto.url,
           sourceCityId: dto.sourceCityId,
@@ -114,13 +125,24 @@ export class CinemasService {
   ): Promise<{ count: number }> {
     if (cinemas.length === 0) return { count: 0 };
 
+    const existingSlugs = await this.db
+      .select({ slug: schema.cinemas.slug })
+      .from(schema.cinemas);
+    const taken = new Set(existingSlugs.map((r) => r.slug));
+    const values = cinemas.map((c) => {
+      const slug = uniqueSlug(toSlug(c.name), taken);
+      taken.add(slug);
+      return { ...c, slug };
+    });
+
     await withDeadlockRetry(
       () =>
         this.db
           .insert(schema.cinemas)
-          .values(cinemas)
+          .values(values)
           .onDuplicateKeyUpdate({
             set: {
+              slug: sql`VALUES(${schema.cinemas.slug})`,
               name: sql`VALUES(${schema.cinemas.name})`,
               url: sql`VALUES(${schema.cinemas.url})`,
               sourceCityId: sql`VALUES(${schema.cinemas.sourceCityId})`,
@@ -136,14 +158,31 @@ export class CinemasService {
   }
 
   /**
-   * Returns a single cinema by id with nested city, stripped of DB internals.
+   * Returns a single cinema by numeric id or slug, stripped of DB internals.
    */
-  async getCinemaById(id: number): Promise<CinemaResponse | null> {
+  async getCinemaByIdOrSlug(idOrSlug: string): Promise<CinemaResponse | null> {
+    const numericId = Number(idOrSlug);
+    const condition = Number.isInteger(numericId) && numericId > 0
+      ? eq(schema.cinemas.id, numericId)
+      : eq(schema.cinemas.slug, idOrSlug);
+
     const cinema = await this.db.query.cinemas.findFirst({
-      where: eq(schema.cinemas.id, id),
+      where: condition,
       with: { city: true },
     });
     if (!cinema) return null;
     return mapCinemaDetail(cinema);
+  }
+
+  private async generateCinemaSlug(name: string): Promise<string> {
+    const base = toSlug(name);
+    const existing = await this.db
+      .select({ slug: schema.cinemas.slug })
+      .from(schema.cinemas)
+      .where(like(schema.cinemas.slug, `${base}%`));
+    return uniqueSlug(
+      base,
+      existing.map((r) => r.slug),
+    );
   }
 }

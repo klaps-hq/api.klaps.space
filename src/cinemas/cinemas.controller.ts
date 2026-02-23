@@ -6,7 +6,6 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
-  ParseIntPipe,
   Post,
   Query,
   UseGuards,
@@ -37,6 +36,7 @@ export class CinemasController {
   ): Promise<{ data: CinemaGroupResponse[] }> {
     return this.cinemasService.getCinemas({
       cityId: query.cityId,
+      citySlug: query.citySlug,
       limit: query.limit,
     });
   }
@@ -65,17 +65,17 @@ export class CinemasController {
   }
 
   /**
-   * URL: /api/v1/cinemas/:id
-   * Returns a single cinema with nested city, stripped of DB internals.
+   * URL: /api/v1/cinemas/:idOrSlug
+   * Returns a single cinema by numeric id or slug.
    */
-  @Get(':id')
+  @Get(':idOrSlug')
   @UseGuards(InternalApiKeyGuard)
-  async getCinemaById(
-    @Param('id', ParseIntPipe) id: number,
+  async getCinemaByIdOrSlug(
+    @Param('idOrSlug') idOrSlug: string,
   ): Promise<CinemaResponse> {
-    const cinema = await this.cinemasService.getCinemaById(id);
+    const cinema = await this.cinemasService.getCinemaByIdOrSlug(idOrSlug);
     if (!cinema) {
-      throw new NotFoundException(`Cinema with id ${id} not found`);
+      throw new NotFoundException(`Cinema "${idOrSlug}" not found`);
     }
     return cinema;
   }
