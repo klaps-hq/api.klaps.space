@@ -31,6 +31,10 @@ import {
 } from '../lib/response-mappers';
 
 type FullSchema = typeof schema & typeof relations;
+type ScreeningGroupMovieArg = Parameters<typeof mapScreeningGroup>[0];
+type ScreeningGroupScreeningsArg = Parameters<typeof mapScreeningGroup>[1];
+type MovieHeroArg = Parameters<typeof mapMovieHero>[0];
+type ScreeningArg = Parameters<typeof mapScreening>[0];
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_MOVIE_LIMIT = 10;
@@ -199,7 +203,10 @@ export class ScreeningsService {
 
     return {
       data: filtered.map(({ screenings, ...movie }) =>
-        mapScreeningGroup(movie as any, screenings as any),
+        mapScreeningGroup(
+          movie as ScreeningGroupMovieArg,
+          screenings as ScreeningGroupScreeningsArg,
+        ),
       ),
       meta,
     };
@@ -263,8 +270,8 @@ export class ScreeningsService {
     const chosenScreening = screenings[randomScreeningIndex];
 
     return {
-      movie: mapMovieHero(movieData as any),
-      screening: mapScreening(chosenScreening as any),
+      movie: mapMovieHero(movieData as MovieHeroArg),
+      screening: mapScreening(chosenScreening as ScreeningArg),
     };
   }
 

@@ -63,7 +63,12 @@ describe('CitiesService', () => {
       const result = await service.getCities();
 
       expect(result).toEqual([
-        { id: 1, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
+        {
+          id: 1,
+          slug: 'warszawa',
+          name: 'Warszawa',
+          nameDeclinated: 'Warszawie',
+        },
         { id: 2, slug: 'krakow', name: 'Kraków', nameDeclinated: 'Krakowie' },
       ]);
     });
@@ -90,7 +95,12 @@ describe('CitiesService', () => {
       const result = await service.getCityByIdOrSlug('1');
 
       expect(result).toEqual({
-        city: { id: 1, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
+        city: {
+          id: 1,
+          slug: 'warszawa',
+          name: 'Warszawa',
+          nameDeclinated: 'Warszawie',
+        },
         screenings: {
           data: [],
           meta: { total: 0, page: 1, limit: 10, totalPages: 0 },

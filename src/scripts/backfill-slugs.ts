@@ -6,6 +6,7 @@
  */
 import 'dotenv/config';
 import { createConnection } from 'mysql2/promise';
+import type { RowDataPacket } from 'mysql2';
 import { toSlug, movieSlug, uniqueSlug } from '../lib/slug';
 
 interface Row {
@@ -15,19 +16,28 @@ interface Row {
   productionYear?: number;
 }
 
+interface SlugRow extends RowDataPacket {
+  slug: string;
+}
+
+interface NamedRow extends RowDataPacket {
+  id: number;
+  name: string;
+}
+
+interface MovieRow extends RowDataPacket {
+  id: number;
+  title: string;
+  productionYear: number;
+}
+
 const run = async () => {
   const connection = await createConnection(process.env.DATABASE_URL!);
 
   try {
-    await backfillTable(connection, 'cities', (row: Row) =>
-      toSlug(row.name!),
-    );
-    await backfillTable(connection, 'genres', (row: Row) =>
-      toSlug(row.name!),
-    );
-    await backfillTable(connection, 'cinemas', (row: Row) =>
-      toSlug(row.name!),
-    );
+    await backfillTable(connection, 'cities', (row: Row) => toSlug(row.name!));
+    await backfillTable(connection, 'genres', (row: Row) => toSlug(row.name!));
+    await backfillTable(connection, 'cinemas', (row: Row) => toSlug(row.name!));
     await backfillMovies(connection);
 
     console.log('\nSlug backfill complete.');
@@ -41,7 +51,7 @@ const backfillTable = async (
   table: string,
   slugFn: (row: Row) => string,
 ) => {
-  const [rows] = await connection.execute<any[]>(
+  const [rows] = await connection.execute<NamedRow[]>(
     `SELECT id, name FROM \`${table}\` WHERE slug IS NULL OR slug = ''`,
   );
 
@@ -51,20 +61,20 @@ const backfillTable = async (
   }
 
   const taken = new Set<string>();
-  const [existing] = await connection.execute<any[]>(
+  const [existing] = await connection.execute<SlugRow[]>(
     `SELECT slug FROM \`${table}\` WHERE slug IS NOT NULL AND slug != ''`,
   );
-  for (const r of existing) taken.add(r.slug as string);
+  for (const r of existing) taken.add(r.slug);
 
   let updated = 0;
   for (const row of rows) {
-    const base = slugFn(row as Row);
+    const base = slugFn(row);
     const slug = uniqueSlug(base, taken);
     taken.add(slug);
-    await connection.execute(
-      `UPDATE \`${table}\` SET slug = ? WHERE id = ?`,
-      [slug, row.id],
-    );
+    await connection.execute(`UPDATE \`${table}\` SET slug = ? WHERE id = ?`, [
+      slug,
+      row.id,
+    ]);
     updated++;
   }
 
@@ -74,7 +84,7 @@ const backfillTable = async (
 const backfillMovies = async (
   connection: Awaited<ReturnType<typeof createConnection>>,
 ) => {
-  const [rows] = await connection.execute<any[]>(
+  const [rows] = await connection.execute<MovieRow[]>(
     `SELECT id, title, productionYear FROM movies WHERE slug IS NULL OR slug = ''`,
   );
 
@@ -84,14 +94,14 @@ const backfillMovies = async (
   }
 
   const taken = new Set<string>();
-  const [existing] = await connection.execute<any[]>(
+  const [existing] = await connection.execute<SlugRow[]>(
     `SELECT slug FROM movies WHERE slug IS NOT NULL AND slug != ''`,
   );
-  for (const r of existing) taken.add(r.slug as string);
+  for (const r of existing) taken.add(r.slug);
 
   let updated = 0;
   for (const row of rows) {
-    const base = movieSlug(row.title as string, row.productionYear as number);
+    const base = movieSlug(row.title, row.productionYear);
     const slug = uniqueSlug(base, taken);
     taken.add(slug);
     await connection.execute(`UPDATE movies SET slug = ? WHERE id = ?`, [

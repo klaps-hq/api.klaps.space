@@ -84,7 +84,12 @@ type DbCinemaWithCity = {
   url: string;
   latitude: number | null;
   longitude: number | null;
-  city?: { id: number; slug: string; name: string; nameDeclinated: string } | null;
+  city?: {
+    id: number;
+    slug: string;
+    name: string;
+    nameDeclinated: string;
+  } | null;
 };
 
 /** Maps a cinema + city into a CinemaSummaryResponse. */

@@ -22,7 +22,7 @@ describe('GenresController', () => {
       .compile();
 
     controller = module.get(GenresController);
-    service = module.get(GenresService) as jest.Mocked<GenresService>;
+    service = module.get(GenresService);
   });
 
   describe('getGenres', () => {

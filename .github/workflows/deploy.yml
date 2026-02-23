@@ -153,6 +153,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup, build-and-push, db-backup]
     environment: ${{ needs.setup.outputs.environment }}
+    env:
+      RUN_DB_BASELINE: ${{ secrets.RUN_DB_BASELINE }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -166,13 +168,32 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Baseline existing tables (idempotent)
+      - name: Baseline existing tables (bootstrap only)
+        if: ${{ env.RUN_DB_BASELINE == 'true' }}
         run: yarn db:baseline
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      - name: Run database migrations
-        run: npx drizzle-kit migrate
+      - name: Run database migrations (slug-safe)
+        run: |
+          set -eo pipefail
+
+          # First pass: run pending migrations.
+          if ! npx drizzle-kit migrate 2>migrate.err; then
+            if grep -q "Invalid use of NULL value" migrate.err; then
+              echo "Detected slug backfill-required migration state. Running backfill and retrying..."
+              yarn db:backfill-slugs
+              npx drizzle-kit migrate
+            else
+              cat migrate.err
+              exit 1
+            fi
+          fi
+
+          # Safety pass: backfill slugs and run migrate again.
+          # Both operations are idempotent and ensure NOT NULL/UNIQUE follow-up migrations can apply.
+          yarn db:backfill-slugs
+          npx drizzle-kit migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 

@@ -162,9 +162,10 @@ export class CinemasService {
    */
   async getCinemaByIdOrSlug(idOrSlug: string): Promise<CinemaResponse | null> {
     const numericId = Number(idOrSlug);
-    const condition = Number.isInteger(numericId) && numericId > 0
-      ? eq(schema.cinemas.id, numericId)
-      : eq(schema.cinemas.slug, idOrSlug);
+    const condition =
+      Number.isInteger(numericId) && numericId > 0
+        ? eq(schema.cinemas.id, numericId)
+        : eq(schema.cinemas.slug, idOrSlug);
 
     const cinema = await this.db.query.cinemas.findFirst({
       where: condition,

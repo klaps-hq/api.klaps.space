@@ -25,12 +25,19 @@ describe('CitiesController', () => {
       .compile();
 
     controller = module.get(CitiesController);
-    service = module.get(CitiesService) as jest.Mocked<CitiesService>;
+    service = module.get(CitiesService);
   });
 
   describe('getCities', () => {
     it('returns cities from service', async () => {
-      const cities = [{ id: 1, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' }];
+      const cities = [
+        {
+          id: 1,
+          slug: 'warszawa',
+          name: 'Warszawa',
+          nameDeclinated: 'Warszawie',
+        },
+      ];
       service.getCities.mockResolvedValue(cities);
 
       const result = await controller.getCities();
@@ -42,7 +49,12 @@ describe('CitiesController', () => {
   describe('getCityByIdOrSlug', () => {
     it('returns city detail when found by id', async () => {
       const detail = {
-        city: { id: 1, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
+        city: {
+          id: 1,
+          slug: 'warszawa',
+          name: 'Warszawa',
+          nameDeclinated: 'Warszawie',
+        },
         screenings: {
           data: [],
           meta: { total: 0, page: 1, limit: 10, totalPages: 0 },

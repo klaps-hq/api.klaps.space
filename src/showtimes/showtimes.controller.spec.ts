@@ -28,7 +28,7 @@ describe('ShowtimesController', () => {
       .compile();
 
     controller = module.get(ShowtimesController);
-    service = module.get(ShowtimesService) as jest.Mocked<ShowtimesService>;
+    service = module.get(ShowtimesService);
   });
 
   describe('getShowtimes', () => {

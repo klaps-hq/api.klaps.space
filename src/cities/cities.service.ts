@@ -30,11 +30,14 @@ export class CitiesService {
     return cities.map(mapCity);
   }
 
-  async getCityByIdOrSlug(idOrSlug: string): Promise<CityDetailResponse | null> {
+  async getCityByIdOrSlug(
+    idOrSlug: string,
+  ): Promise<CityDetailResponse | null> {
     const numericId = Number(idOrSlug);
-    const condition = Number.isInteger(numericId) && numericId > 0
-      ? eq(schema.cities.id, numericId)
-      : eq(schema.cities.slug, idOrSlug);
+    const condition =
+      Number.isInteger(numericId) && numericId > 0
+        ? eq(schema.cities.id, numericId)
+        : eq(schema.cities.slug, idOrSlug);
 
     const city = await this.db.query.cities.findFirst({
       where: condition,
