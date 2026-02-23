@@ -31,6 +31,12 @@ interface MovieRow extends RowDataPacket {
   productionYear: number;
 }
 
+type DbConnection = Awaited<ReturnType<typeof createConnection>>;
+
+interface ColumnRow extends RowDataPacket {
+  Field: string;
+}
+
 const run = async () => {
   const connection = await createConnection(process.env.DATABASE_URL!);
 
@@ -46,11 +52,28 @@ const run = async () => {
   }
 };
 
+const hasColumn = async (
+  connection: DbConnection,
+  table: string,
+  column: string,
+): Promise<boolean> => {
+  const [rows] = await connection.execute<ColumnRow[]>(
+    `SHOW COLUMNS FROM \`${table}\` WHERE Field = ?`,
+    [column],
+  );
+  return rows.length > 0;
+};
+
 const backfillTable = async (
-  connection: Awaited<ReturnType<typeof createConnection>>,
+  connection: DbConnection,
   table: string,
   slugFn: (row: Row) => string,
 ) => {
+  if (!(await hasColumn(connection, table, 'slug'))) {
+    console.log(`  ${table}: skipped (missing slug column)`);
+    return;
+  }
+
   const [rows] = await connection.execute<NamedRow[]>(
     `SELECT id, name FROM \`${table}\` WHERE slug IS NULL OR slug = ''`,
   );
@@ -82,8 +105,13 @@ const backfillTable = async (
 };
 
 const backfillMovies = async (
-  connection: Awaited<ReturnType<typeof createConnection>>,
+  connection: DbConnection,
 ) => {
+  if (!(await hasColumn(connection, 'movies', 'slug'))) {
+    console.log('  movies: skipped (missing slug column)');
+    return;
+  }
+
   const [rows] = await connection.execute<MovieRow[]>(
     `SELECT id, title, productionYear FROM movies WHERE slug IS NULL OR slug = ''`,
   );
