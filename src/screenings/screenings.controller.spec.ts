@@ -24,7 +24,7 @@ describe('ScreeningsController', () => {
       .compile();
 
     controller = module.get(ScreeningsController);
-    service = module.get(ScreeningsService) as jest.Mocked<ScreeningsService>;
+    service = module.get(ScreeningsService);
   });
 
   describe('getScreenings', () => {

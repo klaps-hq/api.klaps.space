@@ -21,7 +21,10 @@ describe('MoviesController', () => {
       controllers: [MoviesController],
       providers: [
         { provide: MoviesService, useValue: mockService },
-        { provide: CACHE_MANAGER, useValue: { get: jest.fn(), set: jest.fn() } },
+        {
+          provide: CACHE_MANAGER,
+          useValue: { get: jest.fn(), set: jest.fn() },
+        },
       ],
     })
       .overrideGuard(InternalApiKeyGuard)
@@ -29,7 +32,7 @@ describe('MoviesController', () => {
       .compile();
 
     controller = module.get(MoviesController);
-    service = module.get(MoviesService) as jest.Mocked<MoviesService>;
+    service = module.get(MoviesService);
   });
 
   describe('getMovies', () => {
@@ -72,9 +75,7 @@ describe('MoviesController', () => {
 
   describe('getMultiCityMovies', () => {
     it('delegates to service with limit', async () => {
-      const expected = [
-        { id: 1, title: 'Film', citiesCount: 3 },
-      ] as any;
+      const expected = [{ id: 1, title: 'Film', citiesCount: 3 }] as any;
       service.getMultiCityMovies.mockResolvedValue(expected);
 
       const result = await controller.getMultiCityMovies({ limit: 5 });

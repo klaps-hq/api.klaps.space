@@ -42,21 +42,36 @@ describe('CinemasService', () => {
           slug: 'kino-a',
           name: 'Kino A',
           street: 'ul. A',
-          city: { id: 10, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
+          city: {
+            id: 10,
+            slug: 'warszawa',
+            name: 'Warszawa',
+            nameDeclinated: 'Warszawie',
+          },
         },
         {
           id: 2,
           slug: 'kino-b',
           name: 'Kino B',
           street: 'ul. B',
-          city: { id: 10, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
+          city: {
+            id: 10,
+            slug: 'warszawa',
+            name: 'Warszawa',
+            nameDeclinated: 'Warszawie',
+          },
         },
         {
           id: 3,
           slug: 'kino-c',
           name: 'Kino C',
           street: null,
-          city: { id: 11, slug: 'krakow', name: 'Kraków', nameDeclinated: 'Krakowie' },
+          city: {
+            id: 11,
+            slug: 'krakow',
+            name: 'Kraków',
+            nameDeclinated: 'Krakowie',
+          },
         },
       ]);
 
@@ -88,7 +103,12 @@ describe('CinemasService', () => {
         url: 'https://filmweb.pl/cinema/1',
         latitude: 52.2,
         longitude: 21.0,
-        city: { id: 10, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
+        city: {
+          id: 10,
+          slug: 'warszawa',
+          name: 'Warszawa',
+          nameDeclinated: 'Warszawie',
+        },
       });
 
       const result = await service.getCinemaByIdOrSlug('1');

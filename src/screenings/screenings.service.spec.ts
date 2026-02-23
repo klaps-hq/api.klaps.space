@@ -37,7 +37,12 @@ describe('ScreeningsService', () => {
           url: '',
           latitude: null,
           longitude: null,
-          city: { id: 1, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
+          city: {
+            id: 1,
+            slug: 'warszawa',
+            name: 'Warszawa',
+            nameDeclinated: 'Warszawie',
+          },
         },
       },
     ],

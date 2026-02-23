@@ -1,5 +1,10 @@
 import 'dotenv/config';
 import { createConnection } from 'mysql2/promise';
+import type { RowDataPacket } from 'mysql2';
+
+interface MigrationRow extends RowDataPacket {
+  hash: string;
+}
 
 const run = async () => {
   const connection = await createConnection(process.env.DATABASE_URL!);
@@ -10,7 +15,7 @@ const run = async () => {
       );
       console.log(`${table}.slug: ${rows.length > 0 ? 'EXISTS' : 'MISSING'}`);
     }
-    const [mig] = await connection.execute<any[]>(
+    const [mig] = await connection.execute<MigrationRow[]>(
       'SELECT hash FROM `__drizzle_migrations`',
     );
     console.log(`migrations recorded: ${mig.length}`);
@@ -19,7 +24,8 @@ const run = async () => {
   }
 };
 
-run().catch((e) => {
-  console.error(e.message);
+run().catch((e: unknown) => {
+  const message = e instanceof Error ? e.message : String(e);
+  console.error(message);
   process.exit(1);
 });

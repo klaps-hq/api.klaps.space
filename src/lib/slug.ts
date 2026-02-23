@@ -46,8 +46,7 @@ export const uniqueSlug = (
   base: string,
   existing: Set<string> | string[],
 ): string => {
-  const taken =
-    existing instanceof Set ? existing : new Set<string>(existing);
+  const taken = existing instanceof Set ? existing : new Set<string>(existing);
   if (!taken.has(base)) return base;
   let i = 2;
   while (taken.has(`${base}-${i}`)) i++;

@@ -101,7 +101,15 @@ describe('MoviesService', () => {
   describe('getMultiCityMovies', () => {
     it('returns movies from chain', async () => {
       const expected = [
-        { id: 1, title: 'Film', productionYear: 2024, posterUrl: null, description: 'Desc', duration: 120, citiesCount: 3 },
+        {
+          id: 1,
+          title: 'Film',
+          productionYear: 2024,
+          posterUrl: null,
+          description: 'Desc',
+          duration: 120,
+          citiesCount: 3,
+        },
       ];
       const mockChain = {
         from: jest.fn().mockReturnThis(),

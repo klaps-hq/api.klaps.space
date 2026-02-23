@@ -25,13 +25,16 @@ describe('HealthController', () => {
     }).compile();
 
     controller = module.get(HealthController);
-    healthCheckService = module.get(HealthCheckService) as jest.Mocked<HealthCheckService>;
-    drizzleHealth = module.get(DrizzleHealthIndicator) as jest.Mocked<DrizzleHealthIndicator>;
+    healthCheckService = module.get(HealthCheckService);
+    drizzleHealth = module.get(DrizzleHealthIndicator);
   });
 
   describe('check', () => {
     it('delegates to HealthCheckService', async () => {
-      const expected = { status: 'ok', details: { database: { status: 'up' } } };
+      const expected = {
+        status: 'ok',
+        details: { database: { status: 'up' } },
+      };
       healthCheckService.check.mockResolvedValue(expected as any);
 
       const result = await controller.check();
