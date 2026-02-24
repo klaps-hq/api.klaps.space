@@ -14,7 +14,7 @@ Thanks for your interest in contributing! This document outlines the process for
 2. Clone your fork:
 
 ```bash
-git clone https://github.com/biplo12/klaps-nest-backend.git
+git clone https://github.com/klaps-hq/api.klaps.space.git
 cd klaps-nest-backend
 ```
 

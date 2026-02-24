@@ -2,7 +2,7 @@
   "name": "klaps-backend",
   "version": "0.0.1",
   "description": "REST API powering Klaps — the Polish nationwide guide to special screenings, classic cinema, and retrospectives",
-  "author": "Biplo12",
+  "author": "Robert Siński",
   "private": true,
   "license": "MIT",
   "engines": {
