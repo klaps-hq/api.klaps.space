@@ -271,8 +271,8 @@ Klaps is an open-source project. The source code is publicly available on GitHub
 
 | Component              | Repository                                                                             |
 | ---------------------- | -------------------------------------------------------------------------------------- |
-| **Frontend** (Next.js) | [github.com/Biplo12/klaps](https://github.com/Biplo12/klaps)                           |
-| **Backend** (NestJS)   | [github.com/Biplo12/klaps-nest-backend](https://github.com/Biplo12/klaps-nest-backend) |
+| **Frontend** (Next.js) | [github.com/klaps-hq/klaps](https://github.com/klaps-hq/klaps.space)                   |
+| **Backend** (NestJS)   | [github.com/klaps-hq/api.klaps.space](https://github.com/klaps-hq/api.klaps.space)     |
 
 > The scrapper responsible for collecting screening data is not publicly available for legal reasons.
 
