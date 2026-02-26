@@ -1,0 +1,78 @@
+name: PR Conventions
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches:
+      - dev
+      - main
+
+concurrency:
+  group: pr-conventions-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  pr-title-conventional:
+    name: PR Title (Conventional)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title
+        shell: bash
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          regex='^(feat|fix|chore|docs|refactor|test|ci|perf|revert)(\([a-z0-9._/-]+\))?(!)?: .+'
+
+          if [[ "$PR_TITLE" =~ $regex ]]; then
+            echo "PR title is conventional: $PR_TITLE"
+            exit 0
+          fi
+
+          echo "PR title is not conventional: $PR_TITLE"
+          echo "Expected format: <type>(optional-scope)!: <description>"
+          exit 1
+
+  commit-messages-conventional:
+    name: Commit Messages (Conventional)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages in BASE..HEAD
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          regex='^(feat|fix|chore|docs|refactor|test|ci|perf|revert)(\([a-z0-9._/-]+\))?(!)?: .+'
+          invalid=0
+
+          while IFS= read -r subject; do
+            [ -z "$subject" ] && continue
+
+            # Defensive guard in addition to --no-merges.
+            if [[ "$subject" == Merge\ * ]]; then
+              continue
+            fi
+
+            if [[ ! "$subject" =~ $regex ]]; then
+              echo "Invalid commit subject: $subject"
+              invalid=1
+            fi
+          done < <(git log --no-merges --format=%s "${BASE_SHA}..${HEAD_SHA}")
+
+          if [ "$invalid" -ne 0 ]; then
+            echo "One or more commit messages are not conventional."
+            exit 1
+          fi
+
+          echo "All commit messages are conventional."
