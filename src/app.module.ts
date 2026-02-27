@@ -10,6 +10,7 @@ import { MoviesModule } from './movies/movies.module';
 import { GenresModule } from './genres/genres.module';
 import { ScreeningsModule } from './screenings/screenings.module';
 import { CinemasModule } from './cinemas/cinemas.module';
+import { InstagramModule } from './instagram/instagram.module';
 import { ShowtimesModule } from './showtimes/showtimes.module';
 import { InternalBypassThrottlerGuard } from './guards/internal-bypass-throttler.guard';
 import { AppLoggerModule } from './logger/logger.module';
@@ -29,6 +30,7 @@ import { HealthModule } from './health/health.module';
     CitiesModule,
     CinemasModule,
     GenresModule,
+    InstagramModule,
     ScreeningsModule,
     ShowtimesModule,
   ],
