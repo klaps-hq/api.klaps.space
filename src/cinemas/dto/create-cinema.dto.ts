@@ -23,6 +23,11 @@ export class CreateCinemaDto {
   @MaxLength(255)
   name: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  slug?: string;
+
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)

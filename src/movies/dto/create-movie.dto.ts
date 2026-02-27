@@ -48,6 +48,11 @@ export class GenreInsertDto {
   @IsNotEmpty()
   @MaxLength(255)
   name: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  slug?: string;
 }
 
 /**
@@ -67,6 +72,11 @@ export class CreateMovieDto {
   @IsNotEmpty()
   @MaxLength(255)
   title: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  slug?: string;
 
   @IsString()
   @IsNotEmpty()
