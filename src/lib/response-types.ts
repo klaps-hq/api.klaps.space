@@ -166,3 +166,29 @@ export type PaginatedResponse<T> = {
     totalPages: number;
   };
 };
+
+/** Instagram candidate: publish decision with movie + screening. */
+export type InstagramCandidatePublishResponse = {
+  publish: true;
+  date: string;
+  score: number;
+  reason: 'HIGH_QUALITY_CANDIDATE';
+  movie: MovieHeroResponse;
+  screening: ScreeningResponse;
+};
+
+/** Instagram candidate: skip decision with diagnostics. */
+export type InstagramCandidateSkipResponse = {
+  publish: false;
+  date: string;
+  reason: 'NO_HIGH_QUALITY_CANDIDATE' | 'ALREADY_PUBLISHED_TODAY';
+  meta: {
+    candidatesChecked: number;
+    bestScore: number | null;
+    minScore: number;
+  };
+};
+
+export type InstagramCandidateResponse =
+  | InstagramCandidatePublishResponse
+  | InstagramCandidateSkipResponse;

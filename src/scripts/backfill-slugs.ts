@@ -104,9 +104,7 @@ const backfillTable = async (
   console.log(`  ${table}: ${updated} row(s) updated`);
 };
 
-const backfillMovies = async (
-  connection: DbConnection,
-) => {
+const backfillMovies = async (connection: DbConnection) => {
   if (!(await hasColumn(connection, 'movies', 'slug'))) {
     console.log('  movies: skipped (missing slug column)');
     return;

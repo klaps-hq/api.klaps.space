@@ -4,6 +4,7 @@ export { citiesTable as cities } from './cities.schema';
 export { countriesTable as countries } from './countries.schema';
 export { directorsTable as directors } from './directors.schema';
 export { genresTable as genres } from './genres.schema';
+export { instagramPostsTable as instagram_posts } from './instagram_posts.schema';
 export { moviesTable as movies } from './movies.schema';
 export { moviesActorsTable as movies_actors } from './movies_actors.schema';
 export { moviesCountriesTable as movies_countries } from './movies_countries.schema';

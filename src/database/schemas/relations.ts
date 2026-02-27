@@ -2,6 +2,7 @@ import { relations } from 'drizzle-orm/relations';
 import { citiesTable } from './cities.schema';
 import { cinemasTable } from './cinemas.schema';
 import { actorsTable } from './actors.schema';
+import { instagramPostsTable } from './instagram_posts.schema';
 import { moviesActorsTable } from './movies_actors.schema';
 import { moviesTable } from './movies.schema';
 import { countriesTable } from './countries.schema';
@@ -179,6 +180,20 @@ export const processedShowtimesRelations = relations(
     showtime: one(showtimesTable, {
       fields: [processedShowtimesTable.showtimeId],
       references: [showtimesTable.id],
+    }),
+  }),
+);
+
+export const instagramPostsRelations = relations(
+  instagramPostsTable,
+  ({ one }) => ({
+    movie: one(moviesTable, {
+      fields: [instagramPostsTable.movieId],
+      references: [moviesTable.id],
+    }),
+    screening: one(screeningsTable, {
+      fields: [instagramPostsTable.screeningId],
+      references: [screeningsTable.id],
     }),
   }),
 );
