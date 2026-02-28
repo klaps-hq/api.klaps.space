@@ -14,6 +14,15 @@ describe('CitiesService', () => {
       onDuplicateKeyUpdate: jest.fn().mockResolvedValue(undefined),
     };
 
+    const countRows: Array<{ count: number }> = [];
+    const cityRows: Array<{
+      id: number;
+      slug: string;
+      name: string;
+      nameDeclinated: string;
+      numberOfCinemas: number;
+    }> = [];
+
     mockDb = {
       query: {
         cities: {
@@ -23,10 +32,19 @@ describe('CitiesService', () => {
       },
       insert: jest.fn().mockReturnValue(mockInsertChain),
       select: jest.fn().mockImplementation(() => ({
-        from: jest.fn().mockImplementation(() => {
+        from: jest.fn().mockImplementation((table: unknown) => {
+          if (table === 'cinemas') {
+            return {
+              where: jest.fn().mockResolvedValue(countRows),
+            };
+          }
+
           const rows: Array<{ slug: string }> = [];
           return {
             where: jest.fn().mockResolvedValue(rows),
+            innerJoin: jest.fn().mockReturnValue({
+              groupBy: jest.fn().mockResolvedValue(cityRows),
+            }),
             then: (resolve: (value: Array<{ slug: string }>) => unknown) =>
               Promise.resolve(rows).then(resolve),
           };
@@ -51,24 +69,28 @@ describe('CitiesService', () => {
 
   describe('getCities', () => {
     it('returns mapped cities', async () => {
-      mockDb.query.cities.findMany.mockResolvedValue([
-        {
-          id: 1,
-          slug: 'warszawa',
-          name: 'Warszawa',
-          nameDeclinated: 'Warszawie',
-          sourceId: 10,
-          areacode: '22',
-        },
-        {
-          id: 2,
-          slug: 'krakow',
-          name: 'Kraków',
-          nameDeclinated: 'Krakowie',
-          sourceId: 11,
-          areacode: '12',
-        },
-      ]);
+      mockDb.select.mockImplementation(() => ({
+        from: jest.fn().mockReturnValue({
+          innerJoin: jest.fn().mockReturnValue({
+            groupBy: jest.fn().mockResolvedValue([
+              {
+                id: 1,
+                slug: 'warszawa',
+                name: 'Warszawa',
+                nameDeclinated: 'Warszawie',
+                numberOfCinemas: 4,
+              },
+              {
+                id: 2,
+                slug: 'krakow',
+                name: 'Kraków',
+                nameDeclinated: 'Krakowie',
+                numberOfCinemas: 2,
+              },
+            ]),
+          }),
+        }),
+      }));
 
       const result = await service.getCities();
 
@@ -78,13 +100,27 @@ describe('CitiesService', () => {
           slug: 'warszawa',
           name: 'Warszawa',
           nameDeclinated: 'Warszawie',
+          numberOfCinemas: 4,
         },
-        { id: 2, slug: 'krakow', name: 'Kraków', nameDeclinated: 'Krakowie' },
+        {
+          id: 2,
+          slug: 'krakow',
+          name: 'Kraków',
+          nameDeclinated: 'Krakowie',
+          numberOfCinemas: 2,
+        },
       ]);
     });
 
     it('returns empty array when no cities exist', async () => {
-      mockDb.query.cities.findMany.mockResolvedValue([]);
+      mockDb.select.mockImplementation(() => ({
+        from: jest.fn().mockReturnValue({
+          innerJoin: jest.fn().mockReturnValue({
+            groupBy: jest.fn().mockResolvedValue([]),
+          }),
+        }),
+      }));
+
       expect(await service.getCities()).toEqual([]);
     });
   });
@@ -96,7 +132,13 @@ describe('CitiesService', () => {
         slug: 'warszawa',
         name: 'Warszawa',
         nameDeclinated: 'Warszawie',
+        sourceId: 10,
       });
+      mockDb.select.mockImplementation(() => ({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([{ count: 2 }]),
+        }),
+      }));
       mockScreeningsService.getScreenings.mockResolvedValue({
         data: [],
         meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
@@ -110,6 +152,7 @@ describe('CitiesService', () => {
           slug: 'warszawa',
           name: 'Warszawa',
           nameDeclinated: 'Warszawie',
+          numberOfCinemas: 2,
         },
         screenings: {
           data: [],
