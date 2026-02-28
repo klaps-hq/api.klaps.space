@@ -4,6 +4,7 @@ export type CityResponse = {
   slug: string;
   name: string;
   nameDeclinated: string;
+  numberOfCinemas?: number;
 };
 
 /** Clean genre response -- no sourceId or timestamps. */
