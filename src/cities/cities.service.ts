@@ -23,11 +23,30 @@ export class CitiesService {
   ) {}
 
   /**
-   * Returns all cities, stripped of DB internals (sourceId, areacode).
+   * Returns all cities with at least one cinema. Returned with numberOfCinemas count.
    */
   async getCities(): Promise<CityResponse[]> {
-    const cities = await this.db.query.cities.findMany();
-    return cities.map(mapCity);
+    const rows = await this.db
+      .select({
+        id: schema.cities.id,
+        slug: schema.cities.slug,
+        name: schema.cities.name,
+        nameDeclinated: schema.cities.nameDeclinated,
+        numberOfCinemas: sql<number>`count(${schema.cinemas.id})`,
+      })
+      .from(schema.cities)
+      .innerJoin(
+        schema.cinemas,
+        eq(schema.cinemas.sourceCityId, schema.cities.sourceId),
+      )
+      .groupBy(
+        schema.cities.id,
+        schema.cities.slug,
+        schema.cities.name,
+        schema.cities.nameDeclinated,
+      );
+
+    return rows.map((row) => mapCity(row, row.numberOfCinemas));
   }
 
   async getCityByIdOrSlug(
@@ -49,8 +68,13 @@ export class CitiesService {
       cityId: city.id,
     });
 
+    const [{ count: numberOfCinemas }] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.cinemas)
+      .where(eq(schema.cinemas.sourceCityId, city.sourceId));
+
     return {
-      city: mapCity(city),
+      city: mapCity(city, numberOfCinemas),
       screenings,
     };
   }
@@ -102,7 +126,6 @@ export class CitiesService {
           .values(values)
           .onDuplicateKeyUpdate({
             set: {
-              slug: sql`VALUES(${schema.cities.slug})`,
               name: sql`VALUES(${schema.cities.name})`,
               nameDeclinated: sql`VALUES(${schema.cities.nameDeclinated})`,
               areacode: sql`VALUES(${schema.cities.areacode})`,

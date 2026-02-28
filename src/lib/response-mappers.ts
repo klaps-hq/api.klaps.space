@@ -13,20 +13,18 @@ import type {
   ScreeningResponse,
   ScreeningGroupResponse,
 } from './response-types';
-
 // ── City ────────────────────────────────────────────────────
 
 /** Strips sourceId and areacode from a city row. */
-export const mapCity = (city: {
-  id: number;
-  slug: string;
-  name: string;
-  nameDeclinated: string;
-}): CityResponse => ({
+export const mapCity = (
+  city: { id: number; slug: string; name: string; nameDeclinated: string },
+  numberOfCinemas?: number,
+): CityResponse => ({
   id: city.id,
   slug: city.slug,
   name: city.name,
   nameDeclinated: city.nameDeclinated,
+  ...(numberOfCinemas !== undefined && { numberOfCinemas }),
 });
 
 // ── Genre ───────────────────────────────────────────────────
