@@ -174,6 +174,44 @@ describe('SocialService', () => {
       }
     });
 
+    it('uses custom minScore without writing cache', async () => {
+      const weakMovie = makeMovie({
+        productionYear: 1995,
+        movies_genres: [{ genre: { id: 1, slug: 'drama', name: 'Drama' } }],
+        screenings: [
+          {
+            id: 200,
+            url: 'https://tickets.pl/200',
+            date: new Date('2026-03-07T20:00:00Z'),
+            isDubbing: true,
+            isSubtitled: false,
+            cinema: {
+              id: 5,
+              slug: 'kino-a',
+              name: 'Kino A',
+              street: null,
+              url: '',
+              latitude: null,
+              longitude: null,
+              city: {
+                id: 1,
+                slug: 'warszawa',
+                name: 'Warszawa',
+                nameDeclinated: 'Warszawie',
+              },
+            },
+          },
+        ],
+      });
+      mockDb.query.movies.findMany.mockResolvedValue([weakMovie]);
+
+      const result = await service.getCandidate(BASE_DATE, 20);
+
+      expect(result.publish).toBe(true);
+      expect(mockDb.query.socials_posts.findFirst).not.toHaveBeenCalled();
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
     it('excludes movies in hard cooldown', async () => {
       mockDb.query.socials_posts.findMany.mockResolvedValue([
         { movieId: 1, postDate: '2026-02-20' },
