@@ -30,11 +30,18 @@ export class SocialsService {
     private readonly db: MySql2Database<FullSchema>,
   ) {}
 
-  async getCandidate(dateParam?: string): Promise<SocialsCandidateResponse> {
+  async getCandidate(
+    dateParam?: string,
+    minScoreParam?: number,
+  ): Promise<SocialsCandidateResponse> {
     const date = dateParam ?? getTodayInPoland();
+    const minScore = minScoreParam ?? MIN_SCORE;
+    const shouldUseCache = minScoreParam == null;
 
-    const cached = await this.findCachedDecision(date);
-    if (cached) return cached;
+    if (shouldUseCache) {
+      const cached = await this.findCachedDecision(date);
+      if (cached) return cached;
+    }
 
     const windowStart = this.addDays(date, SCREENING_WINDOW_MIN_DAYS);
     const windowEnd = this.addDays(date, SCREENING_WINDOW_MAX_DAYS);
@@ -93,18 +100,20 @@ export class SocialsService {
       }
     }
 
-    if (best && best.score >= MIN_SCORE) {
+    if (best && best.score >= minScore) {
       const movie = candidates[best.movieIdx];
       const screening = movie.screenings[best.screeningIdx];
 
-      await this.persistDecision({
-        postDate: date,
-        movieId: best.movieId,
-        screeningId: best.screeningId,
-        score: best.score,
-        published: true,
-        reason: 'HIGH_QUALITY_CANDIDATE',
-      });
+      if (shouldUseCache) {
+        await this.persistDecision({
+          postDate: date,
+          movieId: best.movieId,
+          screeningId: best.screeningId,
+          score: best.score,
+          published: true,
+          reason: 'HIGH_QUALITY_CANDIDATE',
+        });
+      }
 
       return {
         publish: true,
@@ -116,14 +125,16 @@ export class SocialsService {
       };
     }
 
-    await this.persistDecision({
-      postDate: date,
-      movieId: null,
-      screeningId: null,
-      score: best?.score ?? 0,
-      published: false,
-      reason: 'NO_HIGH_QUALITY_CANDIDATE',
-    });
+    if (shouldUseCache) {
+      await this.persistDecision({
+        postDate: date,
+        movieId: null,
+        screeningId: null,
+        score: best?.score ?? 0,
+        published: false,
+        reason: 'NO_HIGH_QUALITY_CANDIDATE',
+      });
+    }
 
     return {
       publish: false,
@@ -132,7 +143,7 @@ export class SocialsService {
       meta: {
         candidatesChecked: candidates.length,
         bestScore: best?.score ?? null,
-        minScore: MIN_SCORE,
+        minScore,
       },
     };
   }

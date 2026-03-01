@@ -13,6 +13,6 @@ export class SocialsController {
   getCandidate(
     @Query() query: GetSocialCandidateQueryDto,
   ): Promise<SocialsCandidateResponse> {
-    return this.socialsService.getCandidate(query.date);
+    return this.socialsService.getCandidate(query.date, query.minScore);
   }
 }

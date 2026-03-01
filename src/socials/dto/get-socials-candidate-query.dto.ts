@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsDateString, IsOptional, Matches } from 'class-validator';
+import { IsDateString, IsInt, IsOptional, Matches, Min } from 'class-validator';
 
 export class GetSocialCandidateQueryDto {
   @IsOptional()
@@ -12,4 +12,12 @@ export class GetSocialCandidateQueryDto {
     message: 'date must be in YYYY-MM-DD format',
   })
   date?: string;
+
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    value === undefined ? undefined : Number(value),
+  )
+  @IsInt()
+  @Min(0)
+  minScore?: number;
 }
