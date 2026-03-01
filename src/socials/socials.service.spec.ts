@@ -3,6 +3,7 @@ import { SocialsService } from './socials.service';
 import { DRIZZLE } from '../database/constants';
 
 const BASE_DATE = '2026-03-01';
+const PLATFORM = 'instagram';
 
 const makeMovie = (overrides: Record<string, unknown> = {}) => ({
   id: 1,
@@ -101,7 +102,7 @@ describe('SocialService', () => {
         makeMovie().screenings[0],
       );
 
-      const result = await service.getCandidate(BASE_DATE);
+      const result = await service.getCandidate(BASE_DATE, undefined, PLATFORM);
 
       expect(result.publish).toBe(true);
       expect(result.date).toBe(BASE_DATE);
@@ -111,7 +112,7 @@ describe('SocialService', () => {
     it('returns publish=true for a high-scoring classic', async () => {
       mockDb.query.movies.findMany.mockResolvedValue([makeMovie()]);
 
-      const result = await service.getCandidate(BASE_DATE);
+      const result = await service.getCandidate(BASE_DATE, undefined, PLATFORM);
 
       expect(result.publish).toBe(true);
       if (result.publish) {
@@ -125,7 +126,7 @@ describe('SocialService', () => {
     it('returns publish=false when no classic movies have screenings', async () => {
       mockDb.query.movies.findMany.mockResolvedValue([]);
 
-      const result = await service.getCandidate(BASE_DATE);
+      const result = await service.getCandidate(BASE_DATE, undefined, PLATFORM);
 
       expect(result.publish).toBe(false);
       if (!result.publish) {
@@ -165,7 +166,7 @@ describe('SocialService', () => {
       });
       mockDb.query.movies.findMany.mockResolvedValue([weakMovie]);
 
-      const result = await service.getCandidate(BASE_DATE);
+      const result = await service.getCandidate(BASE_DATE, undefined, PLATFORM);
 
       expect(result.publish).toBe(false);
       if (!result.publish) {
@@ -205,11 +206,30 @@ describe('SocialService', () => {
       });
       mockDb.query.movies.findMany.mockResolvedValue([weakMovie]);
 
-      const result = await service.getCandidate(BASE_DATE, 20);
+      const result = await service.getCandidate(BASE_DATE, 20, PLATFORM);
 
       expect(result.publish).toBe(true);
       expect(mockDb.query.socials_posts.findFirst).not.toHaveBeenCalled();
       expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('blocks screening already published on selected platform', async () => {
+      mockDb.query.socials_posts.findMany
+        .mockResolvedValueOnce([]) // cooldown query
+        .mockResolvedValueOnce([{ screeningId: 100 }]); // published screenings query
+      mockDb.query.movies.findMany.mockResolvedValue([makeMovie()]);
+
+      const result = await service.getCandidate(
+        BASE_DATE,
+        undefined,
+        PLATFORM,
+      );
+
+      expect(result.publish).toBe(false);
+      if (!result.publish) {
+        expect(result.meta.candidatesChecked).toBe(1);
+        expect(result.meta.bestScore).toBeNull();
+      }
     });
 
     it('excludes movies in hard cooldown', async () => {
@@ -218,7 +238,7 @@ describe('SocialService', () => {
       ]);
       mockDb.query.movies.findMany.mockResolvedValue([makeMovie()]);
 
-      const result = await service.getCandidate(BASE_DATE);
+      const result = await service.getCandidate(BASE_DATE, undefined, PLATFORM);
 
       expect(result.publish).toBe(false);
       if (!result.publish) {
@@ -240,7 +260,7 @@ describe('SocialService', () => {
       });
       mockDb.query.movies.findMany.mockResolvedValue([deepClassic, classic90s]);
 
-      const result = await service.getCandidate(BASE_DATE);
+      const result = await service.getCandidate(BASE_DATE, undefined, PLATFORM);
 
       expect(result.publish).toBe(true);
       if (result.publish) {
