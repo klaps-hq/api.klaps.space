@@ -1,5 +1,12 @@
 import { Transform } from 'class-transformer';
-import { IsDateString, IsInt, IsOptional, Matches, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Min,
+} from 'class-validator';
 
 export class GetSocialCandidateQueryDto {
   @IsOptional()
@@ -20,4 +27,14 @@ export class GetSocialCandidateQueryDto {
   @IsInt()
   @Min(0)
   minScore?: number;
+
+  @IsString()
+  @Transform(({ value }: { value: unknown }) =>
+    String(value).trim().toLowerCase(),
+  )
+  @Matches(/^[a-z0-9_-]{2,30}$/, {
+    message:
+      'platform must be 2-30 chars and contain only lowercase letters, digits, "_" or "-"',
+  })
+  platform!: string;
 }

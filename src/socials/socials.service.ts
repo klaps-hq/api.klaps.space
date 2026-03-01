@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import { and, eq, gte, isNotNull, lt, lte, ne } from 'drizzle-orm';
 import { DRIZZLE } from '../database/constants';
@@ -33,13 +33,19 @@ export class SocialsService {
   async getCandidate(
     dateParam?: string,
     minScoreParam?: number,
+    platformParam?: string,
   ): Promise<SocialsCandidateResponse> {
+    if (!platformParam) {
+      throw new BadRequestException('platform is required');
+    }
+
     const date = dateParam ?? getTodayInPoland();
     const minScore = minScoreParam ?? MIN_SCORE;
+    const platform = platformParam;
     const shouldUseCache = minScoreParam == null;
 
     if (shouldUseCache) {
-      const cached = await this.findCachedDecision(date);
+      const cached = await this.findCachedDecision(date, platform);
       if (cached) return cached;
     }
 
@@ -47,8 +53,12 @@ export class SocialsService {
     const windowEnd = this.addDays(date, SCREENING_WINDOW_MAX_DAYS);
     windowEnd.setHours(23, 59, 59, 999);
 
-    const { hardCooldownIds, softCooldownIds } =
-      await this.getCooldownMovieIds(date);
+    const { hardCooldownIds, softCooldownIds } = await this.getCooldownMovieIds(
+      date,
+      platform,
+    );
+    const publishedScreeningIds =
+      await this.getPublishedScreeningIdsForPlatform(platform);
 
     const movies = await this.db.query.movies.findMany({
       where: and(
@@ -82,6 +92,7 @@ export class SocialsService {
       const movie = candidates[mi];
       for (let si = 0; si < movie.screenings.length; si++) {
         const screening = movie.screenings[si];
+        if (publishedScreeningIds.has(screening.id)) continue;
         const score = this.scoreCandidate(
           movie,
           screening,
@@ -107,6 +118,7 @@ export class SocialsService {
       if (shouldUseCache) {
         await this.persistDecision({
           postDate: date,
+          platform,
           movieId: best.movieId,
           screeningId: best.screeningId,
           score: best.score,
@@ -128,6 +140,7 @@ export class SocialsService {
     if (shouldUseCache) {
       await this.persistDecision({
         postDate: date,
+        platform,
         movieId: null,
         screeningId: null,
         score: best?.score ?? 0,
@@ -209,9 +222,13 @@ export class SocialsService {
 
   private async findCachedDecision(
     date: string,
+    platform: string,
   ): Promise<SocialsCandidateResponse | null> {
     const row = await this.db.query.socials_posts.findFirst({
-      where: eq(schema.socials_posts.postDate, date),
+      where: and(
+        eq(schema.socials_posts.postDate, date),
+        eq(schema.socials_posts.platform, platform),
+      ),
     });
     if (!row) return null;
 
@@ -250,7 +267,10 @@ export class SocialsService {
 
   // ── Cooldown ───────────────────────────────────────────────
 
-  private async getCooldownMovieIds(date: string): Promise<{
+  private async getCooldownMovieIds(
+    date: string,
+    platform: string,
+  ): Promise<{
     hardCooldownIds: Set<number>;
     softCooldownIds: Set<number>;
   }> {
@@ -262,6 +282,7 @@ export class SocialsService {
       where: and(
         gte(schema.socials_posts.postDate, lookbackStart),
         eq(schema.socials_posts.published, true),
+        eq(schema.socials_posts.platform, platform),
       ),
       columns: { movieId: true, postDate: true },
     });
@@ -290,10 +311,31 @@ export class SocialsService {
     return { hardCooldownIds, softCooldownIds };
   }
 
+  private async getPublishedScreeningIdsForPlatform(
+    platform: string,
+  ): Promise<Set<number>> {
+    const posts = await this.db.query.socials_posts.findMany({
+      where: and(
+        eq(schema.socials_posts.platform, platform),
+        eq(schema.socials_posts.published, true),
+      ),
+      columns: { screeningId: true },
+    });
+
+    const screeningIds = new Set<number>();
+    for (const post of posts) {
+      if (post.screeningId != null) {
+        screeningIds.add(post.screeningId);
+      }
+    }
+    return screeningIds;
+  }
+
   // ── Persistence ────────────────────────────────────────────
 
   private async persistDecision(values: {
     postDate: string;
+    platform: string;
     movieId: number | null;
     screeningId: number | null;
     score: number;
