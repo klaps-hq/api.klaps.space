@@ -9,7 +9,7 @@ import {
 import { moviesTable } from './movies.schema';
 import { screeningsTable } from './screenings.schema';
 
-export const instagramPostsTable = mysqlTable('instagram_posts', {
+export const socialsPostsTable = mysqlTable('socials_posts', {
   id: int().primaryKey().autoincrement(),
   postDate: date({ mode: 'string' }).notNull().unique(),
   movieId: int().references(() => moviesTable.id),
@@ -20,5 +20,5 @@ export const instagramPostsTable = mysqlTable('instagram_posts', {
   createdAt: timestamp().notNull().defaultNow(),
 });
 
-export type InstagramPost = typeof instagramPostsTable.$inferSelect;
-export type NewInstagramPost = typeof instagramPostsTable.$inferInsert;
+export type SocialsPost = typeof socialsPostsTable.$inferSelect;
+export type NewSocialsPost = typeof socialsPostsTable.$inferInsert;

@@ -168,8 +168,8 @@ export type PaginatedResponse<T> = {
   };
 };
 
-/** Instagram candidate: publish decision with movie + screening. */
-export type InstagramCandidatePublishResponse = {
+/** Socials candidate: publish decision with movie + screening. */
+export type SocialsCandidatePublishResponse = {
   publish: true;
   date: string;
   score: number;
@@ -178,8 +178,8 @@ export type InstagramCandidatePublishResponse = {
   screening: ScreeningResponse;
 };
 
-/** Instagram candidate: skip decision with diagnostics. */
-export type InstagramCandidateSkipResponse = {
+/** Socials candidate: skip decision with diagnostics. */
+export type SocialsCandidateSkipResponse = {
   publish: false;
   date: string;
   reason: 'NO_HIGH_QUALITY_CANDIDATE' | 'ALREADY_PUBLISHED_TODAY';
@@ -190,6 +190,6 @@ export type InstagramCandidateSkipResponse = {
   };
 };
 
-export type InstagramCandidateResponse =
-  | InstagramCandidatePublishResponse
-  | InstagramCandidateSkipResponse;
+export type SocialsCandidateResponse =
+  | SocialsCandidatePublishResponse
+  | SocialsCandidateSkipResponse;

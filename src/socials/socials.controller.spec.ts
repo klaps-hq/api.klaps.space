@@ -1,30 +1,30 @@
 import { Test } from '@nestjs/testing';
-import { InstagramController } from './instagram.controller';
-import { InstagramService } from './instagram.service';
+import { SocialsController } from './socials.controller';
+import { SocialService } from './social.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
-import type { InstagramCandidateResponse } from '../lib/response-types';
+import type { SocialsCandidateResponse } from '../lib/response-types';
 
-describe('InstagramController', () => {
-  let controller: InstagramController;
-  let service: jest.Mocked<InstagramService>;
+describe('SocialsController', () => {
+  let controller: SocialsController;
+  let service: jest.Mocked<SocialService>;
 
   beforeEach(async () => {
     const mockService = { getCandidate: jest.fn() };
 
     const module = await Test.createTestingModule({
-      controllers: [InstagramController],
-      providers: [{ provide: InstagramService, useValue: mockService }],
+      controllers: [SocialsController],
+      providers: [{ provide: SocialService, useValue: mockService }],
     })
       .overrideGuard(InternalApiKeyGuard)
       .useValue({ canActivate: () => true })
       .compile();
 
-    controller = module.get(InstagramController);
-    service = module.get(InstagramService);
+    controller = module.get(SocialsController);
+    service = module.get(SocialService);
   });
 
   it('delegates date param to service', async () => {
-    const expected: InstagramCandidateResponse = {
+    const expected: SocialsCandidateResponse = {
       publish: false,
       date: '2026-03-01',
       reason: 'NO_HIGH_QUALITY_CANDIDATE',
@@ -39,7 +39,7 @@ describe('InstagramController', () => {
   });
 
   it('passes undefined when no date provided', async () => {
-    const expected: InstagramCandidateResponse = {
+    const expected: SocialsCandidateResponse = {
       publish: false,
       date: '2026-02-27',
       reason: 'NO_HIGH_QUALITY_CANDIDATE',

@@ -6,7 +6,7 @@ import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { getTodayInPoland } from '../lib/utils';
 import { mapMovieHero, mapScreening } from '../lib/response-mappers';
-import type { InstagramCandidateResponse } from '../lib/response-types';
+import type { SocialsCandidateResponse } from '../lib/response-types';
 import {
   CLASSIC_YEAR_THRESHOLD,
   DEEP_CLASSIC_YEAR_THRESHOLD,
@@ -19,18 +19,18 @@ import {
   MIN_SCORE,
   SCORE,
   type ScoredCandidate,
-} from './instagram.types';
+} from './socials.types';
 
 type FullSchema = typeof schema & typeof relations;
 
 @Injectable()
-export class InstagramService {
+export class SocialsService {
   constructor(
     @Inject(DRIZZLE)
     private readonly db: MySql2Database<FullSchema>,
   ) {}
 
-  async getCandidate(dateParam?: string): Promise<InstagramCandidateResponse> {
+  async getCandidate(dateParam?: string): Promise<SocialsCandidateResponse> {
     const date = dateParam ?? getTodayInPoland();
 
     const cached = await this.findCachedDecision(date);
@@ -198,9 +198,9 @@ export class InstagramService {
 
   private async findCachedDecision(
     date: string,
-  ): Promise<InstagramCandidateResponse | null> {
-    const row = await this.db.query.instagram_posts.findFirst({
-      where: eq(schema.instagram_posts.postDate, date),
+  ): Promise<SocialsCandidateResponse | null> {
+    const row = await this.db.query.socials_posts.findFirst({
+      where: eq(schema.socials_posts.postDate, date),
     });
     if (!row) return null;
 
@@ -247,10 +247,10 @@ export class InstagramService {
       this.addDays(date, -COOLDOWN_SOFT_END_DAYS),
     );
 
-    const recentPosts = await this.db.query.instagram_posts.findMany({
+    const recentPosts = await this.db.query.socials_posts.findMany({
       where: and(
-        gte(schema.instagram_posts.postDate, lookbackStart),
-        eq(schema.instagram_posts.published, true),
+        gte(schema.socials_posts.postDate, lookbackStart),
+        eq(schema.socials_posts.published, true),
       ),
       columns: { movieId: true, postDate: true },
     });
@@ -290,7 +290,7 @@ export class InstagramService {
     reason: string;
   }): Promise<void> {
     await this.db
-      .insert(schema.instagram_posts)
+      .insert(schema.socials_posts)
       .values(values)
       .onDuplicateKeyUpdate({ set: { postDate: values.postDate } });
   }

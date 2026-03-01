@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { InstagramService } from './instagram.service';
+import { SocialsService } from './socials.service';
 import { DRIZZLE } from '../database/constants';
 
 const BASE_DATE = '2026-03-01';
@@ -55,7 +55,7 @@ const makeMockDb = () => {
 
   return {
     query: {
-      instagram_posts: {
+      socials_posts: {
         findFirst: jest.fn().mockResolvedValue(null),
         findMany: jest.fn().mockResolvedValue([]),
       },
@@ -71,23 +71,23 @@ const makeMockDb = () => {
   };
 };
 
-describe('InstagramService', () => {
-  let service: InstagramService;
+describe('SocialService', () => {
+  let service: SocialsService;
   let mockDb: ReturnType<typeof makeMockDb>;
 
   beforeEach(async () => {
     mockDb = makeMockDb();
 
     const module = await Test.createTestingModule({
-      providers: [InstagramService, { provide: DRIZZLE, useValue: mockDb }],
+      providers: [SocialsService, { provide: DRIZZLE, useValue: mockDb }],
     }).compile();
 
-    service = module.get(InstagramService);
+    service = module.get(SocialsService);
   });
 
   describe('getCandidate', () => {
     it('returns cached decision when one exists (idempotent)', async () => {
-      mockDb.query.instagram_posts.findFirst.mockResolvedValue({
+      mockDb.query.socials_posts.findFirst.mockResolvedValue({
         id: 1,
         postDate: BASE_DATE,
         movieId: 1,
@@ -175,7 +175,7 @@ describe('InstagramService', () => {
     });
 
     it('excludes movies in hard cooldown', async () => {
-      mockDb.query.instagram_posts.findMany.mockResolvedValue([
+      mockDb.query.socials_posts.findMany.mockResolvedValue([
         { movieId: 1, postDate: '2026-02-20' },
       ]);
       mockDb.query.movies.findMany.mockResolvedValue([makeMovie()]);
