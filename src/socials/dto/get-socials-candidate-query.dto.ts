@@ -1,7 +1,7 @@
 import { Transform } from 'class-transformer';
 import { IsDateString, IsOptional, Matches } from 'class-validator';
 
-export class GetInstagramCandidateQueryDto {
+export class GetSocialCandidateQueryDto {
   @IsOptional()
   @IsDateString({})
   @Transform(
