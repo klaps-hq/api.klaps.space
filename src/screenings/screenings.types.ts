@@ -1,8 +1,4 @@
 import { screeningsTable } from '../database/schemas/screenings.schema';
-import { Cinema } from '../database/schemas/cinemas.schema';
-import { Movie } from 'src/movies/movies.types';
-import { Genre } from '../database/schemas/genres.schema';
-import { City } from '../database/schemas/cities.schema';
 
 /** Raw DB screening row (used by POST / scrapper). */
 export type Screening = typeof screeningsTable.$inferSelect;
@@ -20,8 +16,4 @@ export type GetScreeningsParams = {
   search?: string;
   page?: number;
   limit?: number;
-  cinema?: Cinema;
-  movie?: Movie;
-  genre?: Genre;
-  city?: City;
 };

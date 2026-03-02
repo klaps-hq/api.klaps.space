@@ -8,7 +8,7 @@ export const getDate = (dateParam?: string): string => {
 };
 
 export const getDatePlusDays = (dateParam: string, days: number): string => {
-  const date = new Date(dateParam);
-  date.setDate(date.getDate() + days);
-  return date.toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
+  const [y, m, d] = dateParam.split('-').map(Number);
+  const ms = Date.UTC(y, m - 1, d) + days * 86400000;
+  return new Date(ms).toISOString().slice(0, 10);
 };
