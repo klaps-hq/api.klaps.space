@@ -35,7 +35,7 @@ export class GetSocialCandidateQueryDto {
   )
   @IsInt()
   @Min(0)
-  @Max(100, { message: 'numberOfCandidates must be at most 100' })
+  @Max(100, { message: 'minScore must be at most 100' })
   minScore: number;
 
   @Transform(({ value }: { value: unknown }) =>

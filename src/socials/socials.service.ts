@@ -4,8 +4,8 @@ import { DRIZZLE } from '../database/constants';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import type { SocialsGetCandidateResponse } from '../lib/response-types';
-import { getDate } from '../lib/date';
-import { and, asc, eq, gte, inArray, lte } from 'drizzle-orm';
+import { getDate, getDatePlusDays } from '../lib/date';
+import { and, asc, eq, gte, inArray, lt, lte } from 'drizzle-orm';
 import {
   CLASSIC_YEAR_THRESHOLD,
   DEEP_CLASSIC_YEAR_THRESHOLD,
@@ -64,10 +64,12 @@ export class SocialsService {
       };
     }
 
+    const dateToNextDay = getDatePlusDays(dateTo, 1);
+
     const screenings = await this.db.query.screenings.findMany({
       where: and(
         gte(schema.screenings.date, new Date(dateFrom)),
-        lte(schema.screenings.date, new Date(dateTo)),
+        lt(schema.screenings.date, new Date(dateToNextDay)),
       ),
       orderBy: asc(schema.screenings.date),
       with: {
@@ -139,6 +141,16 @@ export class SocialsService {
         },
       });
 
+    const screeningById = new Map(
+      screeningsWithMovieAndCinema.map((s) => [s.id, s]),
+    );
+
+    const orderedCandidates = candidates
+      .map((c) => screeningById.get(c.screeningId))
+      .filter(
+        (s): s is (typeof screeningsWithMovieAndCinema)[number] => s != null,
+      );
+
     return {
       publish: hasHighQualityCandidate,
       date: {
@@ -153,7 +165,7 @@ export class SocialsService {
         bestScore,
         minScore,
       },
-      candidates: screeningsWithMovieAndCinema,
+      candidates: orderedCandidates,
     };
   }
 
