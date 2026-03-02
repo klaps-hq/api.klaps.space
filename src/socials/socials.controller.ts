@@ -8,6 +8,18 @@ import { SocialsService } from './socials.service';
 export class SocialsController {
   constructor(private readonly socialsService: SocialsService) {}
 
+  /**
+   * URL: /api/v1/socials/candidate
+   * Method: GET
+   * Body: GetSocialCandidateQueryDto
+   * Response: SocialsGetCandidateResponse
+   * @param query.dateFrom - The start date of the date range
+   * @param query.dateTo - The end date of the date range
+   * @param query.minScore - The minimum score of the candidates
+   * @param query.platform - The platform of the candidates
+   * @param query.numberOfCandidates - The number of candidates to return
+   * @returns SocialsGetCandidateResponse
+   */
   @Get('candidate')
   @UseGuards(InternalApiKeyGuard)
   getCandidate(
