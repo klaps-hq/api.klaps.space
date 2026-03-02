@@ -8,7 +8,6 @@ import { getDate } from '../lib/date';
 import { and, asc, eq, gte, inArray, lte } from 'drizzle-orm';
 import {
   CLASSIC_YEAR_THRESHOLD,
-  SOCIALS_CONTENT_TYPE,
   DEEP_CLASSIC_YEAR_THRESHOLD,
   SCORE,
 } from './socials.constants';
@@ -45,10 +44,6 @@ export class SocialsService {
         gte(schema.socials_posts.postDate, dateFrom),
         lte(schema.socials_posts.postDate, dateTo),
         eq(schema.socials_posts.platform, platform),
-        eq(
-          schema.socials_posts.contentType,
-          SOCIALS_CONTENT_TYPE.FEED_CANDIDATE,
-        ),
       ),
     });
 
