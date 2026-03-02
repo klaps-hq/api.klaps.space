@@ -2,49 +2,34 @@ import { Test } from '@nestjs/testing';
 import { SocialsService } from './socials.service';
 import { DRIZZLE } from '../database/constants';
 
-const BASE_DATE = '2026-03-01';
+const BASE_DATE_FROM = '2026-03-01';
+const BASE_DATE_TO = '2026-03-03';
 const PLATFORM = 'instagram';
+const MIN_SCORE = 60;
+const CADENCE_DAYS = 1;
 
-const makeMovie = (overrides: Record<string, unknown> = {}) => ({
-  id: 1,
-  slug: 'blade-runner-1982',
-  title: 'Blade Runner',
-  titleOriginal: 'Blade Runner',
-  description: 'A classic sci-fi film',
-  productionYear: 1982,
-  duration: 117,
-  language: 'en',
-  posterUrl: 'https://img.pl/poster.jpg',
-  backdropUrl: 'https://img.pl/backdrop.jpg',
-  url: 'https://filmweb.pl/blade-runner',
-  movies_genres: [
-    { genre: { id: 1, slug: 'sci-fi', name: 'Sci-Fi' } },
-    { genre: { id: 2, slug: 'drama', name: 'Drama' } },
-  ],
-  screenings: [
-    {
-      id: 100,
-      url: 'https://tickets.pl/100',
-      date: new Date('2026-03-03T19:00:00Z'),
-      isDubbing: false,
-      isSubtitled: true,
-      cinema: {
-        id: 5,
-        slug: 'kino-a',
-        name: 'Kino A',
-        street: null,
-        url: '',
-        latitude: null,
-        longitude: null,
-        city: {
-          id: 1,
-          slug: 'warszawa',
-          name: 'Warszawa',
-          nameDeclinated: 'Warszawie',
-        },
-      },
-    },
-  ],
+/** Screening shape returned by db.query.screenings.findMany with movie + cinema relations */
+const makeScreening = (overrides: Record<string, unknown> = {}) => ({
+  id: 100,
+  movieId: 1,
+  cinemaId: 5,
+  showtimeId: 1,
+  type: 'standard',
+  date: new Date('2026-03-03T19:00:00Z'),
+  isDubbing: false,
+  isSubtitled: true,
+  url: 'https://tickets.pl/100',
+  movie: {
+    id: 1,
+    productionYear: 1982,
+    movies_genres: [
+      { genre: { id: 1, slug: 'sci-fi', name: 'Sci-Fi' } },
+      { genre: { id: 2, slug: 'drama', name: 'Drama' } },
+    ],
+  },
+  cinema: {
+    city: { id: 1 },
+  },
   ...overrides,
 });
 
@@ -66,6 +51,7 @@ const makeMockDb = () => {
       },
       screenings: {
         findFirst: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
       },
     },
     insert: jest.fn().mockReturnValue(insertChain),
@@ -87,185 +73,209 @@ describe('SocialService', () => {
   });
 
   describe('getCandidate', () => {
-    it('returns cached decision when one exists (idempotent)', async () => {
-      mockDb.query.socials_posts.findFirst.mockResolvedValue({
-        id: 1,
-        postDate: BASE_DATE,
-        movieId: 1,
-        screeningId: 100,
-        score: 80,
-        published: true,
-        reason: 'HIGH_QUALITY_CANDIDATE',
-      });
-      mockDb.query.movies.findFirst.mockResolvedValue(makeMovie());
-      mockDb.query.screenings.findFirst.mockResolvedValue(
-        makeMovie().screenings[0],
-      );
-
-      const result = await service.getCandidate(BASE_DATE, undefined, PLATFORM);
-
-      expect(result.publish).toBe(true);
-      expect(result.date).toBe(BASE_DATE);
-      expect(mockDb.query.movies.findMany).not.toHaveBeenCalled();
-    });
-
-    it('returns publish=true for a high-scoring classic', async () => {
-      mockDb.query.movies.findMany.mockResolvedValue([makeMovie()]);
-
-      const result = await service.getCandidate(BASE_DATE, undefined, PLATFORM);
-
-      expect(result.publish).toBe(true);
-      if (result.publish) {
-        expect(result.reason).toBe('HIGH_QUALITY_CANDIDATE');
-        expect(result.score).toBeGreaterThanOrEqual(60);
-        expect(result.movie.title).toBe('Blade Runner');
-      }
-      expect(mockDb.insert).toHaveBeenCalled();
-    });
-
-    it('returns publish=false when no classic movies have screenings', async () => {
-      mockDb.query.movies.findMany.mockResolvedValue([]);
-
-      const result = await service.getCandidate(BASE_DATE, undefined, PLATFORM);
-
-      expect(result.publish).toBe(false);
-      if (!result.publish) {
-        expect(result.reason).toBe('NO_HIGH_QUALITY_CANDIDATE');
-        expect(result.meta.candidatesChecked).toBe(0);
-      }
-    });
-
-    it('returns publish=false when best score is below threshold', async () => {
-      const weakMovie = makeMovie({
-        productionYear: 1995,
-        movies_genres: [{ genre: { id: 1, slug: 'drama', name: 'Drama' } }],
-        screenings: [
-          {
-            id: 200,
-            url: 'https://tickets.pl/200',
-            date: new Date('2026-03-07T20:00:00Z'),
-            isDubbing: true,
-            isSubtitled: false,
-            cinema: {
-              id: 5,
-              slug: 'kino-a',
-              name: 'Kino A',
-              street: null,
-              url: '',
-              latitude: null,
-              longitude: null,
-              city: {
-                id: 1,
-                slug: 'warszawa',
-                name: 'Warszawa',
-                nameDeclinated: 'Warszawie',
-              },
-            },
-          },
-        ],
-      });
-      mockDb.query.movies.findMany.mockResolvedValue([weakMovie]);
-
-      const result = await service.getCandidate(BASE_DATE, undefined, PLATFORM);
-
-      expect(result.publish).toBe(false);
-      if (!result.publish) {
-        expect(result.meta.bestScore).not.toBeNull();
-        expect(result.meta.bestScore!).toBeLessThan(60);
-      }
-    });
-
-    it('uses custom minScore without writing cache', async () => {
-      const weakMovie = makeMovie({
-        productionYear: 1995,
-        movies_genres: [{ genre: { id: 1, slug: 'drama', name: 'Drama' } }],
-        screenings: [
-          {
-            id: 200,
-            url: 'https://tickets.pl/200',
-            date: new Date('2026-03-07T20:00:00Z'),
-            isDubbing: true,
-            isSubtitled: false,
-            cinema: {
-              id: 5,
-              slug: 'kino-a',
-              name: 'Kino A',
-              street: null,
-              url: '',
-              latitude: null,
-              longitude: null,
-              city: {
-                id: 1,
-                slug: 'warszawa',
-                name: 'Warszawa',
-                nameDeclinated: 'Warszawie',
-              },
-            },
-          },
-        ],
-      });
-      mockDb.query.movies.findMany.mockResolvedValue([weakMovie]);
-
-      const result = await service.getCandidate(BASE_DATE, 20, PLATFORM);
-
-      expect(result.publish).toBe(true);
-      expect(mockDb.query.socials_posts.findFirst).not.toHaveBeenCalled();
-      expect(mockDb.insert).not.toHaveBeenCalled();
-    });
-
-    it('blocks screening already published on selected platform', async () => {
-      mockDb.query.socials_posts.findMany
-        .mockResolvedValueOnce([]) // cooldown query
-        .mockResolvedValueOnce([{ screeningId: 100 }]); // published screenings query
-      mockDb.query.movies.findMany.mockResolvedValue([makeMovie()]);
+    it('returns ALREADY_PUBLISHED when a post exists for the date range and platform', async () => {
+      mockDb.query.socials_posts.findMany.mockResolvedValue([
+        {
+          postDate: BASE_DATE_FROM,
+          platform: PLATFORM,
+        },
+      ]);
 
       const result = await service.getCandidate(
-        BASE_DATE,
-        undefined,
+        BASE_DATE_FROM,
+        BASE_DATE_TO,
+        MIN_SCORE,
         PLATFORM,
+        CADENCE_DAYS,
       );
 
-      expect(result.publish).toBe(false);
-      if (!result.publish) {
-        expect(result.meta.candidatesChecked).toBe(1);
-        expect(result.meta.bestScore).toBeNull();
-      }
-    });
-
-    it('excludes movies in hard cooldown', async () => {
-      mockDb.query.socials_posts.findMany.mockResolvedValue([
-        { movieId: 1, postDate: '2026-02-20' },
-      ]);
-      mockDb.query.movies.findMany.mockResolvedValue([makeMovie()]);
-
-      const result = await service.getCandidate(BASE_DATE, undefined, PLATFORM);
-
-      expect(result.publish).toBe(false);
-      if (!result.publish) {
-        expect(result.meta.candidatesChecked).toBe(0);
-      }
-    });
-
-    it('applies deep classic bonus for pre-1980 movies', async () => {
-      const deepClassic = makeMovie({ productionYear: 1960 });
-      const classic90s = makeMovie({
-        id: 2,
-        productionYear: 1995,
-        screenings: [
-          {
-            ...makeMovie().screenings[0],
-            id: 201,
-          },
-        ],
+      expect(result).toEqual({
+        publish: false,
+        date: {
+          from: BASE_DATE_FROM,
+          to: BASE_DATE_TO,
+        },
+        reason: 'ALREADY_PUBLISHED',
+        meta: { candidatesChecked: 1, bestScore: null, minScore: MIN_SCORE },
+        candidates: [],
       });
-      mockDb.query.movies.findMany.mockResolvedValue([deepClassic, classic90s]);
+    });
+  });
 
-      const result = await service.getCandidate(BASE_DATE, undefined, PLATFORM);
+  describe('getCandidate when no screenings are found for the date range', () => {
+    it('returns NO_SCREENINGS_IN_RANGE', async () => {
+      mockDb.query.screenings.findMany.mockResolvedValue([]);
 
-      expect(result.publish).toBe(true);
-      if (result.publish) {
-        expect(result.movie.productionYear).toBe(1960);
-      }
+      const result = await service.getCandidate(
+        BASE_DATE_FROM,
+        BASE_DATE_TO,
+        MIN_SCORE,
+        PLATFORM,
+        CADENCE_DAYS,
+      );
+
+      expect(result).toEqual({
+        publish: false,
+        date: {
+          from: BASE_DATE_FROM,
+          to: BASE_DATE_TO,
+        },
+        reason: 'NO_SCREENINGS_IN_RANGE',
+        meta: { candidatesChecked: 0, bestScore: null, minScore: MIN_SCORE },
+        candidates: [],
+      });
+    });
+  });
+
+  describe('getCandidate when a high quality candidate is found', () => {
+    it('returns HAS_HIGH_QUALITY_CANDIDATE', async () => {
+      const screening100 = makeScreening({
+        id: 100,
+        movieId: 1,
+        movie: {
+          productionYear: 1979,
+          movies_genres: [{ genre: { id: 1 } }, { genre: { id: 2 } }],
+        },
+        cinema: { city: { id: 1 } },
+      });
+      const screening101 = makeScreening({
+        id: 101,
+        movieId: 1,
+        movie: {
+          productionYear: 1979,
+          movies_genres: [{ genre: { id: 1 } }, { genre: { id: 2 } }],
+        },
+        cinema: { city: { id: 2 } },
+      });
+      // DEEP_CLASSIC(20) + MULTI_GENRE(10) + MULTI_CITY(20) = 50
+      mockDb.query.screenings.findMany
+        .mockResolvedValueOnce([screening100, screening101])
+        .mockResolvedValueOnce([screening100]); // second call: fetch by candidate ids
+
+      const result = await service.getCandidate(
+        BASE_DATE_FROM,
+        BASE_DATE_TO,
+        50,
+        PLATFORM,
+        CADENCE_DAYS,
+      );
+
+      expect(result).toEqual({
+        publish: true,
+        date: {
+          from: BASE_DATE_FROM,
+          to: BASE_DATE_TO,
+        },
+        reason: 'HAS_HIGH_QUALITY_CANDIDATE',
+        meta: { candidatesChecked: 1, bestScore: 50, minScore: 50 },
+        candidates: [screening100],
+      });
+    });
+  });
+
+  describe('getCandidate when a low quality candidate is found', () => {
+    it('returns NO_HIGH_QUALITY_CANDIDATE when best score is below minScore', async () => {
+      const screening100 = makeScreening({
+        id: 100,
+        movieId: 1,
+        movie: {
+          productionYear: 1982,
+          movies_genres: [{ genre: { id: 1 } }, { genre: { id: 2 } }],
+        },
+        cinema: { city: { id: 1 } },
+      });
+      // CLASSIC(10) + MULTI_GENRE(10) = 20, single city
+      mockDb.query.screenings.findMany
+        .mockResolvedValueOnce([screening100])
+        .mockResolvedValueOnce([screening100]); // second call: fetch by candidate ids
+
+      const result = await service.getCandidate(
+        BASE_DATE_FROM,
+        BASE_DATE_TO,
+        MIN_SCORE,
+        PLATFORM,
+        CADENCE_DAYS,
+      );
+
+      expect(result).toEqual({
+        publish: false,
+        date: {
+          from: BASE_DATE_FROM,
+          to: BASE_DATE_TO,
+        },
+        reason: 'NO_HIGH_QUALITY_CANDIDATE',
+        meta: { candidatesChecked: 1, bestScore: 20, minScore: MIN_SCORE },
+        candidates: [screening100],
+      });
+    });
+  });
+
+  describe('getCandidate with numberOfCandidates > 1', () => {
+    it('returns the top numberOfCandidates candidates', async () => {
+      const screening100 = makeScreening({
+        id: 100,
+        movieId: 1,
+        movie: {
+          productionYear: 1979,
+          movies_genres: [{ genre: { id: 1 } }, { genre: { id: 2 } }],
+        },
+        cinema: { city: { id: 1 } },
+      });
+      const screening101 = makeScreening({
+        id: 101,
+        movieId: 1,
+        movie: {
+          productionYear: 1979,
+          movies_genres: [{ genre: { id: 1 } }, { genre: { id: 2 } }],
+        },
+        cinema: { city: { id: 2 } },
+      });
+      const screening102 = makeScreening({
+        id: 102,
+        movieId: 2,
+        movie: {
+          productionYear: 1979,
+          movies_genres: [{ genre: { id: 1 } }, { genre: { id: 2 } }],
+        },
+        cinema: { city: { id: 1 } },
+      });
+      const screening103 = makeScreening({
+        id: 103,
+        movieId: 3,
+        movie: {
+          productionYear: 1979,
+          movies_genres: [{ genre: { id: 1 } }, { genre: { id: 2 } }],
+        },
+        cinema: { city: { id: 1 } },
+      });
+      // 3 movies: movie 1 scores 50 (DEEP_CLASSIC+MULTI_GENRE+MULTI_CITY), movies 2–3 score 30
+      mockDb.query.screenings.findMany
+        .mockResolvedValueOnce([
+          screening100,
+          screening101,
+          screening102,
+          screening103,
+        ])
+        .mockResolvedValueOnce([screening100, screening102, screening103]); // second call: top 3 by movie
+
+      const result = await service.getCandidate(
+        BASE_DATE_FROM,
+        BASE_DATE_TO,
+        50,
+        PLATFORM,
+        3, // numberOfCandidates
+      );
+
+      expect(result).toEqual({
+        publish: true,
+        date: {
+          from: BASE_DATE_FROM,
+          to: BASE_DATE_TO,
+        },
+        reason: 'HAS_HIGH_QUALITY_CANDIDATE',
+        meta: { candidatesChecked: 3, bestScore: 50, minScore: 50 },
+        candidates: [screening100, screening102, screening103],
+      });
     });
   });
 });

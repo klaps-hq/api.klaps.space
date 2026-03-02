@@ -1,28 +1,24 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
-import { and, eq, gte, isNotNull, lt, lte, ne } from 'drizzle-orm';
 import { DRIZZLE } from '../database/constants';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
-import { getTodayInPoland } from '../lib/utils';
-import { mapMovieHero, mapScreening } from '../lib/response-mappers';
-import type { SocialsCandidateResponse } from '../lib/response-types';
+import type { SocialsGetCandidateResponse } from '../lib/response-types';
+import { getDate } from '../lib/date';
+import { and, asc, eq, gte, inArray, lte } from 'drizzle-orm';
 import {
   CLASSIC_YEAR_THRESHOLD,
+  SOCIALS_CONTENT_TYPE,
   DEEP_CLASSIC_YEAR_THRESHOLD,
-  SCREENING_WINDOW_MIN_DAYS,
-  SCREENING_WINDOW_MAX_DAYS,
-  NEARBY_SCREENING_MAX_DAYS,
-  COOLDOWN_HARD_DAYS,
-  COOLDOWN_SOFT_START_DAYS,
-  COOLDOWN_SOFT_END_DAYS,
-  MIN_SCORE,
   SCORE,
-  type ScoredCandidate,
+} from './socials.constants';
+import type {
+  CandidateByMovieSet,
+  ScoredCandidate,
+  ScreeningWithCinemaCity,
 } from './socials.types';
 
 type FullSchema = typeof schema & typeof relations;
-
 @Injectable()
 export class SocialsService {
   constructor(
@@ -31,339 +27,201 @@ export class SocialsService {
   ) {}
 
   async getCandidate(
-    dateParam?: string,
-    minScoreParam?: number,
-    platformParam?: string,
-  ): Promise<SocialsCandidateResponse> {
-    if (!platformParam) {
-      throw new BadRequestException('platform is required');
-    }
+    dateFromParam: string,
+    dateToParam: string,
+    minScoreParam: number,
+    platformParam: string,
+    numberOfCandidatesParam?: number,
+  ): Promise<SocialsGetCandidateResponse> {
+    const dateFrom = getDate(dateFromParam);
+    const dateTo = getDate(dateToParam);
 
-    const date = dateParam ?? getTodayInPoland();
-    const minScore = minScoreParam ?? MIN_SCORE;
-    const platform = platformParam;
-    const shouldUseCache = minScoreParam == null;
+    const minScore = Number(minScoreParam);
+    const platform = platformParam.trim().toLowerCase();
+    const numberOfCandidates = numberOfCandidatesParam ?? 10;
 
-    if (shouldUseCache) {
-      const cached = await this.findCachedDecision(date, platform);
-      if (cached) return cached;
-    }
-
-    const windowStart = this.addDays(date, SCREENING_WINDOW_MIN_DAYS);
-    const windowEnd = this.addDays(date, SCREENING_WINDOW_MAX_DAYS);
-    windowEnd.setHours(23, 59, 59, 999);
-
-    const { hardCooldownIds, softCooldownIds } = await this.getCooldownMovieIds(
-      date,
-      platform,
-    );
-    const publishedScreeningIds =
-      await this.getPublishedScreeningIdsForPlatform(platform);
-
-    const movies = await this.db.query.movies.findMany({
+    const socialsPosts = await this.db.query.socials_posts.findMany({
       where: and(
-        lt(schema.movies.productionYear, CLASSIC_YEAR_THRESHOLD),
-        isNotNull(schema.movies.backdropUrl),
-        ne(schema.movies.backdropUrl, ''),
+        gte(schema.socials_posts.postDate, dateFrom),
+        lte(schema.socials_posts.postDate, dateTo),
+        eq(schema.socials_posts.platform, platform),
+        eq(
+          schema.socials_posts.contentType,
+          SOCIALS_CONTENT_TYPE.FEED_CANDIDATE,
+        ),
       ),
+    });
+
+    if (socialsPosts.length > 0) {
+      return {
+        publish: false,
+        date: {
+          from: dateFrom,
+          to: dateTo,
+        },
+        reason: 'ALREADY_PUBLISHED',
+        meta: {
+          candidatesChecked: socialsPosts.length,
+          bestScore: null,
+          minScore,
+        },
+        candidates: [],
+      };
+    }
+
+    const screenings = await this.db.query.screenings.findMany({
+      where: and(
+        gte(schema.screenings.date, new Date(dateFrom)),
+        lte(schema.screenings.date, new Date(dateTo)),
+      ),
+      orderBy: asc(schema.screenings.date),
       with: {
-        movies_genres: { with: { genre: true } },
-        screenings: {
-          where: and(
-            gte(schema.screenings.date, windowStart),
-            lte(schema.screenings.date, windowEnd),
-            isNotNull(schema.screenings.url),
-            ne(schema.screenings.url, ''),
-          ),
-          with: { cinema: { with: { city: true } } },
+        movie: {
+          with: {
+            movies_genres: true,
+          },
+        },
+        cinema: {
+          with: {
+            city: true,
+          },
         },
       },
     });
 
-    const candidates = movies.filter(
-      (m) => m.screenings.length > 0 && !hardCooldownIds.has(m.id),
+    const scoredCandidates = this.computeScoredCandidates(
+      screenings,
+      numberOfCandidates,
     );
 
-    let best:
-      | (ScoredCandidate & { movieIdx: number; screeningIdx: number })
-      | null = null;
-
-    for (let mi = 0; mi < candidates.length; mi++) {
-      const movie = candidates[mi];
-      for (let si = 0; si < movie.screenings.length; si++) {
-        const screening = movie.screenings[si];
-        if (publishedScreeningIds.has(screening.id)) continue;
-        const score = this.scoreCandidate(
-          movie,
-          screening,
-          date,
-          softCooldownIds,
-        );
-        if (!best || score > best.score) {
-          best = {
-            movieId: movie.id,
-            screeningId: screening.id,
-            score,
-            movieIdx: mi,
-            screeningIdx: si,
-          };
-        }
-      }
-    }
-
-    if (best && best.score >= minScore) {
-      const movie = candidates[best.movieIdx];
-      const screening = movie.screenings[best.screeningIdx];
-
-      if (shouldUseCache) {
-        await this.persistDecision({
-          postDate: date,
-          platform,
-          movieId: best.movieId,
-          screeningId: best.screeningId,
-          score: best.score,
-          published: true,
-          reason: 'HIGH_QUALITY_CANDIDATE',
-        });
-      }
-
+    if (screenings.length === 0) {
       return {
-        publish: true,
-        date,
-        score: best.score,
-        reason: 'HIGH_QUALITY_CANDIDATE',
-        movie: mapMovieHero(movie),
-        screening: mapScreening(screening),
+        publish: false,
+        date: {
+          from: dateFrom,
+          to: dateTo,
+        },
+        reason: 'NO_SCREENINGS_IN_RANGE',
+        meta: {
+          candidatesChecked: screenings.length,
+          bestScore: null,
+          minScore,
+        },
+        candidates: [],
       };
     }
 
-    if (shouldUseCache) {
-      await this.persistDecision({
-        postDate: date,
-        platform,
-        movieId: null,
-        screeningId: null,
-        score: best?.score ?? 0,
-        published: false,
-        reason: 'NO_HIGH_QUALITY_CANDIDATE',
+    const sortedCandidates = scoredCandidates.sort((a, b) => b.score - a.score);
+    const bestCandidate = sortedCandidates[0];
+    const bestScore = bestCandidate?.score ?? null;
+    const hasHighQualityCandidate = bestScore !== null && bestScore >= minScore;
+
+    const candidates = sortedCandidates.map(
+      ({ movieId, screeningId, score }) => ({
+        movieId,
+        screeningId,
+        score,
+      }),
+    );
+
+    const screeningsWithMovieAndCinema =
+      await this.db.query.screenings.findMany({
+        where: inArray(
+          schema.screenings.id,
+          candidates.map((candidate) => candidate.screeningId),
+        ),
+        with: {
+          movie: {
+            with: {
+              movies_genres: true,
+            },
+          },
+          cinema: {
+            with: {
+              city: true,
+            },
+          },
+        },
       });
-    }
 
     return {
-      publish: false,
-      date,
-      reason: 'NO_HIGH_QUALITY_CANDIDATE',
+      publish: hasHighQualityCandidate,
+      date: {
+        from: dateFrom,
+        to: dateTo,
+      },
+      reason: hasHighQualityCandidate
+        ? 'HAS_HIGH_QUALITY_CANDIDATE'
+        : 'NO_HIGH_QUALITY_CANDIDATE',
       meta: {
-        candidatesChecked: candidates.length,
-        bestScore: best?.score ?? null,
+        candidatesChecked: scoredCandidates.length,
+        bestScore,
         minScore,
       },
+      candidates: screeningsWithMovieAndCinema,
     };
   }
 
-  // ── Scoring ────────────────────────────────────────────────
+  private computeScoredCandidates(
+    screenings: ScreeningWithCinemaCity[],
+    numberOfCandidates: number,
+  ): ScoredCandidate[] {
+    const cityIdsByMovieId = new Map<number, Set<number>>();
 
-  private scoreCandidate(
-    movie: {
-      id: number;
-      productionYear: number;
-      movies_genres: unknown[];
-      screenings: Array<{
-        date: Date;
-        isSubtitled: boolean | number;
-        cinema?: { city?: { id: number } | null } | null;
-      }>;
-    },
-    screening: {
-      date: Date;
-      isSubtitled: boolean | number;
-    },
-    baseDate: string,
-    softCooldownIds: Set<number>,
-  ): number {
-    let score = 0;
+    for (const s of screenings) {
+      const cityId = s.cinema?.city?.id;
 
-    const daysUntil = this.daysBetween(baseDate, screening.date);
-    if (
-      daysUntil >= SCREENING_WINDOW_MIN_DAYS &&
-      daysUntil <= NEARBY_SCREENING_MAX_DAYS
-    ) {
-      score += SCORE.SCREENING_NEARBY;
-    } else if (
-      daysUntil > NEARBY_SCREENING_MAX_DAYS &&
-      daysUntil <= SCREENING_WINDOW_MAX_DAYS
-    ) {
-      score += SCORE.SCREENING_UPCOMING;
+      if (cityId === undefined) continue;
+
+      const set = cityIdsByMovieId.get(s.movieId) ?? new Set();
+      set.add(cityId);
+
+      cityIdsByMovieId.set(s.movieId, set);
     }
 
-    if (movie.productionYear < DEEP_CLASSIC_YEAR_THRESHOLD) {
-      score += SCORE.DEEP_CLASSIC;
-    } else {
-      score += SCORE.CLASSIC;
-    }
+    const candidatesByMovie = new Map<number, CandidateByMovieSet>();
 
-    const uniqueCityIds = new Set(
-      movie.screenings
-        .map((s) => s.cinema?.city?.id)
-        .filter((id): id is number => id != null && id > 0),
-    );
-    if (uniqueCityIds.size >= 2) score += SCORE.MULTI_CITY;
+    for (const screening of screenings) {
+      const { movieId, movie, id: screeningId } = screening;
+      if (!movie) continue;
 
-    if (movie.movies_genres.length >= 2) score += SCORE.MULTI_GENRE;
+      let score = 0;
+      const year = movie.productionYear;
 
-    if (screening.isSubtitled) score += SCORE.SUBTITLED;
+      if (year <= DEEP_CLASSIC_YEAR_THRESHOLD) {
+        score += SCORE.DEEP_CLASSIC;
+      } else if (year <= CLASSIC_YEAR_THRESHOLD) {
+        score += SCORE.CLASSIC;
+      } else {
+        score += SCORE.NORMAL_YEAR;
+      }
 
-    if (softCooldownIds.has(movie.id)) score += SCORE.SOFT_COOLDOWN_PENALTY;
+      const genreCount = movie.movies_genres?.length ?? 0;
+      if (genreCount > 1) {
+        score += SCORE.MULTI_GENRE;
+      }
 
-    return score;
-  }
+      const cityCount = cityIdsByMovieId.get(movieId)?.size ?? 0;
+      if (cityCount > 1) {
+        score += SCORE.MULTI_CITY;
+      }
 
-  // ── Cache ──────────────────────────────────────────────────
-
-  private async findCachedDecision(
-    date: string,
-    platform: string,
-  ): Promise<SocialsCandidateResponse | null> {
-    const row = await this.db.query.socials_posts.findFirst({
-      where: and(
-        eq(schema.socials_posts.postDate, date),
-        eq(schema.socials_posts.platform, platform),
-      ),
-    });
-    if (!row) return null;
-
-    if (row.published && row.movieId && row.screeningId) {
-      const movie = await this.db.query.movies.findFirst({
-        where: eq(schema.movies.id, row.movieId),
-        with: { movies_genres: { with: { genre: true } } },
-      });
-      const screening = await this.db.query.screenings.findFirst({
-        where: eq(schema.screenings.id, row.screeningId),
-        with: { cinema: { with: { city: true } } },
-      });
-      if (!movie || !screening) return null;
-
-      return {
-        publish: true,
-        date,
-        score: row.score,
-        reason: 'HIGH_QUALITY_CANDIDATE',
-        movie: mapMovieHero(movie),
-        screening: mapScreening(screening),
-      };
-    }
-
-    return {
-      publish: false,
-      date,
-      reason: row.reason as 'NO_HIGH_QUALITY_CANDIDATE',
-      meta: {
-        candidatesChecked: 0,
-        bestScore: row.score > 0 ? row.score : null,
-        minScore: MIN_SCORE,
-      },
-    };
-  }
-
-  // ── Cooldown ───────────────────────────────────────────────
-
-  private async getCooldownMovieIds(
-    date: string,
-    platform: string,
-  ): Promise<{
-    hardCooldownIds: Set<number>;
-    softCooldownIds: Set<number>;
-  }> {
-    const lookbackStart = this.formatDate(
-      this.addDays(date, -COOLDOWN_SOFT_END_DAYS),
-    );
-
-    const recentPosts = await this.db.query.socials_posts.findMany({
-      where: and(
-        gte(schema.socials_posts.postDate, lookbackStart),
-        eq(schema.socials_posts.published, true),
-        eq(schema.socials_posts.platform, platform),
-      ),
-      columns: { movieId: true, postDate: true },
-    });
-
-    const hardCutoff = this.formatDate(this.addDays(date, -COOLDOWN_HARD_DAYS));
-    const softStart = this.formatDate(
-      this.addDays(date, -COOLDOWN_SOFT_END_DAYS),
-    );
-    const softEnd = this.formatDate(
-      this.addDays(date, -COOLDOWN_SOFT_START_DAYS),
-    );
-
-    const hardCooldownIds = new Set<number>();
-    const softCooldownIds = new Set<number>();
-
-    for (const post of recentPosts) {
-      if (!post.movieId) continue;
-      const pd = post.postDate;
-      if (pd >= hardCutoff) {
-        hardCooldownIds.add(post.movieId);
-      } else if (pd >= softStart && pd <= softEnd) {
-        softCooldownIds.add(post.movieId);
+      const existing = candidatesByMovie.get(movieId);
+      if (!existing || score > existing.score) {
+        candidatesByMovie.set(movieId, { movieId, screeningId, score });
       }
     }
 
-    return { hardCooldownIds, softCooldownIds };
-  }
+    const sortedCandidates = Array.from(candidatesByMovie.entries()).sort(
+      ([, a], [, b]) => b.score - a.score,
+    );
 
-  private async getPublishedScreeningIdsForPlatform(
-    platform: string,
-  ): Promise<Set<number>> {
-    const posts = await this.db.query.socials_posts.findMany({
-      where: and(
-        eq(schema.socials_posts.platform, platform),
-        eq(schema.socials_posts.published, true),
-      ),
-      columns: { screeningId: true },
-    });
+    const topCandidates = sortedCandidates
+      .slice(0, numberOfCandidates)
+      .map(([movieId, { screeningId, score }]) => {
+        return { movieId, screeningId, score };
+      });
 
-    const screeningIds = new Set<number>();
-    for (const post of posts) {
-      if (post.screeningId != null) {
-        screeningIds.add(post.screeningId);
-      }
-    }
-    return screeningIds;
-  }
-
-  // ── Persistence ────────────────────────────────────────────
-
-  private async persistDecision(values: {
-    postDate: string;
-    platform: string;
-    movieId: number | null;
-    screeningId: number | null;
-    score: number;
-    published: boolean;
-    reason: string;
-  }): Promise<void> {
-    await this.db
-      .insert(schema.socials_posts)
-      .values(values)
-      .onDuplicateKeyUpdate({ set: { postDate: values.postDate } });
-  }
-
-  // ── Date helpers ───────────────────────────────────────────
-
-  private addDays(dateStr: string, days: number): Date {
-    const d = new Date(dateStr + 'T00:00:00');
-    d.setDate(d.getDate() + days);
-    return d;
-  }
-
-  private daysBetween(dateStr: string, target: Date): number {
-    const base = new Date(dateStr + 'T00:00:00');
-    const t = new Date(target);
-    t.setHours(0, 0, 0, 0);
-    return Math.round((t.getTime() - base.getTime()) / (1000 * 60 * 60 * 24));
-  }
-
-  private formatDate(d: Date): string {
-    return d.toISOString().slice(0, 10);
+    return topCandidates;
   }
 }

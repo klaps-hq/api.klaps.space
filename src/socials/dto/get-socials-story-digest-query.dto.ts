@@ -3,13 +3,15 @@ import {
   IsDateString,
   IsIn,
   IsInt,
+  IsOptional,
   IsString,
   Matches,
   Max,
   Min,
 } from 'class-validator';
 
-export class GetSocialCandidateQueryDto {
+export class GetSocialsStoryDigestQueryDto {
+  @IsOptional()
   @IsDateString({})
   @Transform(
     ({ value }: { value: unknown }) =>
@@ -18,33 +20,16 @@ export class GetSocialCandidateQueryDto {
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
     message: 'date must be in YYYY-MM-DD format',
   })
-  dateFrom: string;
+  date?: string;
 
-  @IsDateString({})
-  @Transform(
-    ({ value }: { value: unknown }) =>
-      (value as string) ?? new Date().toISOString().slice(0, 10),
-  )
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
-    message: 'date must be in YYYY-MM-DD format',
-  })
-  dateTo: string;
-
+  @IsOptional()
   @Transform(({ value }: { value: unknown }) =>
     value === undefined ? undefined : Number(value),
   )
   @IsInt()
-  @Min(0)
-  @Max(100, { message: 'numberOfCandidates must be at most 100' })
-  minScore: number;
-
-  @Transform(({ value }: { value: unknown }) =>
-    value === undefined ? undefined : Number(value),
-  )
-  @IsInt()
-  @Min(0)
-  @Max(100, { message: 'numberOfCandidates must be at most 100' })
-  numberOfCandidates: number;
+  @Min(5)
+  @Max(10)
+  limit?: number;
 
   @IsString()
   @Transform(({ value }: { value: unknown }) =>
@@ -54,6 +39,6 @@ export class GetSocialCandidateQueryDto {
     message:
       'platform must be 2-30 chars and contain only lowercase letters, digits, "_" or "-"',
   })
-  @IsIn(['instagram', 'facebook', 'x', 'threads'])
+  @IsIn(['INSTAGRAM', 'FACEBOOK', 'X', 'THREADS'])
   platform!: string;
 }
