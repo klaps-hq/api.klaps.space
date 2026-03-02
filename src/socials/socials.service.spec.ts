@@ -147,7 +147,7 @@ describe('SocialService', () => {
         },
         cinema: { city: { id: 2 } },
       });
-      // DEEP_CLASSIC(20) + MULTI_GENRE(10) + MULTI_CITY(20) = 50
+      // DEEP_CLASSIC(30) + MULTI_GENRE(10) + MULTI_CITY(20) = 60
       mockDb.query.screenings.findMany
         .mockResolvedValueOnce([screening100, screening101])
         .mockResolvedValueOnce([screening100]); // second call: fetch by candidate ids
@@ -167,7 +167,7 @@ describe('SocialService', () => {
           to: BASE_DATE_TO,
         },
         reason: 'HAS_HIGH_QUALITY_CANDIDATE',
-        meta: { candidatesChecked: 1, bestScore: 50, minScore: 50 },
+        meta: { candidatesChecked: 1, bestScore: 60, minScore: 50 },
         candidates: [screening100],
       });
     });
@@ -184,7 +184,7 @@ describe('SocialService', () => {
         },
         cinema: { city: { id: 1 } },
       });
-      // CLASSIC(10) + MULTI_GENRE(10) = 20, single city
+      // CLASSIC(20) + MULTI_GENRE(10) = 30, single city
       mockDb.query.screenings.findMany
         .mockResolvedValueOnce([screening100])
         .mockResolvedValueOnce([screening100]); // second call: fetch by candidate ids
@@ -204,7 +204,7 @@ describe('SocialService', () => {
           to: BASE_DATE_TO,
         },
         reason: 'NO_HIGH_QUALITY_CANDIDATE',
-        meta: { candidatesChecked: 1, bestScore: 20, minScore: MIN_SCORE },
+        meta: { candidatesChecked: 1, bestScore: 30, minScore: MIN_SCORE },
         candidates: [screening100],
       });
     });
@@ -248,7 +248,7 @@ describe('SocialService', () => {
         },
         cinema: { city: { id: 1 } },
       });
-      // 3 movies: movie 1 scores 50 (DEEP_CLASSIC+MULTI_GENRE+MULTI_CITY), movies 2–3 score 30
+      // 3 movies: movie 1 scores 60 (DEEP_CLASSIC+MULTI_GENRE+MULTI_CITY), movies 2–3 score 40
       mockDb.query.screenings.findMany
         .mockResolvedValueOnce([
           screening100,
@@ -273,7 +273,7 @@ describe('SocialService', () => {
           to: BASE_DATE_TO,
         },
         reason: 'HAS_HIGH_QUALITY_CANDIDATE',
-        meta: { candidatesChecked: 3, bestScore: 50, minScore: 50 },
+        meta: { candidatesChecked: 3, bestScore: 60, minScore: 50 },
         candidates: [screening100, screening102, screening103],
       });
     });
