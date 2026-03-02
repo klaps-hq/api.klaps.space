@@ -15,7 +15,7 @@ export const socialsPostsTable = mysqlTable(
   {
     id: int().primaryKey().autoincrement(),
     postDate: date({ mode: 'string' }).notNull(),
-    platform: varchar({ length: 30 }).notNull().default('instagram'),
+    platform: varchar({ length: 30 }).notNull().default('instagram_post'),
     contentType: varchar({ length: 30 }).notNull().default('feed_candidate'),
     movieId: int().references(() => moviesTable.id),
     screeningId: int().references(() => screeningsTable.id),

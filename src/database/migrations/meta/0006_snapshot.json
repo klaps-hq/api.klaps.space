@@ -1570,7 +1570,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'instagram'"
+          "default": "'instagram_post'"
         },
         "contentType": {
           "name": "contentType",
