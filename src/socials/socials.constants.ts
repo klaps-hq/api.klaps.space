@@ -1,11 +1,6 @@
 export const CLASSIC_YEAR_THRESHOLD = 2000;
 export const DEEP_CLASSIC_YEAR_THRESHOLD = 1980;
 
-export const SOCIALS_CONTENT_TYPE = {
-  FEED_CANDIDATE: 'feed_candidate',
-  STORY_DIGEST: 'story_digest',
-} as const;
-
 export const SCORE = {
   DEEP_CLASSIC: 30,
   CLASSIC: 20,

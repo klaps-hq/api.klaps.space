@@ -54,6 +54,13 @@ export class GetSocialCandidateQueryDto {
     message:
       'platform must be 2-30 chars and contain only lowercase letters, digits, "_" or "-"',
   })
-  @IsIn(['instagram', 'facebook', 'x', 'threads'])
+  @IsIn([
+    'instagram_post',
+    'instagram_story',
+    'facebook_post',
+    'facebook_story',
+    'x_post',
+    'threads_post',
+  ])
   platform!: string;
 }

@@ -4,7 +4,7 @@ import { DRIZZLE } from '../database/constants';
 
 const BASE_DATE_FROM = '2026-03-01';
 const BASE_DATE_TO = '2026-03-03';
-const PLATFORM = 'instagram';
+const PLATFORM = 'instagram_post';
 const MIN_SCORE = 60;
 const CADENCE_DAYS = 1;
 
