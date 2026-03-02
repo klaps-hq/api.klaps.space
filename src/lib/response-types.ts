@@ -1,3 +1,5 @@
+import { ScreeningWithCinemaCity } from 'src/socials/socials.types';
+
 /** Clean city response -- no sourceId or areacode. */
 export type CityResponse = {
   id: number;
@@ -168,28 +170,28 @@ export type PaginatedResponse<T> = {
   };
 };
 
-/** Socials candidate: publish decision with movie + screening. */
-export type SocialsCandidatePublishResponse = {
-  publish: true;
-  date: string;
+/** Scored candidate for socials get-candidate endpoint. */
+export type ScoredCandidateResponse = {
+  movieId: number;
+  screeningId: number;
   score: number;
-  reason: 'HIGH_QUALITY_CANDIDATE';
-  movie: MovieHeroResponse;
-  screening: ScreeningResponse;
 };
 
-/** Socials candidate: skip decision with diagnostics. */
-export type SocialsCandidateSkipResponse = {
-  publish: false;
-  date: string;
-  reason: 'NO_HIGH_QUALITY_CANDIDATE' | 'ALREADY_PUBLISHED_TODAY';
+export type SocialsGetCandidateResponse = {
+  publish: boolean;
+  date: {
+    from: string;
+    to: string;
+  };
+  reason:
+    | 'HAS_HIGH_QUALITY_CANDIDATE'
+    | 'NO_HIGH_QUALITY_CANDIDATE'
+    | 'NO_SCREENINGS_IN_RANGE'
+    | 'ALREADY_PUBLISHED';
   meta: {
     candidatesChecked: number;
     bestScore: number | null;
     minScore: number;
   };
+  candidates: ScreeningWithCinemaCity[];
 };
-
-export type SocialsCandidateResponse =
-  | SocialsCandidatePublishResponse
-  | SocialsCandidateSkipResponse;

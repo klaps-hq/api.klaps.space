@@ -1,6 +1,6 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
-import type { SocialsCandidateResponse } from '../lib/response-types';
+import type { SocialsGetCandidateResponse } from '../lib/response-types';
 import { GetSocialCandidateQueryDto } from './dto/get-socials-candidate-query.dto';
 import { SocialsService } from './socials.service';
 
@@ -12,11 +12,13 @@ export class SocialsController {
   @UseGuards(InternalApiKeyGuard)
   getCandidate(
     @Query() query: GetSocialCandidateQueryDto,
-  ): Promise<SocialsCandidateResponse> {
+  ): Promise<SocialsGetCandidateResponse> {
     return this.socialsService.getCandidate(
-      query.date,
+      query.dateFrom,
+      query.dateTo,
       query.minScore,
       query.platform,
+      query.numberOfCandidates,
     );
   }
 }
