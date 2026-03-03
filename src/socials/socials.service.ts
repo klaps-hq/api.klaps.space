@@ -1,4 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import { DRIZZLE } from '../database/constants';
 import * as schema from '../database/schemas';
@@ -167,6 +172,105 @@ export class SocialsService {
       },
       candidates: orderedCandidates,
     };
+  }
+
+  async reserveCandidate(
+    platformParam: string,
+    screeningIdParam: number,
+  ): Promise<void> {
+    const platform = platformParam.trim().toLowerCase();
+    const screeningId = screeningIdParam;
+
+    const screening = await this.db.query.screenings.findFirst({
+      where: eq(schema.screenings.id, screeningId),
+    });
+
+    if (!screening) {
+      throw new NotFoundException('Screening not found');
+    }
+
+    const socialsPost = await this.db.query.socials_posts.findFirst({
+      where: and(
+        eq(schema.socials_posts.platform, platform),
+        eq(schema.socials_posts.screeningId, screeningId),
+      ),
+    });
+
+    if (socialsPost) {
+      throw new BadRequestException('Socials post already reserved', {
+        cause: 'ALREADY_RESERVED',
+      });
+    }
+
+    const score = this.computeScoredCandidates([screening], 1)[0]?.score ?? 0;
+    const postDate = screening.date.toISOString();
+
+    await this.db
+      .insert(schema.socials_posts)
+      .values({
+        postDate,
+        platform,
+        score,
+        screeningId,
+        published: false,
+        reason: 'RESERVED',
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          published: false,
+          reason: 'RESERVED',
+          postDate,
+          score,
+          screeningId,
+          platform,
+        },
+      });
+  }
+
+  async publishCandidate(
+    platformParam: string,
+    screeningIdParam: number,
+  ): Promise<void> {
+    const platform = platformParam.trim().toLowerCase();
+    const screeningId = screeningIdParam;
+
+    const screening = await this.db.query.screenings.findFirst({
+      where: eq(schema.screenings.id, screeningId),
+    });
+
+    if (!screening) {
+      throw new NotFoundException('Screening not found');
+    }
+
+    const socialsPost = await this.db.query.socials_posts.findFirst({
+      where: and(
+        eq(schema.socials_posts.platform, platform),
+        eq(schema.socials_posts.screeningId, screeningId),
+      ),
+    });
+
+    if (!socialsPost) {
+      throw new NotFoundException('Socials post not found');
+    }
+
+    const socialPostStatus = socialsPost.published
+      ? 'ALREADY_PUBLISHED'
+      : 'PUBLISHED';
+
+    if (socialPostStatus === 'ALREADY_PUBLISHED') {
+      throw new BadRequestException('Socials post already published', {
+        cause: socialPostStatus,
+      });
+    }
+
+    await this.db
+      .update(schema.socials_posts)
+      .set({
+        published: true,
+        reason: 'PUBLISHED',
+        postDate: new Date().toISOString(),
+      })
+      .where(eq(schema.socials_posts.id, socialsPost.id));
   }
 
   private computeScoredCandidates(
