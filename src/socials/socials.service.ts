@@ -9,7 +9,12 @@ import { DRIZZLE } from '../database/constants';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import type { SocialsGetCandidateResponse } from '../lib/response-types';
-import { getDate, getDatePlusDays } from '../lib/date';
+import {
+  getDate,
+  getDatePlusDays,
+  getTodayInPoland,
+  toDateOnlyString,
+} from '../lib/date';
 import { and, asc, eq, gte, inArray, lt, lte } from 'drizzle-orm';
 import {
   CLASSIC_YEAR_THRESHOLD,
@@ -203,7 +208,7 @@ export class SocialsService {
     }
 
     const score = this.computeScoredCandidates([screening], 1)[0]?.score ?? 0;
-    const postDate = screening.date.toISOString();
+    const postDate = toDateOnlyString(screening.date);
 
     await this.db
       .insert(schema.socials_posts)
@@ -268,7 +273,7 @@ export class SocialsService {
       .set({
         published: true,
         reason: 'PUBLISHED',
-        postDate: new Date().toISOString(),
+        postDate: getTodayInPoland(),
       })
       .where(eq(schema.socials_posts.id, socialsPost.id));
   }

@@ -1,6 +1,16 @@
+const DATE_ONLY_OPTIONS: Intl.DateTimeFormatOptions = {
+  timeZone: 'Europe/Warsaw',
+};
+
 /** Returns today's date as YYYY-MM-DD in the Europe/Warsaw (CET/CEST) timezone. */
 export const getTodayInPoland = (): string =>
-  new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
+  new Date().toLocaleDateString('sv-SE', DATE_ONLY_OPTIONS);
+
+/** Converts a Date or ISO date string to YYYY-MM-DD (Europe/Warsaw). For MySQL DATE columns. */
+export const toDateOnlyString = (value: Date | string): string =>
+  value instanceof Date
+    ? value.toLocaleDateString('sv-SE', DATE_ONLY_OPTIONS)
+    : value.slice(0, 10);
 
 /** Returns a date as YYYY-MM-DD in the Europe/Warsaw (CET/CEST) timezone. */
 export const getDate = (dateParam?: string): string => {
