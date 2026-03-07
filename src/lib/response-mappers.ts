@@ -17,13 +17,14 @@ import type {
 
 /** Strips sourceId and areacode from a city row. */
 export const mapCity = (
-  city: { id: number; slug: string; name: string; nameDeclinated: string },
+  city: { id: number; slug: string; name: string; nameDeclinated: string; description?: string | null },
   numberOfCinemas?: number,
 ): CityResponse => ({
   id: city.id,
   slug: city.slug,
   name: city.name,
   nameDeclinated: city.nameDeclinated,
+  description: city.description ?? null,
   ...(numberOfCinemas !== undefined && { numberOfCinemas }),
 });
 
@@ -34,10 +35,12 @@ export const mapGenre = (genre: {
   id: number;
   slug: string;
   name: string;
+  description?: string | null;
 }): GenreResponse => ({
   id: genre.id,
   slug: genre.slug,
   name: genre.name,
+  description: genre.description ?? null,
 });
 
 export const mapActor = (actor: {
@@ -79,6 +82,7 @@ type DbCinemaWithCity = {
   slug: string;
   name: string;
   street: string | null;
+  description?: string | null;
   url: string;
   latitude: number | null;
   longitude: number | null;
@@ -87,6 +91,7 @@ type DbCinemaWithCity = {
     slug: string;
     name: string;
     nameDeclinated: string;
+    description?: string | null;
   } | null;
 };
 
@@ -100,7 +105,7 @@ export const mapCinemaSummary = (
   street: cinema.street,
   city: cinema.city
     ? mapCity(cinema.city)
-    : { id: 0, slug: '', name: '', nameDeclinated: '' },
+    : { id: 0, slug: '', name: '', nameDeclinated: '', description: null },
 });
 
 /** Maps a cinema + city into a full CinemaResponse. */
@@ -109,9 +114,10 @@ export const mapCinemaDetail = (cinema: DbCinemaWithCity): CinemaResponse => ({
   slug: cinema.slug,
   name: cinema.name,
   street: cinema.street,
+  description: cinema.description ?? null,
   city: cinema.city
     ? mapCity(cinema.city)
-    : { id: 0, slug: '', name: '', nameDeclinated: '' },
+    : { id: 0, slug: '', name: '', nameDeclinated: '', description: null },
   latitude: cinema.latitude,
   longitude: cinema.longitude,
   filmwebUrl: cinema.url,
@@ -121,6 +127,7 @@ export const mapCinemaDetail = (cinema: DbCinemaWithCity): CinemaResponse => ({
 
 type DbMovieWithGenres = {
   id: number;
+  sourceId: number;
   slug: string;
   title: string;
   titleOriginal: string;
@@ -155,19 +162,22 @@ export const mapMovieSummary = (
   movie: DbMovieWithGenres,
 ): MovieSummaryResponse => ({
   id: movie.id,
+  sourceId: movie.sourceId,
   slug: movie.slug,
+  url: movie.url,
   title: movie.title,
   titleOriginal: movie.titleOriginal || null,
+  description: movie.description || null,
   productionYear: movie.productionYear,
   duration: movie.duration > 0 ? movie.duration : null,
   posterUrl: movie.posterUrl,
+  videoUrl: movie.videoUrl ?? null,
   genres: movie.movies_genres.map((mg) => mapGenre(mg.genre)),
 });
 
-/** Extended summary with hero fields (backdrop, description). */
+/** Extended summary with hero fields (backdrop). */
 export const mapMovieHero = (movie: DbMovieWithGenres): MovieHeroResponse => ({
   ...mapMovieSummary(movie),
-  description: movie.description || null,
   backdropUrl: movie.backdropUrl ?? null,
 });
 
@@ -263,7 +273,7 @@ export const mapScreening = (
           slug: '',
           name: '',
           street: null,
-          city: { id: 0, slug: '', name: '', nameDeclinated: '' },
+          city: { id: 0, slug: '', name: '', nameDeclinated: '', description: null },
         },
   };
 };

@@ -217,6 +217,8 @@ export class SocialsService {
         platform,
         score,
         screeningId,
+        movieId: screening.movieId,
+        contentType: 'feed_candidate',
         published: false,
         reason: 'RESERVED',
       })
@@ -228,6 +230,8 @@ export class SocialsService {
           score,
           screeningId,
           platform,
+          movieId: screening.movieId,
+          contentType: 'feed_candidate',
         },
       });
   }

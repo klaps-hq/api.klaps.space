@@ -247,7 +247,6 @@ export class MoviesService {
       .values(values)
       .onDuplicateKeyUpdate({
         set: {
-          slug,
           url: movieFields.url,
           title: movieFields.title,
           titleOriginal: movieFields.titleOriginal,

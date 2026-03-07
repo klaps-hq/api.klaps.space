@@ -2,6 +2,7 @@ import {
   float,
   int,
   mysqlTable,
+  text,
   timestamp,
   varchar,
 } from 'drizzle-orm/mysql-core';
@@ -19,6 +20,7 @@ export const cinemasTable = mysqlTable('cinemas', {
   longitude: float(),
   latitude: float(),
   street: varchar({ length: 255 }),
+  description: text(),
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp().notNull().defaultNow(),
 });

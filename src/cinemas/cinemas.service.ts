@@ -7,10 +7,7 @@ import { and, eq, inArray, like, sql } from 'drizzle-orm';
 import type { GetCinemasParams } from './cinemas.types';
 import type { CreateCinemaDto } from './dto/create-cinema.dto';
 import type { Cinema } from '../database/schemas/cinemas.schema';
-import type {
-  CinemaGroupResponse,
-  CinemaResponse,
-} from '../lib/response-types';
+import type { CinemaGroupResponse, CinemaResponse } from '../lib/response-types';
 import { mapCity, mapCinemaDetail } from '../lib/response-mappers';
 import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
 import { toSlug, uniqueSlug } from '../lib/slug';
@@ -31,15 +28,17 @@ export class CinemasService {
   ) {}
 
   /**
-   * Returns cinemas pre-grouped by city, sorted by cinema count descending.
+   * Returns cinemas grouped by city (for frontend) or as a flat paginated list
+   * of raw DB rows when flat=true (for internal scrapper use).
    */
   async getCinemas(
     params?: GetCinemasParams,
-  ): Promise<{ data: CinemaGroupResponse[] }> {
+  ): Promise<{ data: CinemaGroupResponse[] } | { data: Cinema[] }> {
     const limit = Math.min(
       params?.limit ?? DEFAULT_CINEMA_LIMIT,
       MAX_CINEMA_LIMIT,
     );
+    const offset = ((params?.page ?? 1) - 1) * limit;
     const cityFilter = params?.cityId
       ? eq(schema.cities.id, params.cityId)
       : params?.citySlug
@@ -55,11 +54,23 @@ export class CinemasService {
             .where(cityFilter),
         )
       : undefined;
+
+    if (params?.flat) {
+      const cinemas = await this.db.query.cinemas.findMany({
+        where: cityCondition ? and(cityCondition) : undefined,
+        limit,
+        offset,
+      });
+      return { data: cinemas };
+    }
+
     const cinemas = await this.db.query.cinemas.findMany({
       where: cityCondition ? and(cityCondition) : undefined,
       limit,
+      offset,
       with: { city: true },
     });
+
     const grouped = new Map<number, CinemaGroupResponse>();
     for (const cinema of cinemas) {
       const cityId = cinema.city?.id ?? 0;
@@ -76,7 +87,7 @@ export class CinemasService {
         grouped.set(cityId, {
           city: cinema.city
             ? mapCity(cinema.city)
-            : { id: 0, slug: '', name: '', nameDeclinated: '' },
+            : { id: 0, slug: '', name: '', nameDeclinated: '', description: null },
           cinemas: [cinemaSummary],
         });
       }
@@ -85,6 +96,24 @@ export class CinemasService {
       (a, b) => b.cinemas.length - a.cinemas.length,
     );
     return { data: sorted };
+  }
+
+  /**
+   * Updates mutable fields on a cinema row by id.
+   */
+  async updateCinema(
+    id: number,
+    data: { description?: string | null },
+  ): Promise<Cinema | null> {
+    await this.db
+      .update(schema.cinemas)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(schema.cinemas.id, id));
+    return (
+      (await this.db.query.cinemas.findFirst({
+        where: eq(schema.cinemas.id, id),
+      })) ?? null
+    );
   }
 
   /**
@@ -98,7 +127,6 @@ export class CinemasService {
       .values({ ...dto, slug })
       .onDuplicateKeyUpdate({
         set: {
-          slug,
           name: dto.name,
           url: dto.url,
           sourceCityId: dto.sourceCityId,
@@ -142,7 +170,6 @@ export class CinemasService {
           .values(values)
           .onDuplicateKeyUpdate({
             set: {
-              slug: sql`VALUES(${schema.cinemas.slug})`,
               name: sql`VALUES(${schema.cinemas.name})`,
               url: sql`VALUES(${schema.cinemas.url})`,
               sourceCityId: sql`VALUES(${schema.cinemas.sourceCityId})`,

@@ -6,6 +6,7 @@ export type CityResponse = {
   slug: string;
   name: string;
   nameDeclinated: string;
+  description: string | null;
   numberOfCinemas?: number;
 };
 
@@ -14,6 +15,7 @@ export type GenreResponse = {
   id: number;
   slug: string;
   name: string;
+  description: string | null;
 };
 
 /** Cinema embedded inside screening responses. */
@@ -31,6 +33,7 @@ export type CinemaResponse = {
   slug: string;
   name: string;
   street: string | null;
+  description: string | null;
   city: CityResponse;
   latitude: number | null;
   longitude: number | null;
@@ -46,12 +49,16 @@ export type CinemaGroupResponse = {
 /** Movie summary for lists and cards. */
 export type MovieSummaryResponse = {
   id: number;
+  sourceId: number;
   slug: string;
+  url: string;
   title: string;
   titleOriginal: string | null;
+  description: string | null;
   productionYear: number;
   duration: number | null;
   posterUrl: string | null;
+  videoUrl: string | null;
   genres: GenreResponse[];
 };
 
@@ -81,7 +88,6 @@ export type CountryResponse = {
 
 /** Extended movie summary with hero fields for random screening. */
 export type MovieHeroResponse = MovieSummaryResponse & {
-  description: string | null;
   backdropUrl: string | null;
 };
 

@@ -13,10 +13,7 @@ import {
 import { CinemasService } from './cinemas.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { Cinema } from '../database/schemas/cinemas.schema';
-import type {
-  CinemaGroupResponse,
-  CinemaResponse,
-} from '../lib/response-types';
+import type { CinemaGroupResponse, CinemaResponse } from '../lib/response-types';
 import { GetCinemasQueryDto } from './dto/get-cinemas-query.dto';
 import { CreateCinemaDto } from './dto/create-cinema.dto';
 import { BatchCreateCinemasDto } from './dto/batch-create-cinemas.dto';
@@ -27,17 +24,19 @@ export class CinemasController {
 
   /**
    * URL: /api/v1/cinemas
-   * Returns cinemas pre-grouped by city.
+   * Returns a flat paginated list of cinemas (raw DB rows).
    */
   @Get()
   @UseGuards(InternalApiKeyGuard)
   getCinemas(
     @Query() query: GetCinemasQueryDto,
-  ): Promise<{ data: CinemaGroupResponse[] }> {
+  ): Promise<{ data: CinemaGroupResponse[] } | { data: Cinema[] }> {
     return this.cinemasService.getCinemas({
       cityId: query.cityId,
       citySlug: query.citySlug,
       limit: query.limit,
+      page: query.page,
+      flat: query.flat,
     });
   }
 
@@ -62,6 +61,22 @@ export class CinemasController {
     @Body() dto: BatchCreateCinemasDto,
   ): Promise<{ count: number }> {
     return this.cinemasService.batchCreateCinemas(dto.cinemas);
+  }
+
+  /**
+   * URL: /api/v1/cinemas/:id
+   * Updates mutable fields (e.g. description) on a cinema.
+   */
+  @Post(':id')
+  @UseGuards(InternalApiKeyGuard)
+  @HttpCode(HttpStatus.OK)
+  async updateCinema(
+    @Param('id') id: string,
+    @Body() body: { description?: string | null },
+  ): Promise<Cinema> {
+    const cinema = await this.cinemasService.updateCinema(Number(id), body);
+    if (!cinema) throw new NotFoundException(`Cinema "${id}" not found`);
+    return cinema;
   }
 
   /**
