@@ -9,10 +9,11 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+
 import { CitiesService } from './cities.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { City } from './cities.types';
-import type { CityDetailResponse, CityResponse } from '../lib/response-types';
+import type { CityDetailResponse } from '../lib/response-types';
 import { CreateCityDto } from './dto/create-city.dto';
 import { BatchCreateCitiesDto } from './dto/batch-create-cities.dto';
 
@@ -26,7 +27,7 @@ export class CitiesController {
    */
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getCities(): Promise<CityResponse[]> {
+  getCities(): Promise<(City & { numberOfCinemas: number })[]> {
     return this.citiesService.getCities();
   }
 
@@ -41,6 +42,22 @@ export class CitiesController {
       throw new NotFoundException(`City "${idOrSlug}" not found`);
     }
 
+    return city;
+  }
+
+  /**
+   * URL: /api/v1/cities/:id
+   * Updates mutable fields (e.g. description) on a city.
+   */
+  @Post(':id')
+  @UseGuards(InternalApiKeyGuard)
+  @HttpCode(HttpStatus.OK)
+  async updateCity(
+    @Param('id') id: string,
+    @Body() body: { description?: string | null },
+  ): Promise<City> {
+    const city = await this.citiesService.updateCity(Number(id), body);
+    if (!city) throw new NotFoundException(`City "${id}" not found`);
     return city;
   }
 

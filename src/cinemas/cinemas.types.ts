@@ -3,4 +3,6 @@ export type GetCinemasParams = {
   cityId?: number;
   citySlug?: string;
   limit?: number;
+  page?: number;
+  flat?: boolean;
 };

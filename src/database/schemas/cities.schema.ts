@@ -1,4 +1,4 @@
-import { int, mysqlTable, varchar } from 'drizzle-orm/mysql-core';
+import { int, mysqlTable, text, varchar } from 'drizzle-orm/mysql-core';
 
 export const citiesTable = mysqlTable('cities', {
   id: int().primaryKey().autoincrement(),
@@ -7,6 +7,7 @@ export const citiesTable = mysqlTable('cities', {
   name: varchar({ length: 255 }).notNull(),
   nameDeclinated: varchar({ length: 255 }).notNull(),
   areacode: int(),
+  description: text(),
 });
 
 export type City = typeof citiesTable.$inferSelect;

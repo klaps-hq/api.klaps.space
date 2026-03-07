@@ -4,7 +4,7 @@ import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
 import type { City } from './cities.types';
 import type { CreateCityDto } from './dto/create-city.dto';
-import type { CityDetailResponse, CityResponse } from '../lib/response-types';
+import type { CityDetailResponse } from '../lib/response-types';
 import { mapCity } from '../lib/response-mappers';
 import { eq, like, sql } from 'drizzle-orm';
 import { ScreeningsService } from '../screenings/screenings.service';
@@ -23,15 +23,18 @@ export class CitiesService {
   ) {}
 
   /**
-   * Returns all cities with at least one cinema. Returned with numberOfCinemas count.
+   * Returns all cities with at least one cinema, including all DB fields.
    */
-  async getCities(): Promise<CityResponse[]> {
+  async getCities(): Promise<(City & { numberOfCinemas: number })[]> {
     const rows = await this.db
       .select({
         id: schema.cities.id,
+        sourceId: schema.cities.sourceId,
         slug: schema.cities.slug,
         name: schema.cities.name,
         nameDeclinated: schema.cities.nameDeclinated,
+        areacode: schema.cities.areacode,
+        description: schema.cities.description,
         numberOfCinemas: sql<number>`count(${schema.cinemas.id})`,
       })
       .from(schema.cities)
@@ -41,12 +44,15 @@ export class CitiesService {
       )
       .groupBy(
         schema.cities.id,
+        schema.cities.sourceId,
         schema.cities.slug,
         schema.cities.name,
         schema.cities.nameDeclinated,
+        schema.cities.areacode,
+        schema.cities.description,
       );
 
-    return rows.map((row) => mapCity(row, row.numberOfCinemas));
+    return rows;
   }
 
   async getCityByIdOrSlug(
@@ -77,6 +83,22 @@ export class CitiesService {
       city: mapCity(city, numberOfCinemas),
       screenings,
     };
+  }
+
+  /**
+   * Updates mutable fields on a city row by id.
+   */
+  async updateCity(
+    id: number,
+    data: { description?: string | null },
+  ): Promise<City | null> {
+    await this.db
+      .update(schema.cities)
+      .set(data)
+      .where(eq(schema.cities.id, id));
+    return (await this.db.query.cities.findFirst({
+      where: eq(schema.cities.id, id),
+    })) ?? null;
   }
 
   /**
