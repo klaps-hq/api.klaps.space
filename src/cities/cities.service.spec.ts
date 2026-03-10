@@ -68,58 +68,20 @@ describe('CitiesService', () => {
   });
 
   describe('getCities', () => {
-    it('returns mapped cities', async () => {
-      mockDb.select.mockImplementation(() => ({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            groupBy: jest.fn().mockResolvedValue([
-              {
-                id: 1,
-                slug: 'warszawa',
-                name: 'Warszawa',
-                nameDeclinated: 'Warszawie',
-                numberOfCinemas: 4,
-              },
-              {
-                id: 2,
-                slug: 'krakow',
-                name: 'Kraków',
-                nameDeclinated: 'Krakowie',
-                numberOfCinemas: 2,
-              },
-            ]),
-          }),
-        }),
-      }));
+    it('returns all cities', async () => {
+      const cities = [
+        { id: 1, slug: 'warszawa', name: 'Warszawa', nameDeclinated: 'Warszawie' },
+        { id: 2, slug: 'krakow', name: 'Kraków', nameDeclinated: 'Krakowie' },
+      ];
+      mockDb.query.cities.findMany.mockResolvedValue(cities);
 
       const result = await service.getCities();
 
-      expect(result).toEqual([
-        {
-          id: 1,
-          slug: 'warszawa',
-          name: 'Warszawa',
-          nameDeclinated: 'Warszawie',
-          numberOfCinemas: 4,
-        },
-        {
-          id: 2,
-          slug: 'krakow',
-          name: 'Kraków',
-          nameDeclinated: 'Krakowie',
-          numberOfCinemas: 2,
-        },
-      ]);
+      expect(result).toEqual(cities);
     });
 
     it('returns empty array when no cities exist', async () => {
-      mockDb.select.mockImplementation(() => ({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            groupBy: jest.fn().mockResolvedValue([]),
-          }),
-        }),
-      }));
+      mockDb.query.cities.findMany.mockResolvedValue([]);
 
       expect(await service.getCities()).toEqual([]);
     });
@@ -152,6 +114,7 @@ describe('CitiesService', () => {
           slug: 'warszawa',
           name: 'Warszawa',
           nameDeclinated: 'Warszawie',
+          description: null,
           numberOfCinemas: 2,
         },
         screenings: {

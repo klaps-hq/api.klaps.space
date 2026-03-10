@@ -5,19 +5,13 @@ import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
 import type { Showtime } from './showtimes.types';
 import type { CreateShowtimeDto } from './dto/create-showtime.dto';
-import type { MarkCityProcessedDto } from './dto/mark-city-processed.dto';
-import type { MarkShowtimeProcessedDto } from './dto/mark-showtime-processed.dto';
 import type { ProcessShowtimeDto } from './dto/process-showtime.dto';
-import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import { getTodayInPoland } from '../lib/utils';
 import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
-import type { UnprocessedShowtimeResponse } from './showtimes.types';
 
 type FullSchema = typeof schema & typeof relations;
 
-/**
- * Service for showtime-related business logic and persistence.
- */
 @Injectable()
 export class ShowtimesService {
   private readonly logger = new Logger(ShowtimesService.name);
@@ -27,16 +21,54 @@ export class ShowtimesService {
     private readonly db: MySql2Database<FullSchema>,
   ) {}
 
-  /**
-   * Returns all showtimes from the database.
-   */
-  getShowtimes(): Promise<Showtime[]> {
-    return this.db.query.showtimes.findMany();
+  async getShowtimes(): Promise<Showtime[]> {
+    const today = getTodayInPoland();
+    return this.db.query.showtimes.findMany({
+      where: and(
+        gte(schema.showtimes.createdAt, new Date(`${today}T00:00:00`)),
+        lte(schema.showtimes.createdAt, new Date(`${today}T23:59:59`)),
+      ),
+    });
   }
 
-  /**
-   * Creates or updates a showtime (upserts on duplicate url) and returns the row.
-   */
+  async getTodayCities(): Promise<number[]> {
+    const [fromShowtimes, fromCities] = await Promise.all([
+      this.db
+        .selectDistinct({ cityId: schema.showtimes.cityId })
+        .from(schema.showtimes)
+        .where(eq(sql`DATE(${schema.showtimes.createdAt})`, sql`CURDATE()`)),
+      this.db
+        .select({ cityId: schema.cities.id })
+        .from(schema.cities)
+        .where(eq(sql`DATE(${schema.cities.lastScrapedAt})`, sql`CURDATE()`)),
+    ]);
+
+    const ids = new Set([
+      ...fromShowtimes.map((r) => r.cityId),
+      ...fromCities.map((r) => r.cityId),
+    ]);
+    return [...ids];
+  }
+
+  async getPending(): Promise<Showtime[]> {
+    const rows = await this.db
+      .select({
+        id: schema.showtimes.id,
+        url: schema.showtimes.url,
+        cityId: schema.showtimes.cityId,
+        date: schema.showtimes.date,
+        createdAt: schema.showtimes.createdAt,
+        updatedAt: schema.showtimes.updatedAt,
+      })
+      .from(schema.showtimes)
+      .leftJoin(
+        schema.screenings,
+        eq(schema.screenings.showtimeId, schema.showtimes.id),
+      )
+      .where(isNull(schema.screenings.id));
+    return rows as Showtime[];
+  }
+
   async createShowtime(dto: CreateShowtimeDto): Promise<Showtime> {
     await this.db
       .insert(schema.showtimes)
@@ -54,140 +86,45 @@ export class ShowtimesService {
     return showtime!;
   }
 
-  /**
-   * Returns distinct cityIds from processed_cities within the given date range.
-   */
-  async getProcessedCityIds(from: string, to: string): Promise<number[]> {
-    const rows = await this.db
-      .selectDistinct({ cityId: schema.processed_cities.cityId })
-      .from(schema.processed_cities)
-      .where(
-        and(
-          gte(schema.processed_cities.processedAt, from),
-          lte(schema.processed_cities.processedAt, to),
-        ),
-      );
-    return rows.map((r) => r.cityId);
-  }
-
-  /**
-   * Upserts a record in processed_cities for the given cityId and processedAt date.
-   */
-  async markCityProcessed(dto: MarkCityProcessedDto): Promise<void> {
-    const processedAt = dto.processedAt ?? getTodayInPoland();
-
-    await this.db
-      .insert(schema.processed_cities)
-      .values({
-        cityId: dto.cityId,
-        processedAt,
-      })
-      .onDuplicateKeyUpdate({
-        set: { cityId: dto.cityId },
-      });
-  }
-
-  /**
-   * Marks a showtime as processed by inserting into processed_showtimes.
-   * Idempotent — duplicate calls do nothing.
-   */
-  async markShowtimeProcessed(dto: MarkShowtimeProcessedDto): Promise<void> {
-    await this.db
-      .insert(schema.processed_showtimes)
-      .values({ showtimeId: dto.showtimeId })
-      .onDuplicateKeyUpdate({
-        set: { showtimeId: dto.showtimeId },
-      });
-  }
-
-  /**
-   * Returns showtimes that have NOT been marked as processed
-   * and whose date falls within [from, to].
-   * Uses LEFT JOIN ... IS NULL to exclude processed ones.
-   */
-  async getUnprocessedShowtimes(
-    from: string,
-    to: string,
-  ): Promise<UnprocessedShowtimeResponse[]> {
-    const rows = await this.db
-      .select({
-        id: schema.showtimes.id,
-        url: schema.showtimes.url,
-        cityId: schema.showtimes.cityId,
-        date: schema.showtimes.date,
-        createdAt: schema.showtimes.createdAt,
-        updatedAt: schema.showtimes.updatedAt,
-      })
-      .from(schema.showtimes)
-      .leftJoin(
-        schema.processed_showtimes,
-        eq(schema.showtimes.id, schema.processed_showtimes.showtimeId),
-      )
-      .where(
-        and(
-          isNull(schema.processed_showtimes.id),
-          gte(schema.showtimes.date, new Date(from)),
-          lte(schema.showtimes.date, new Date(to)),
-        ),
-      );
-
-    return rows.map((r) => ({
-      id: r.id,
-      url: r.url,
-      cityId: r.cityId,
-      date: r.date instanceof Date ? r.date.toISOString() : String(r.date),
-      createdAt:
-        r.createdAt instanceof Date
-          ? r.createdAt.toISOString()
-          : String(r.createdAt),
-      updatedAt:
-        r.updatedAt instanceof Date
-          ? r.updatedAt.toISOString()
-          : String(r.updatedAt),
-    }));
-  }
-
-  /**
-   * Bulk upserts showtimes with chunked multi-row INSERTs.
-   * Each chunk is its own statement — no wrapping transaction to avoid gap-lock deadlocks.
-   * Automatically retries each chunk on deadlock via withDeadlockRetry wrapper.
-   */
   async batchCreateShowtimes(
     showtimes: CreateShowtimeDto[],
+    scrapedCityIds?: number[],
   ): Promise<{ count: number }> {
-    if (showtimes.length === 0) return { count: 0 };
-
     const CHUNK_SIZE = 500;
 
-    for (let i = 0; i < showtimes.length; i += CHUNK_SIZE) {
-      const chunk = showtimes.slice(i, i + CHUNK_SIZE);
-      await withDeadlockRetry(
-        () =>
-          this.db
-            .insert(schema.showtimes)
-            .values(chunk.map((s) => ({ ...s, date: new Date(s.date) })))
-            .onDuplicateKeyUpdate({
-              set: {
-                cityId: sql`VALUES(${schema.showtimes.cityId})`,
-                url: sql`VALUES(${schema.showtimes.url})`,
-                date: sql`VALUES(${schema.showtimes.date})`,
-              },
-            }),
-        { label: 'batchCreateShowtimes' },
-      );
+    if (showtimes.length > 0) {
+      for (let i = 0; i < showtimes.length; i += CHUNK_SIZE) {
+        const chunk = showtimes.slice(i, i + CHUNK_SIZE);
+        await withDeadlockRetry(
+          () =>
+            this.db
+              .insert(schema.showtimes)
+              .values(chunk.map((s) => ({ ...s, date: new Date(s.date) })))
+              .onDuplicateKeyUpdate({
+                set: {
+                  cityId: sql`VALUES(${schema.showtimes.cityId})`,
+                  url: sql`VALUES(${schema.showtimes.url})`,
+                  date: sql`VALUES(${schema.showtimes.date})`,
+                },
+              }),
+          { label: 'batchCreateShowtimes' },
+        );
+      }
+    }
+
+    if (scrapedCityIds && scrapedCityIds.length > 0) {
+      for (let i = 0; i < scrapedCityIds.length; i += CHUNK_SIZE) {
+        const chunk = scrapedCityIds.slice(i, i + CHUNK_SIZE);
+        await this.db
+          .update(schema.cities)
+          .set({ lastScrapedAt: new Date() })
+          .where(inArray(schema.cities.id, chunk));
+      }
     }
 
     return { count: showtimes.length };
   }
 
-  /**
-   * Inserts screenings for a showtime using the provided movieId,
-   * then marks the showtime as processed.
-   * No explicit transaction — both operations are fully idempotent
-   * (ON DUPLICATE KEY UPDATE), so auto-commit per statement avoids
-   * the gap-lock deadlocks that explicit transactions cause.
-   * If movieId is null, only marks the showtime as processed (skipped movie).
-   */
   async processShowtime(
     showtimeId: number,
     dto: ProcessShowtimeDto,
@@ -207,10 +144,6 @@ export class ShowtimesService {
       this.logger.warn(
         `Showtime ${showtimeId}: movieId is null — skipping screenings`,
       );
-      await this.db
-        .insert(schema.processed_showtimes)
-        .values({ showtimeId })
-        .onDuplicateKeyUpdate({ set: { showtimeId } });
       return { movieId: null, screeningsCount: 0 };
     }
 
@@ -248,12 +181,6 @@ export class ShowtimesService {
         { label: 'processShowtime:screenings' },
       );
     }
-
-    // Mark showtime as processed (also auto-committed, idempotent).
-    await this.db
-      .insert(schema.processed_showtimes)
-      .values({ showtimeId })
-      .onDuplicateKeyUpdate({ set: { showtimeId } });
 
     return { movieId, screeningsCount: dto.screenings.length };
   }

@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import compression from 'compression';
+import { json } from 'express';
 
 const DEFAULT_PORT = 5000;
 
@@ -15,22 +16,24 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const configService = app.get(ConfigService);
 
+  app.use(json({ limit: '5mb' }));
   app.setGlobalPrefix('api/v1');
 
   app.use(helmet());
   app.use(compression());
 
   const frontendUrl = configService.get<string>('FRONTEND_URL');
+
+  if (!frontendUrl) {
+    throw new Error('FRONTEND_URL is required in the .env file');
+  }  
+
   app.enableCors({
-    origin: frontendUrl || '*',
+    origin: frontendUrl,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-API-Key'],
     credentials: !!frontendUrl,
   });
-
-  if (!frontendUrl) {
-    logger.warn('FRONTEND_URL is not set — CORS is open to all origins');
-  }
 
   app.useGlobalPipes(
     new ValidationPipe({

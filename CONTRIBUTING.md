@@ -5,7 +5,7 @@ Thanks for your interest in contributing! This document outlines the process for
 ## Prerequisites
 
 - [Node.js 20+](https://nodejs.org)
-- [Yarn](https://yarnpkg.com)
+- [Bun](https://bun.sh)
 - [MySQL 8](https://www.mysql.com)
 
 ## Getting Started
@@ -21,7 +21,7 @@ cd klaps-nest-backend
 3. Install dependencies:
 
 ```bash
-yarn install
+bun install
 ```
 
 4. Create a `.env` file (see [README](README.md#environment-variables))
@@ -29,7 +29,7 @@ yarn install
 5. Run the dev server:
 
 ```bash
-yarn start:dev
+bun start:dev
 ```
 
 ## Branching Strategy
@@ -56,9 +56,9 @@ git checkout -b feat/your-feature
 3. Ensure code quality:
 
 ```bash
-yarn lint        # ESLint
-yarn test        # Unit tests
-yarn test:e2e    # E2E tests
+bun lint        # ESLint
+bun test        # Unit tests
+bun test:e2e    # E2E tests
 ```
 
 4. Commit with a clear message:
@@ -90,7 +90,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org):
 ## Code Style
 
 - TypeScript strict mode
-- ESLint + Prettier (run `yarn lint` to auto-fix)
+- ESLint + Prettier (run `bun lint` to auto-fix)
 - Use `class-validator` decorators for DTOs
 - Use early returns for readability
 - Descriptive variable/function names
@@ -100,7 +100,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org):
 If your change modifies the schema:
 
 1. Update the schema file in `src/database/schemas/`
-2. Generate a migration: `yarn db:generate`
+2. Generate a migration: `bun db:generate`
 3. Commit the generated migration file alongside the schema change
 
 ## Questions?

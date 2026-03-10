@@ -23,9 +23,16 @@ export class CitiesService {
   ) {}
 
   /**
-   * Returns all cities with at least one cinema, including all DB fields.
+   * Returns all cities.
    */
-  async getCities(): Promise<(City & { numberOfCinemas: number })[]> {
+  async getCities(): Promise<City[]> {
+    return this.db.query.cities.findMany();
+  }
+
+  /**
+   * Returns cities that have at least one cinema, with cinema count.
+   */
+  async getCitiesWithCinemas(): Promise<(City & { numberOfCinemas: number })[]> {
     const rows = await this.db
       .select({
         id: schema.cities.id,
@@ -35,6 +42,7 @@ export class CitiesService {
         nameDeclinated: schema.cities.nameDeclinated,
         areacode: schema.cities.areacode,
         description: schema.cities.description,
+        lastScrapedAt: schema.cities.lastScrapedAt,
         numberOfCinemas: sql<number>`count(${schema.cinemas.id})`,
       })
       .from(schema.cities)
@@ -50,6 +58,7 @@ export class CitiesService {
         schema.cities.nameDeclinated,
         schema.cities.areacode,
         schema.cities.description,
+        schema.cities.lastScrapedAt,
       );
 
     return rows;

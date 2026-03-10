@@ -16,7 +16,7 @@
     "db:studio": "drizzle-kit studio",
     "build": "nest build",
     "db:baseline": "node -r ts-node/register src/scripts/db-baseline.ts",
-    "db:backfill-slugs": "npx ts-node -r dotenv/config src/scripts/backfill-slugs.ts",
+    "db:backfill-slugs": "bunx ts-node -r dotenv/config src/scripts/backfill-slugs.ts",
     "db:wipe": "node -r ts-node/register src/scripts/db-wipe.ts",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",

@@ -34,7 +34,7 @@ Klaps Backend is the NestJS REST API that serves the [Klaps](https://klaps.space
 | Health Checks   | [@nestjs/terminus](https://docs.nestjs.com/recipes/terminus)                                                                                  |
 | Security        | [Helmet](https://helmetjs.github.io)                                                                                                          |
 | Testing         | [Jest](https://jestjs.io) + [@nestjs/testing](https://docs.nestjs.com/fundamentals/testing) + [Supertest](https://github.com/ladjs/supertest) |
-| Package Manager | [Yarn](https://yarnpkg.com)                                                                                                                   |
+| Package Manager | [Bun](https://bun.sh)                                                                                                                         |
 | Runtime         | [Node.js 22](https://nodejs.org) (LTS)                                                                                                        |
 | Deployment      | Docker (multi-stage Alpine) via GitHub Actions to GHCR                                                                                        |
 
@@ -148,7 +148,7 @@ All routes are prefixed with `/api/v1`. Endpoints marked with a lock require the
 ### Prerequisites
 
 - [Node.js 22+](https://nodejs.org)
-- [Yarn](https://yarnpkg.com)
+- [Bun](https://bun.sh)
 - [MySQL 8](https://www.mysql.com) (or a compatible server)
 
 ### Environment Variables
@@ -173,34 +173,34 @@ FRONTEND_URL=http://localhost:3000
 
 ```bash
 # Install dependencies
-yarn install
+bun install
 
 # Generate Drizzle migrations (if schema changed)
-yarn db:generate
+bun run db:generate
 
 # Run migrations
-yarn db:migrate
+bun run db:migrate
 
 # Start in development (watch mode)
-yarn start:dev
+bun run start:dev
 
 # Build for production
-yarn build
+bun run build
 
 # Start production
-yarn start:prod
+bun run start:prod
 
 # Lint
-yarn lint
+bun run lint
 
 # Unit tests
-yarn test
+bun run test
 
 # E2E tests
-yarn test:e2e
+bun run test:e2e
 
 # Test coverage
-yarn test:cov
+bun run test:cov
 ```
 
 The API will be available at [http://localhost:5000/api/v1](http://localhost:5000/api/v1).
