@@ -15,9 +15,8 @@ import { CitiesService } from './cities.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { City } from './cities.types';
 import type { CityDetailResponse, CityResponse } from '../lib/response-types';
-import { CreateCityDto } from './dto/create-city.dto';
-import { BatchCreateCitiesDto } from './dto/batch-create-cities.dto';
-import { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dto';
+import { PostCitiesBatchDto, PostCityDto } from './dto/post-cities.dto';
+import { GetScrapedCitiesDto } from './dto/get-scraped-cities.dto';
 
 @Controller('cities')
 export class CitiesController {
@@ -45,7 +44,7 @@ export class CitiesController {
   @Get('scraped')
   @UseGuards(InternalApiKeyGuard)
   async getScrapedCities(
-    @Query() query: GetScrapedCitiesQueryDto,
+    @Query() query: GetScrapedCitiesDto,
   ): Promise<number[]> {
     return this.citiesService.getScrapedCities(query);
   }
@@ -85,7 +84,7 @@ export class CitiesController {
   @Post('batch')
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
-  createCitiesBatch(@Body() dto: BatchCreateCitiesDto): Promise<void> {
+  createCitiesBatch(@Body() dto: PostCitiesBatchDto): Promise<void> {
     return this.citiesService.createCitiesBatch(dto.cities);
   }
 
@@ -102,7 +101,7 @@ export class CitiesController {
   @HttpCode(HttpStatus.OK)
   updateCityByIdOrSlug(
     @Param('idOrSlug') idOrSlug: string,
-    @Body() body: { description?: string | null },
+    @Body() body: PostCityDto,
   ): Promise<City> {
     return this.citiesService.updateCityByIdOrSlug(idOrSlug, body);
   }

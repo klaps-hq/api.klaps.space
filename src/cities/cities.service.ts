@@ -3,7 +3,10 @@ import type { MySql2Database } from 'drizzle-orm/mysql2';
 import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
 import type { City } from './cities.types';
-import type { CreateCityDto } from './dto/create-city.dto';
+import type {
+  PostCitiesBatchCityDto,
+  PostCityDto,
+} from './dto/post-cities.dto';
 import type { CityDetailResponse, CityResponse } from '../lib/response-types';
 import { mapCity } from '../lib/response-mappers';
 import { and, eq, getTableColumns, gte, lte, sql } from 'drizzle-orm';
@@ -11,7 +14,7 @@ import { ScreeningsService } from '../screenings/screenings.service';
 import { sortAndChunk } from '../wrappers/chunked-upsert';
 import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
 import { toSlug, uniqueSlug } from '../lib/slug';
-import type { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dto';
+import type { GetScrapedCitiesDto } from './dto/get-scraped-cities.dto';
 
 @Injectable()
 export class CitiesService {
@@ -74,7 +77,7 @@ export class CitiesService {
 
   async updateCityByIdOrSlug(
     idOrSlug: string,
-    data: { description?: string | null },
+    data: PostCityDto,
   ): Promise<City> {
     const numericId = Number(idOrSlug);
     const isId = Number.isInteger(numericId) && numericId > 0;
@@ -90,7 +93,7 @@ export class CitiesService {
   }
 
   // Upsert cities with chunked inserts and deadlock retry.
-  async createCitiesBatch(cities: CreateCityDto[]): Promise<void> {
+  async createCitiesBatch(cities: PostCitiesBatchCityDto[]): Promise<void> {
     if (cities.length === 0) return;
 
     const existingSlugs = await this.db
@@ -124,7 +127,7 @@ export class CitiesService {
   }
 
   // Get city IDs that were scraped within a date range.
-  async getScrapedCities(query: GetScrapedCitiesQueryDto): Promise<number[]> {
+  async getScrapedCities(query: GetScrapedCitiesDto): Promise<number[]> {
     const { dateFrom, dateTo, cityId, citySlug } = query;
     const startDay = dateFrom ? new Date(dateFrom) : new Date();
     const endDay = dateTo ? new Date(dateTo) : new Date();
