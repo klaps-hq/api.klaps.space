@@ -1,7 +1,7 @@
 import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
-export class GetCinemasDto {
+export class GetCinemasQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()

@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class PostCinemasBatchCinemaDto {
+export class CreateCinemasBatchItemDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
@@ -57,15 +57,9 @@ export class PostCinemasBatchCinemaDto {
   description?: string | null;
 }
 
-export class PostCinemasBatchDto {
+export class CreateCinemasBatchDto {
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => PostCinemasBatchCinemaDto)
-  cinemas: PostCinemasBatchCinemaDto[];
-}
-
-export class PostCinemaDto {
-  @IsOptional()
-  @IsString()
-  description?: string | null;
+  @Type(() => CreateCinemasBatchItemDto)
+  cinemas: CreateCinemasBatchItemDto[];
 }

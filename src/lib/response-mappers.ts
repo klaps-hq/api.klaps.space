@@ -17,7 +17,13 @@ import type {
 
 /** Strips sourceId and areacode from a city row. */
 export const mapCity = (
-  city: { id: number; slug: string; name: string; nameDeclinated: string; description?: string | null },
+  city: {
+    id: number;
+    slug: string;
+    name: string;
+    nameDeclinated: string;
+    description?: string | null;
+  },
   numberOfCinemas?: number,
 ): CityResponse => ({
   id: city.id,
@@ -273,7 +279,13 @@ export const mapScreening = (
           slug: '',
           name: '',
           street: null,
-          city: { id: 0, slug: '', name: '', nameDeclinated: '', description: null },
+          city: {
+            id: 0,
+            slug: '',
+            name: '',
+            nameDeclinated: '',
+            description: null,
+          },
         },
   };
 };

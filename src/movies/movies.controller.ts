@@ -30,10 +30,6 @@ const MULTI_CITY_CACHE_TTL = 900_000;
 export class MoviesController {
   constructor(private readonly moviesService: MoviesService) {}
 
-  /**
-   * URL: /api/v1/movies
-   * Returns a paginated list of all movies (MovieSummaryResponse).
-   */
   @Get()
   @UseGuards(InternalApiKeyGuard)
   getMovies(
@@ -48,20 +44,12 @@ export class MoviesController {
     });
   }
 
-  /**
-   * URL: /api/v1/movies
-   * Creates a new movie.
-   */
   @Post()
   @UseGuards(InternalApiKeyGuard)
   createMovie(@Body() dto: CreateMovieDto): Promise<Movie> {
     return this.moviesService.createMovie(dto);
   }
 
-  /**
-   * URL: /api/v1/movies/multi-city
-   * Returns movies with the largest territorial reach (most unique cities).
-   */
   @Get('multi-city')
   @UseGuards(InternalApiKeyGuard)
   @UseInterceptors(CacheInterceptor)
@@ -74,10 +62,6 @@ export class MoviesController {
     });
   }
 
-  /**
-   * URL: /api/v1/movies/:idOrSlug
-   * Returns a single movie by its numeric id or slug.
-   */
   @Get(':idOrSlug')
   @UseGuards(InternalApiKeyGuard)
   async getMovieByIdOrSlug(

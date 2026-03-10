@@ -8,7 +8,7 @@ import { and, eq, gte, inArray, lte } from 'drizzle-orm';
 import { sortAndChunk } from '../wrappers/chunked-upsert';
 import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
 import { GetShowtimesQueryDto } from './dto/get-showtimes-query.dto';
-import { PostShowtimesDto } from './dto/post-showtimes.dto';
+import { CreateShowtimesBatchDto } from './dto/create-showtimes-batch.dto';
 
 type FullSchema = typeof schema & typeof relations;
 
@@ -19,7 +19,8 @@ export class ShowtimesService {
     private readonly db: MySql2Database<FullSchema>,
   ) {}
 
-  // Get showtimes by date range and city. If cityId or citySlug is provided, filter by city.
+  // === READ ===
+
   async getShowtimes(query: GetShowtimesQueryDto): Promise<Showtime[]> {
     const { dateFrom, dateTo, cityId, citySlug } = query;
     const startDay = dateFrom ? new Date(dateFrom) : new Date();
@@ -49,8 +50,9 @@ export class ShowtimesService {
     return showtimes;
   }
 
-  // Save showtimes to database and update cities last scraped at.
-  async createShowtimesBatch(dto: PostShowtimesDto): Promise<void> {
+  // === WRITE ===
+
+  async createShowtimesBatch(dto: CreateShowtimesBatchDto): Promise<void> {
     const { showtimes, scrapedCityIds } = dto;
     if (showtimes.length === 0) return;
 

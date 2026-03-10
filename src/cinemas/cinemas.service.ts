@@ -1,17 +1,21 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Cinema } from '../database/schemas/cinemas.schema';
-import type { CinemaGroupResponse, CinemaResponse } from '../lib/response-types';
+import type {
+  CinemaGroupResponse,
+  CinemaResponse,
+} from '../lib/response-types';
 import { mapCity, mapCinemaDetail } from '../lib/response-mappers';
 import { sortAndChunk } from '../wrappers/chunked-upsert';
 import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
 import { toSlug, uniqueSlug } from '../lib/slug';
-import type { GetCinemasDto } from './dto/get-cinemas.dto';
-import type { PostCinemasBatchCinemaDto, PostCinemaDto } from './dto/post-cinemas.dto';
+import type { GetCinemasQueryDto } from './dto/get-cinemas-query.dto';
+import type { CreateCinemasBatchItemDto } from './dto/create-cinemas-batch.dto';
+import type { UpdateCinemaDto } from './dto/update-cinema.dto';
 
 type FullSchema = typeof schema & typeof relations;
 
@@ -22,8 +26,10 @@ export class CinemasService {
     private readonly db: MySql2Database<FullSchema>,
   ) {}
 
+  // === READ ===
+
   async getCinemas(
-    query: GetCinemasDto,
+    query: GetCinemasQueryDto,
   ): Promise<{ data: CinemaGroupResponse[] } | { data: Cinema[] }> {
     let cityCondition;
     if (query.cityId) {
@@ -72,7 +78,13 @@ export class CinemasService {
         grouped.set(cityId, {
           city: cinema.city
             ? mapCity(cinema.city)
-            : { id: 0, slug: '', name: '', nameDeclinated: '', description: null },
+            : {
+                id: 0,
+                slug: '',
+                name: '',
+                nameDeclinated: '',
+                description: null,
+              },
           cinemas: [cinemaSummary],
         });
       }
@@ -84,7 +96,7 @@ export class CinemasService {
     return { data: sorted };
   }
 
-  async getCinemaByIdOrSlug(idOrSlug: string): Promise<CinemaResponse> {
+  async getCinemaByIdOrSlug(idOrSlug: string): Promise<CinemaResponse | null> {
     const numericId = Number(idOrSlug);
     const isId = Number.isInteger(numericId) && numericId > 0;
 
@@ -95,32 +107,15 @@ export class CinemasService {
       with: { city: true },
     });
 
-    if (!cinema) throw new NotFoundException(`Cinema "${idOrSlug}" not found`);
+    if (!cinema) return null;
     return mapCinemaDetail(cinema);
   }
 
-  async updateCinemaByIdOrSlug(
-    idOrSlug: string,
-    data: PostCinemaDto,
-  ): Promise<Cinema> {
-    const numericId = Number(idOrSlug);
-    const isId = Number.isInteger(numericId) && numericId > 0;
-    const condition = isId
-      ? eq(schema.cinemas.id, numericId)
-      : eq(schema.cinemas.slug, idOrSlug);
+  // === WRITE ===
 
-    await this.db
-      .update(schema.cinemas)
-      .set({ ...data, updatedAt: new Date() })
-      .where(condition);
-
-    const cinema = await this.db.query.cinemas.findFirst({ where: condition });
-    if (!cinema) throw new NotFoundException(`Cinema "${idOrSlug}" not found`);
-    return cinema;
-  }
-
-  // Upsert cinemas with chunked inserts and deadlock retry.
-  async createCinemasBatch(cinemas: PostCinemasBatchCinemaDto[]): Promise<void> {
+  async createCinemasBatch(
+    cinemas: CreateCinemasBatchItemDto[],
+  ): Promise<void> {
     if (cinemas.length === 0) return;
 
     const existingSlugs = await this.db
@@ -154,5 +149,24 @@ export class CinemasService {
         { label: 'createCinemasBatch' },
       );
     }
+  }
+
+  async updateCinemaByIdOrSlug(
+    idOrSlug: string,
+    data: UpdateCinemaDto,
+  ): Promise<Cinema | null> {
+    const numericId = Number(idOrSlug);
+    const isId = Number.isInteger(numericId) && numericId > 0;
+    const condition = isId
+      ? eq(schema.cinemas.id, numericId)
+      : eq(schema.cinemas.slug, idOrSlug);
+
+    await this.db
+      .update(schema.cinemas)
+      .set({ ...data, updatedAt: new Date() })
+      .where(condition);
+
+    const cinema = await this.db.query.cinemas.findFirst({ where: condition });
+    return cinema ?? null;
   }
 }

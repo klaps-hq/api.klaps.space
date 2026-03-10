@@ -41,6 +41,8 @@ export class MoviesService {
     private readonly db: MySql2Database<FullSchema>,
   ) {}
 
+  // === READ ===
+
   /**
    * Returns a paginated list of all movies mapped to MovieSummaryResponse.
    */
@@ -211,6 +213,8 @@ export class MoviesService {
       .limit(limit);
   }
 
+  // === WRITE ===
+
   /**
    * Creates or updates a movie (upserts on duplicate sourceId) and returns the row.
    * Also upserts related actors, directors, scriptwriters, countries, genres
@@ -285,6 +289,8 @@ export class MoviesService {
 
     return movie!;
   }
+
+  // === PRIVATE ===
 
   /**
    * Upserts actors and links them to the movie via movies_actors.

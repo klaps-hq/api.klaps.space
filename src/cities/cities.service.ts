@@ -1,12 +1,11 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
 import type { City } from './cities.types';
-import type {
-  PostCitiesBatchCityDto,
-  PostCityDto,
-} from './dto/post-cities.dto';
+import type { CreateCitiesBatchItemDto } from './dto/create-cities-batch.dto';
+import type { UpdateCityDto } from './dto/update-city.dto';
+import type { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dto';
 import type { CityDetailResponse, CityResponse } from '../lib/response-types';
 import { mapCity } from '../lib/response-mappers';
 import { and, eq, getTableColumns, gte, lte, sql } from 'drizzle-orm';
@@ -14,7 +13,6 @@ import { ScreeningsService } from '../screenings/screenings.service';
 import { sortAndChunk } from '../wrappers/chunked-upsert';
 import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
 import { toSlug, uniqueSlug } from '../lib/slug';
-import type { GetScrapedCitiesDto } from './dto/get-scraped-cities.dto';
 
 @Injectable()
 export class CitiesService {
@@ -23,6 +21,8 @@ export class CitiesService {
     private readonly db: MySql2Database<typeof schema>,
     private readonly screeningsService: ScreeningsService,
   ) {}
+
+  // === READ ===
 
   async getCities(): Promise<City[]> {
     return this.db.query.cities.findMany();
@@ -75,25 +75,29 @@ export class CitiesService {
     };
   }
 
-  async updateCityByIdOrSlug(
-    idOrSlug: string,
-    data: PostCityDto,
-  ): Promise<City> {
-    const numericId = Number(idOrSlug);
-    const isId = Number.isInteger(numericId) && numericId > 0;
-    const condition = isId
-      ? eq(schema.cities.id, numericId)
-      : eq(schema.cities.slug, idOrSlug);
+  async getScrapedCities(query: GetScrapedCitiesQueryDto): Promise<number[]> {
+    const { dateFrom, dateTo, cityId, citySlug } = query;
+    const startDay = dateFrom ? new Date(dateFrom) : new Date();
+    const endDay = dateTo ? new Date(dateTo) : new Date();
 
-    await this.db.update(schema.cities).set(data).where(condition);
+    const cities = await this.db
+      .select({ id: schema.cities.id })
+      .from(schema.cities)
+      .where(
+        and(
+          gte(schema.cities.lastScrapedAt, startDay),
+          lte(schema.cities.lastScrapedAt, endDay),
+          cityId ? eq(schema.cities.id, cityId) : undefined,
+          citySlug ? eq(schema.cities.slug, citySlug) : undefined,
+        ),
+      );
 
-    const city = await this.db.query.cities.findFirst({ where: condition });
-    if (!city) throw new NotFoundException(`City "${idOrSlug}" not found`);
-    return city;
+    return cities.map((c) => c.id);
   }
 
-  // Upsert cities with chunked inserts and deadlock retry.
-  async createCitiesBatch(cities: PostCitiesBatchCityDto[]): Promise<void> {
+  // === WRITE ===
+
+  async createCitiesBatch(cities: CreateCitiesBatchItemDto[]): Promise<void> {
     if (cities.length === 0) return;
 
     const existingSlugs = await this.db
@@ -126,24 +130,19 @@ export class CitiesService {
     }
   }
 
-  // Get city IDs that were scraped within a date range.
-  async getScrapedCities(query: GetScrapedCitiesDto): Promise<number[]> {
-    const { dateFrom, dateTo, cityId, citySlug } = query;
-    const startDay = dateFrom ? new Date(dateFrom) : new Date();
-    const endDay = dateTo ? new Date(dateTo) : new Date();
+  async updateCityByIdOrSlug(
+    idOrSlug: string,
+    data: UpdateCityDto,
+  ): Promise<City | null> {
+    const numericId = Number(idOrSlug);
+    const isId = Number.isInteger(numericId) && numericId > 0;
+    const condition = isId
+      ? eq(schema.cities.id, numericId)
+      : eq(schema.cities.slug, idOrSlug);
 
-    const cities = await this.db
-      .select({ id: schema.cities.id })
-      .from(schema.cities)
-      .where(
-        and(
-          gte(schema.cities.lastScrapedAt, startDay),
-          lte(schema.cities.lastScrapedAt, endDay),
-          cityId ? eq(schema.cities.id, cityId) : undefined,
-          citySlug ? eq(schema.cities.slug, citySlug) : undefined,
-        ),
-      );
+    await this.db.update(schema.cities).set(data).where(condition);
 
-    return cities.map((c) => c.id);
+    const city = await this.db.query.cities.findFirst({ where: condition });
+    return city ?? null;
   }
 }

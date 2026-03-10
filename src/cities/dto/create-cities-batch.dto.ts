@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class PostCitiesBatchCityDto {
+export class CreateCitiesBatchItemDto {
   @Type(() => Number)
   @IsInt()
   sourceId: number;
@@ -44,15 +44,9 @@ export class PostCitiesBatchCityDto {
   population?: number;
 }
 
-export class PostCitiesBatchDto {
+export class CreateCitiesBatchDto {
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => PostCitiesBatchCityDto)
-  cities: PostCitiesBatchCityDto[];
-}
-
-export class PostCityDto {
-  @IsOptional()
-  @IsString()
-  description?: string | null;
+  @Type(() => CreateCitiesBatchItemDto)
+  cities: CreateCitiesBatchItemDto[];
 }
