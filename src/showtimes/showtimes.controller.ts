@@ -4,62 +4,47 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Param,
-  ParseIntPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ShowtimesService } from './showtimes.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { Showtime } from './showtimes.types';
-import { CreateShowtimeDto } from './dto/create-showtime.dto';
-import { ProcessShowtimeDto } from './dto/process-showtime.dto';
-import { BatchCreateShowtimesDto } from './dto/batch-create-showtimes.dto';
+import { GetShowtimesQueryDto } from './dto/get-showtimes-query.dto';
+import { PostShowtimesDto } from './dto/post-showtimes.dto';
 
 @Controller('showtimes')
 export class ShowtimesController {
   constructor(private readonly showtimesService: ShowtimesService) {}
 
+  /**
+   * @description Get showtimes by date range and city.
+   * @param query.dateFrom - Start date.
+   * @param query.dateTo - End date.
+   * @param query.cityId - City ID.
+   * @param query.citySlug - City slug.
+   * @returns Showtimes.
+   */
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getShowtimes(): Promise<Showtime[]> {
-    return this.showtimesService.getShowtimes();
+  getShowtimes(@Query() query: GetShowtimesQueryDto): Promise<Showtime[]> {
+    return this.showtimesService.getShowtimes(query);
   }
 
-  @Get('today-cities')
-  @UseGuards(InternalApiKeyGuard)
-  getTodayCities(): Promise<number[]> {
-    return this.showtimesService.getTodayCities();
-  }
-
-  @Get('pending')
-  @UseGuards(InternalApiKeyGuard)
-  getPending(): Promise<Showtime[]> {
-    return this.showtimesService.getPending();
-  }
-
+  /**
+   * @description Create showtimes batch.
+   * @param dto - Create showtimes dto.
+   * @param dto.showtimes - Showtimes.
+   * @param dto.showtimes.url - Showtime URL.
+   * @param dto.showtimes.cityId - City ID.
+   * @param dto.showtimes.date - Showtime date.
+   * @returns Void.
+   */
   @Post('batch')
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
-  batchCreateShowtimes(
-    @Body() dto: BatchCreateShowtimesDto,
-  ): Promise<{ count: number }> {
-    return this.showtimesService.batchCreateShowtimes(dto.showtimes, dto.scrapedCityIds);
-  }
-
-  @Post(':id/process')
-  @UseGuards(InternalApiKeyGuard)
-  @HttpCode(HttpStatus.OK)
-  processShowtime(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: ProcessShowtimeDto,
-  ): Promise<{ movieId: number | null; screeningsCount: number }> {
-    return this.showtimesService.processShowtime(id, dto);
-  }
-
-  @Post()
-  @UseGuards(InternalApiKeyGuard)
-  createShowtime(@Body() dto: CreateShowtimeDto): Promise<Showtime> {
-    return this.showtimesService.createShowtime(dto);
+  createShowtimesBatch(@Body() dto: PostShowtimesDto): Promise<void> {
+    return this.showtimesService.createShowtimesBatch(dto);
   }
 }

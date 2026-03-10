@@ -36,10 +36,6 @@ export const pickRandomElement = <T>(array: T[]): T => {
   return array[index];
 };
 
-/** Returns today's date as YYYY-MM-DD in the Europe/Warsaw (CET/CEST) timezone. */
-export const getTodayInPoland = (): string =>
-  new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Warsaw' });
-
 /** Adds one month to a YYYY-MM-DD date string and returns YYYY-MM-DD. */
 export const getDatePlusMonth = (dateStr: string): string => {
   const date = new Date(dateStr + 'T00:00:00');

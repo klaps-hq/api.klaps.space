@@ -6,10 +6,12 @@ import type { City } from './cities.types';
 import type { CreateCityDto } from './dto/create-city.dto';
 import type { CityDetailResponse } from '../lib/response-types';
 import { mapCity } from '../lib/response-mappers';
-import { eq, like, sql } from 'drizzle-orm';
+import { and, eq, gte, like, lte, sql } from 'drizzle-orm';
 import { ScreeningsService } from '../screenings/screenings.service';
+import { sortAndChunk } from '../wrappers/chunked-upsert';
 import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
 import { toSlug, uniqueSlug } from '../lib/slug';
+import type { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dto';
 
 /**
  * Service for city-related business logic and persistence.
@@ -150,22 +152,45 @@ export class CitiesService {
       return { ...c, slug };
     });
 
-    await withDeadlockRetry(
-      () =>
-        this.db
-          .insert(schema.cities)
-          .values(values)
-          .onDuplicateKeyUpdate({
-            set: {
-              name: sql`VALUES(${schema.cities.name})`,
-              nameDeclinated: sql`VALUES(${schema.cities.nameDeclinated})`,
-              areacode: sql`VALUES(${schema.cities.areacode})`,
-            },
-          }),
-      { label: 'batchCreateCities' },
-    );
+    const chunks = sortAndChunk(values, (c) => c.sourceId);
+    for (const chunk of chunks) {
+      await withDeadlockRetry(
+        () =>
+          this.db
+            .insert(schema.cities)
+            .values(chunk)
+            .onDuplicateKeyUpdate({
+              set: {
+                name: sql`VALUES(${schema.cities.name})`,
+                nameDeclinated: sql`VALUES(${schema.cities.nameDeclinated})`,
+                areacode: sql`VALUES(${schema.cities.areacode})`,
+              },
+            }),
+        { label: 'batchCreateCities' },
+      );
+    }
 
     return { count: cities.length };
+  }
+
+  async getScrapedCities(query: GetScrapedCitiesQueryDto): Promise<number[]> {
+    const { dateFrom, dateTo, cityId, citySlug } = query;
+    const startDay = dateFrom ? new Date(dateFrom) : new Date();
+    const endDay = dateTo ? new Date(dateTo) : new Date();
+
+    const whereConditions = and(
+      gte(schema.cities.lastScrapedAt, startDay),
+      lte(schema.cities.lastScrapedAt, endDay),
+      cityId ? eq(schema.cities.id, cityId) : undefined,
+      citySlug ? eq(schema.cities.slug, citySlug) : undefined,
+    );
+
+    const fromCities = await this.db
+      .select({ cityId: schema.cities.id })
+      .from(schema.cities)
+      .where(whereConditions);
+
+    return fromCities.map((r) => r.cityId);
   }
 
   private async generateCitySlug(name: string): Promise<string> {

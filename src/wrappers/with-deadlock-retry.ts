@@ -65,7 +65,8 @@ export const withDeadlockRetry = async <T>(
         throw error;
       }
 
-      const delayMs = baseDelayMs * Math.pow(2, attempt - 1);
+      const jitter = 0.5 + Math.random();
+      const delayMs = Math.round(baseDelayMs * Math.pow(2, attempt - 1) * jitter);
       logger.warn(
         `[${label}] Deadlock on attempt ${attempt}/${maxRetries}, retrying in ${delayMs}ms…`,
       );
