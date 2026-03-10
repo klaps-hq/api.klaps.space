@@ -1,26 +1,20 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
-import { and, eq, inArray, like, sql } from 'drizzle-orm';
-import type { GetCinemasParams } from './cinemas.types';
-import type { CreateCinemaDto } from './dto/create-cinema.dto';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Cinema } from '../database/schemas/cinemas.schema';
 import type { CinemaGroupResponse, CinemaResponse } from '../lib/response-types';
 import { mapCity, mapCinemaDetail } from '../lib/response-mappers';
 import { sortAndChunk } from '../wrappers/chunked-upsert';
 import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
 import { toSlug, uniqueSlug } from '../lib/slug';
+import type { GetCinemasDto } from './dto/get-cinemas.dto';
+import type { PostCinemasBatchCinemaDto, PostCinemaDto } from './dto/post-cinemas.dto';
 
 type FullSchema = typeof schema & typeof relations;
 
-const DEFAULT_CINEMA_LIMIT = 50;
-const MAX_CINEMA_LIMIT = 200;
-
-/**
- * Service for cinema-related business logic and persistence.
- */
 @Injectable()
 export class CinemasService {
   constructor(
@@ -28,47 +22,37 @@ export class CinemasService {
     private readonly db: MySql2Database<FullSchema>,
   ) {}
 
-  /**
-   * Returns cinemas grouped by city (for frontend) or as a flat paginated list
-   * of raw DB rows when flat=true (for internal scrapper use).
-   */
   async getCinemas(
-    params?: GetCinemasParams,
+    query: GetCinemasDto,
   ): Promise<{ data: CinemaGroupResponse[] } | { data: Cinema[] }> {
-    const limit = Math.min(
-      params?.limit ?? DEFAULT_CINEMA_LIMIT,
-      MAX_CINEMA_LIMIT,
-    );
-    const offset = ((params?.page ?? 1) - 1) * limit;
-    const cityFilter = params?.cityId
-      ? eq(schema.cities.id, params.cityId)
-      : params?.citySlug
-        ? eq(schema.cities.slug, params.citySlug)
-        : undefined;
+    let cityCondition;
+    if (query.cityId) {
+      cityCondition = inArray(
+        schema.cinemas.sourceCityId,
+        this.db
+          .select({ sourceId: schema.cities.sourceId })
+          .from(schema.cities)
+          .where(eq(schema.cities.id, query.cityId)),
+      );
+    } else if (query.citySlug) {
+      cityCondition = inArray(
+        schema.cinemas.sourceCityId,
+        this.db
+          .select({ sourceId: schema.cities.sourceId })
+          .from(schema.cities)
+          .where(eq(schema.cities.slug, query.citySlug)),
+      );
+    }
 
-    const cityCondition = cityFilter
-      ? inArray(
-          schema.cinemas.sourceCityId,
-          this.db
-            .select({ sourceId: schema.cities.sourceId })
-            .from(schema.cities)
-            .where(cityFilter),
-        )
-      : undefined;
-
-    if (params?.flat) {
+    if (query.flat) {
       const cinemas = await this.db.query.cinemas.findMany({
         where: cityCondition ? and(cityCondition) : undefined,
-        limit,
-        offset,
       });
       return { data: cinemas };
     }
 
     const cinemas = await this.db.query.cinemas.findMany({
       where: cityCondition ? and(cityCondition) : undefined,
-      limit,
-      offset,
       with: { city: true },
     });
 
@@ -93,71 +77,57 @@ export class CinemasService {
         });
       }
     }
+
     const sorted = [...grouped.values()].sort(
       (a, b) => b.cinemas.length - a.cinemas.length,
     );
     return { data: sorted };
   }
 
-  /**
-   * Updates mutable fields on a cinema row by id.
-   */
-  async updateCinema(
-    id: number,
-    data: { description?: string | null },
-  ): Promise<Cinema | null> {
+  async getCinemaByIdOrSlug(idOrSlug: string): Promise<CinemaResponse> {
+    const numericId = Number(idOrSlug);
+    const isId = Number.isInteger(numericId) && numericId > 0;
+
+    const cinema = await this.db.query.cinemas.findFirst({
+      where: isId
+        ? eq(schema.cinemas.id, numericId)
+        : eq(schema.cinemas.slug, idOrSlug),
+      with: { city: true },
+    });
+
+    if (!cinema) throw new NotFoundException(`Cinema "${idOrSlug}" not found`);
+    return mapCinemaDetail(cinema);
+  }
+
+  async updateCinemaByIdOrSlug(
+    idOrSlug: string,
+    data: PostCinemaDto,
+  ): Promise<Cinema> {
+    const numericId = Number(idOrSlug);
+    const isId = Number.isInteger(numericId) && numericId > 0;
+    const condition = isId
+      ? eq(schema.cinemas.id, numericId)
+      : eq(schema.cinemas.slug, idOrSlug);
+
     await this.db
       .update(schema.cinemas)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(schema.cinemas.id, id));
-    return (
-      (await this.db.query.cinemas.findFirst({
-        where: eq(schema.cinemas.id, id),
-      })) ?? null
-    );
+      .where(condition);
+
+    const cinema = await this.db.query.cinemas.findFirst({ where: condition });
+    if (!cinema) throw new NotFoundException(`Cinema "${idOrSlug}" not found`);
+    return cinema;
   }
 
-  /**
-   * Creates or updates a cinema (upserts on duplicate sourceId) and returns the raw row.
-   */
-  async createCinema(dto: CreateCinemaDto): Promise<Cinema> {
-    const slug = await this.generateCinemaSlug(dto.name);
-
-    await this.db
-      .insert(schema.cinemas)
-      .values({ ...dto, slug })
-      .onDuplicateKeyUpdate({
-        set: {
-          name: dto.name,
-          url: dto.url,
-          sourceCityId: dto.sourceCityId,
-          longitude: dto.longitude ?? null,
-          latitude: dto.latitude ?? null,
-          street: dto.street ?? null,
-        },
-      });
-    const cinema = await this.db.query.cinemas.findFirst({
-      where: eq(schema.cinemas.sourceId, dto.sourceId),
-    });
-    return cinema!;
-  }
-
-  /**
-   * Bulk upserts cinemas with a single multi-row INSERT.
-   * No explicit transaction — INSERT … ON DUPLICATE KEY UPDATE is already
-   * atomic and idempotent, so auto-commit avoids the gap-lock deadlocks
-   * that explicit transactions cause under concurrent requests.
-   * Automatically retries on deadlock via withDeadlockRetry wrapper.
-   */
-  async batchCreateCinemas(
-    cinemas: CreateCinemaDto[],
-  ): Promise<{ count: number }> {
-    if (cinemas.length === 0) return { count: 0 };
+  // Upsert cinemas with chunked inserts and deadlock retry.
+  async createCinemasBatch(cinemas: PostCinemasBatchCinemaDto[]): Promise<void> {
+    if (cinemas.length === 0) return;
 
     const existingSlugs = await this.db
       .select({ slug: schema.cinemas.slug })
       .from(schema.cinemas);
     const taken = new Set(existingSlugs.map((r) => r.slug));
+
     const values = cinemas.map((c) => {
       const slug = uniqueSlug(toSlug(c.name), taken);
       taken.add(slug);
@@ -181,40 +151,8 @@ export class CinemasService {
                 street: sql`VALUES(${schema.cinemas.street})`,
               },
             }),
-        { label: 'batchCreateCinemas' },
+        { label: 'createCinemasBatch' },
       );
     }
-
-    return { count: cinemas.length };
-  }
-
-  /**
-   * Returns a single cinema by numeric id or slug, stripped of DB internals.
-   */
-  async getCinemaByIdOrSlug(idOrSlug: string): Promise<CinemaResponse | null> {
-    const numericId = Number(idOrSlug);
-    const condition =
-      Number.isInteger(numericId) && numericId > 0
-        ? eq(schema.cinemas.id, numericId)
-        : eq(schema.cinemas.slug, idOrSlug);
-
-    const cinema = await this.db.query.cinemas.findFirst({
-      where: condition,
-      with: { city: true },
-    });
-    if (!cinema) return null;
-    return mapCinemaDetail(cinema);
-  }
-
-  private async generateCinemaSlug(name: string): Promise<string> {
-    const base = toSlug(name);
-    const existing = await this.db
-      .select({ slug: schema.cinemas.slug })
-      .from(schema.cinemas)
-      .where(like(schema.cinemas.slug, `${base}%`));
-    return uniqueSlug(
-      base,
-      existing.map((r) => r.slug),
-    );
   }
 }

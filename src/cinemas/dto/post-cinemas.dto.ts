@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -6,15 +7,13 @@ import {
   IsString,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-/**
- * Body DTO for POST /cinemas.
- */
-export class CreateCinemaDto {
+export class PostCinemasBatchCinemaDto {
   @Type(() => Number)
-  @IsInt({ message: 'sourceId must be an integer' })
+  @IsInt()
   @Min(1)
   sourceId: number;
 
@@ -34,7 +33,7 @@ export class CreateCinemaDto {
   url: string;
 
   @Type(() => Number)
-  @IsInt({ message: 'sourceCityId must be an integer' })
+  @IsInt()
   @Min(1)
   sourceCityId: number;
 
@@ -53,6 +52,19 @@ export class CreateCinemaDto {
   @MaxLength(255)
   street?: string | null;
 
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+}
+
+export class PostCinemasBatchDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PostCinemasBatchCinemaDto)
+  cinemas: PostCinemasBatchCinemaDto[];
+}
+
+export class PostCinemaDto {
   @IsOptional()
   @IsString()
   description?: string | null;
