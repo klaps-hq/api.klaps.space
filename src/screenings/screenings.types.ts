@@ -1,9 +1,7 @@
 import { screeningsTable } from '../database/schemas/screenings.schema';
 
-/** Raw DB screening row (used by POST / scrapper). */
 export type Screening = typeof screeningsTable.$inferSelect;
 
-/** Params for the screenings list endpoint. */
 export type GetScreeningsParams = {
   dateFrom?: string;
   dateTo?: string;
@@ -14,6 +12,4 @@ export type GetScreeningsParams = {
   genreSlug?: string | undefined;
   cinemaSlug?: string | undefined;
   search?: string;
-  page?: number;
-  limit?: number;
 };

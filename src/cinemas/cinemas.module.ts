@@ -2,9 +2,6 @@ import { Module } from '@nestjs/common';
 import { CinemasController } from './cinemas.controller';
 import { CinemasService } from './cinemas.service';
 
-/**
- * Module for cinema-related API and business logic.
- */
 @Module({
   controllers: [CinemasController],
   providers: [CinemasService],

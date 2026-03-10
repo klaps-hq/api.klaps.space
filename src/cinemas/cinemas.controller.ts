@@ -40,6 +40,7 @@ export class CinemasController {
   ): Promise<CinemaResponse> {
     const cinema = await this.cinemasService.getCinemaByIdOrSlug(idOrSlug);
     if (!cinema) throw new NotFoundException(`Cinema "${idOrSlug}" not found`);
+
     return cinema;
   }
 
@@ -61,6 +62,7 @@ export class CinemasController {
       idOrSlug,
       body,
     );
+
     if (!cinema) throw new NotFoundException(`Cinema "${idOrSlug}" not found`);
     return cinema;
   }

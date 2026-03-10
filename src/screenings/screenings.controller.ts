@@ -16,7 +16,6 @@ import type {
   ScreeningResponse,
   ScreeningGroupResponse,
   RandomScreeningResponse,
-  PaginatedResponse,
 } from '../lib/response-types';
 
 @Controller('screenings')
@@ -27,7 +26,7 @@ export class ScreeningsController {
   @UseGuards(InternalApiKeyGuard)
   getScreenings(
     @Query() query: GetScreeningsQueryDto,
-  ): Promise<PaginatedResponse<ScreeningResponse | ScreeningGroupResponse>> {
+  ): Promise<(ScreeningResponse | ScreeningGroupResponse)[]> {
     return this.screeningsService.getScreenings({
       dateFrom: query.dateFrom,
       dateTo: query.dateTo,
@@ -38,8 +37,6 @@ export class ScreeningsController {
       genreSlug: query.genreSlug,
       cinemaSlug: query.cinemaSlug,
       search: query.search,
-      page: query.page,
-      limit: query.limit,
     });
   }
 

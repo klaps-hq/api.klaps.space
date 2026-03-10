@@ -60,14 +60,13 @@ export class CitiesService {
 
     if (!city) return null;
 
-    const screenings = await this.screeningsService.getScreenings({
-      cityId: city.id,
-    });
-
-    const [{ count: numberOfCinemas }] = await this.db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.cinemas)
-      .where(eq(schema.cinemas.sourceCityId, city.sourceId));
+    const [screenings, [{ count: numberOfCinemas }]] = await Promise.all([
+      this.screeningsService.getScreenings({ cityId: city.id }),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.cinemas)
+        .where(eq(schema.cinemas.sourceCityId, city.sourceId)),
+    ]);
 
     return {
       city: mapCity(city, numberOfCinemas),

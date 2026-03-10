@@ -162,18 +162,7 @@ export type RandomScreeningResponse = {
 
 export type CityDetailResponse = {
   city: CityResponse;
-  screenings: PaginatedResponse<ScreeningResponse | ScreeningGroupResponse>;
-};
-
-/** Generic paginated response wrapper. */
-export type PaginatedResponse<T> = {
-  data: T[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
+  screenings: (ScreeningResponse | ScreeningGroupResponse)[];
 };
 
 /** Scored candidate for socials get-candidate endpoint. */

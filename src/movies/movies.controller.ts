@@ -17,7 +17,6 @@ import type {
   MovieSummaryResponse,
   MovieResponse,
   MultiCityMovieResponse,
-  PaginatedResponse,
 } from '../lib/response-types';
 import { GetMultiCityMoviesQueryDto } from './dto/get-multi-city-movies-query.dto';
 import { GetMoviesQueryDto } from './dto/get-movies-query.dto';
@@ -34,13 +33,11 @@ export class MoviesController {
   @UseGuards(InternalApiKeyGuard)
   getMovies(
     @Query() query: GetMoviesQueryDto,
-  ): Promise<PaginatedResponse<MovieSummaryResponse>> {
+  ): Promise<MovieSummaryResponse[]> {
     return this.moviesService.getMovies({
       search: query.search,
       genreId: query.genreId,
       genreSlug: query.genreSlug,
-      page: query.page,
-      limit: query.limit,
     });
   }
 
