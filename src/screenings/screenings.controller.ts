@@ -23,10 +23,6 @@ import type {
 export class ScreeningsController {
   constructor(private readonly screeningsService: ScreeningsService) {}
 
-  /**
-   * When movieId is provided: returns paginated flat ScreeningResponse[].
-   * Otherwise: returns paginated ScreeningGroupResponse[] grouped by movie with summary.
-   */
   @Get()
   @UseGuards(InternalApiKeyGuard)
   getScreenings(
@@ -47,19 +43,12 @@ export class ScreeningsController {
     });
   }
 
-  /**
-   * URL: /api/v1/screenings
-   * Creates a new screening.
-   */
   @Post()
   @UseGuards(InternalApiKeyGuard)
   createScreening(@Body() dto: CreateScreeningDto): Promise<Screening> {
     return this.screeningsService.createScreening(dto);
   }
 
-  /**
-   * Returns a single random retro screening with hero movie info.
-   */
   @Get('random-screening')
   @UseGuards(InternalApiKeyGuard)
   async getRandomRetroScreening(): Promise<RandomScreeningResponse> {

@@ -1,7 +1,7 @@
 import { Transform } from 'class-transformer';
-import { IsString, IsIn, Matches, Max, Min, IsInt } from 'class-validator';
+import { IsString, IsIn, Matches, IsInt, Min } from 'class-validator';
 
-export class SocialsReserveRequestDto {
+export class SocialsActionDto {
   @IsString()
   @Transform(({ value }: { value: unknown }) =>
     String(value).trim().toLowerCase(),

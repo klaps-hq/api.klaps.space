@@ -35,6 +35,7 @@ export class SocialsService {
     private readonly db: MySql2Database<FullSchema>,
   ) {}
 
+  // === READ ===
   async getCandidate(
     dateFromParam: string,
     dateToParam: string,
@@ -179,6 +180,7 @@ export class SocialsService {
     };
   }
 
+  // === WRITE ===
   async reserveCandidate(
     platformParam: string,
     screeningIdParam: number,

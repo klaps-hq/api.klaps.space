@@ -44,6 +44,8 @@ export class ScreeningsService {
     private readonly db: MySql2Database<FullSchema>,
   ) {}
 
+  // === READ ===
+
   /**
    * When movieId is provided: returns paginated flat ScreeningResponse[].
    * When movieId is absent: returns paginated ScreeningGroupResponse[] grouped by movie.
@@ -267,6 +269,8 @@ export class ScreeningsService {
       screening: mapScreening(chosenScreening),
     };
   }
+
+  // === WRITE ===
 
   async createScreening(dto: CreateScreeningDto): Promise<Screening> {
     const values = { ...dto, date: new Date(dto.date) };

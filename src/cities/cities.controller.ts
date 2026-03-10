@@ -10,99 +10,64 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-
 import { CitiesService } from './cities.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { City } from './cities.types';
 import type { CityDetailResponse, CityResponse } from '../lib/response-types';
-import { PostCitiesBatchDto, PostCityDto } from './dto/post-cities.dto';
-import { GetScrapedCitiesDto } from './dto/get-scraped-cities.dto';
+import { CreateCitiesBatchDto } from './dto/create-cities-batch.dto';
+import { UpdateCityDto } from './dto/update-city.dto';
+import { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dto';
 
 @Controller('cities')
 export class CitiesController {
   constructor(private readonly citiesService: CitiesService) {}
 
-  /**
-   * @url /api/v1/cities
-   * @description Get all cities.
-   * @returns Cities.
-   */
   @Get()
   @UseGuards(InternalApiKeyGuard)
   getCities(): Promise<City[]> {
     return this.citiesService.getCities();
   }
 
-  /**
-   * @description Get scraped cities.
-   * @param query.dateFrom - Start date.
-   * @param query.dateTo - End date.
-   * @param query.cityId - City ID.
-   * @param query.citySlug - City slug.
-   * @returns Scraped cities IDs.
-   */
   @Get('scraped')
   @UseGuards(InternalApiKeyGuard)
-  async getScrapedCities(
-    @Query() query: GetScrapedCitiesDto,
+  getScrapedCities(
+    @Query() query: GetScrapedCitiesQueryDto,
   ): Promise<number[]> {
     return this.citiesService.getScrapedCities(query);
   }
 
-  /**
-   * @url /api/v1/cities/with-cinemas
-   * @description Get all cities with at least one cinema.
-   * @returns Cities with at least one cinema.
-   */
   @Get('with-cinemas')
   @UseGuards(InternalApiKeyGuard)
   getCitiesWithCinemas(): Promise<CityResponse[]> {
     return this.citiesService.getCitiesWithCinemas();
   }
 
-  /**
-   * @url /api/v1/cities/:idOrSlug
-   * @description Get city by ID or slug.
-   * @param idOrSlug - City ID or slug.
-   * @returns City.
-   */
   @Get(':idOrSlug')
   @UseGuards(InternalApiKeyGuard)
   async getCityByIdOrSlug(
     @Param('idOrSlug') idOrSlug: string,
-  ): Promise<CityDetailResponse | null> {
-    return await this.citiesService.getCityByIdOrSlug(idOrSlug);
+  ): Promise<CityDetailResponse> {
+    const city = await this.citiesService.getCityByIdOrSlug(idOrSlug);
+    if (!city) throw new NotFoundException(`City "${idOrSlug}" not found`);
+    return city;
   }
 
-  /**
-   * @url /api/v1/cities/batch
-   * @description Create cities batch.
-   * @param dto - Create cities dto.
-   * @param dto.cities - Cities.
-   * @returns Void.
-   */
   @Post('batch')
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
-  createCitiesBatch(@Body() dto: PostCitiesBatchDto): Promise<void> {
+  createCitiesBatch(@Body() dto: CreateCitiesBatchDto): Promise<void> {
     return this.citiesService.createCitiesBatch(dto.cities);
   }
 
-  /**
-   * @url /api/v1/cities/:idOrSlug
-   * @description Update city by ID or slug.
-   * @param id - City ID.
-   * @param body - Update city body.
-   * @param body.description - City description.
-   * @returns City.
-   */
   @Post(':idOrSlug')
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
-  updateCityByIdOrSlug(
+  async updateCityByIdOrSlug(
     @Param('idOrSlug') idOrSlug: string,
-    @Body() body: PostCityDto,
+    @Body() body: UpdateCityDto,
   ): Promise<City> {
-    return this.citiesService.updateCityByIdOrSlug(idOrSlug, body);
+    const city = await this.citiesService.updateCityByIdOrSlug(idOrSlug, body);
+    if (!city) throw new NotFoundException(`City "${idOrSlug}" not found`);
+    return city;
   }
 }

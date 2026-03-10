@@ -1,7 +1,7 @@
 import { IsInt, IsOptional, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class GetGenresDto {
+export class GetGenresQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()

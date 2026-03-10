@@ -26,7 +26,7 @@ async function bootstrap() {
 
   if (!frontendUrl) {
     throw new Error('FRONTEND_URL is required in the .env file');
-  }  
+  }
 
   app.enableCors({
     origin: frontendUrl,

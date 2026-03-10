@@ -1,4 +1,10 @@
-import { int, mysqlTable, text, timestamp, varchar } from 'drizzle-orm/mysql-core';
+import {
+  int,
+  mysqlTable,
+  text,
+  timestamp,
+  varchar,
+} from 'drizzle-orm/mysql-core';
 
 export const genresTable = mysqlTable('genres', {
   id: int().primaryKey().autoincrement(),

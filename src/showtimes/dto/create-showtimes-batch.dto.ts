@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class PostShowtimesShowtimeDto {
+export class CreateShowtimesBatchItemDto {
   @IsUrl()
   @IsString()
   url: string;
@@ -23,11 +23,11 @@ export class PostShowtimesShowtimeDto {
   date: string;
 }
 
-export class PostShowtimesDto {
+export class CreateShowtimesBatchDto {
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => PostShowtimesShowtimeDto)
-  showtimes: PostShowtimesShowtimeDto[];
+  @Type(() => CreateShowtimesBatchItemDto)
+  showtimes: CreateShowtimesBatchItemDto[];
 
   @IsOptional()
   @IsArray()

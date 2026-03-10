@@ -73,10 +73,10 @@ const fixNamedTable = async (connection: DbConnection, table: string) => {
   for (const row of withBase) {
     const newSlug = assigned.get(row.id)!;
     if (newSlug === row.slug) continue;
-    await connection.execute(
-      `UPDATE \`${table}\` SET slug = ? WHERE id = ?`,
-      [newSlug, row.id],
-    );
+    await connection.execute(`UPDATE \`${table}\` SET slug = ? WHERE id = ?`, [
+      newSlug,
+      row.id,
+    ]);
     console.log(`    [${table}] id=${row.id}: "${row.slug}" → "${newSlug}"`);
     updated++;
   }
