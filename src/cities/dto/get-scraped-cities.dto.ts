@@ -7,7 +7,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-export class GetScrapedCitiesQueryDto {
+export class GetScrapedCitiesDto {
   @IsOptional()
   @IsDateString()
   dateFrom?: string;

@@ -1,16 +1,15 @@
 import {
+  IsArray,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-/**
- * Body DTO for POST /cities.
- */
-export class CreateCityDto {
+export class PostCitiesBatchCityDto {
   @Type(() => Number)
   @IsInt()
   sourceId: number;
@@ -43,4 +42,17 @@ export class CreateCityDto {
   @Type(() => Number)
   @IsInt()
   population?: number;
+}
+
+export class PostCitiesBatchDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PostCitiesBatchCityDto)
+  cities: PostCitiesBatchCityDto[];
+}
+
+export class PostCityDto {
+  @IsOptional()
+  @IsString()
+  description?: string | null;
 }
