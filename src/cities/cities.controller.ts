@@ -14,7 +14,7 @@ import {
 import { CitiesService } from './cities.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { City } from './cities.types';
-import type { CityDetailResponse } from '../lib/response-types';
+import type { CityDetailResponse, CityResponse } from '../lib/response-types';
 import { CreateCityDto } from './dto/create-city.dto';
 import { BatchCreateCitiesDto } from './dto/batch-create-cities.dto';
 import { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dto';
@@ -23,69 +23,15 @@ import { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dto';
 export class CitiesController {
   constructor(private readonly citiesService: CitiesService) {}
 
+  /**
+   * @url /api/v1/cities
+   * @description Get all cities.
+   * @returns Cities.
+   */
   @Get()
   @UseGuards(InternalApiKeyGuard)
   getCities(): Promise<City[]> {
     return this.citiesService.getCities();
-  }
-
-  @Get('with-cinemas')
-  @UseGuards(InternalApiKeyGuard)
-  getCitiesWithCinemas(): Promise<(City & { numberOfCinemas: number })[]> {
-    return this.citiesService.getCitiesWithCinemas();
-  }
-
-  @Get(':idOrSlug')
-  @UseGuards(InternalApiKeyGuard)
-  async getCityByIdOrSlug(
-    @Param('idOrSlug') idOrSlug: string,
-  ): Promise<CityDetailResponse> {
-    const city = await this.citiesService.getCityByIdOrSlug(idOrSlug);
-
-    if (!city) {
-      throw new NotFoundException(`City "${idOrSlug}" not found`);
-    }
-
-    return city;
-  }
-
-  /**
-   * URL: /api/v1/cities/batch
-   * Bulk upserts cities in a single transaction.
-   */
-  @Post('batch')
-  @UseGuards(InternalApiKeyGuard)
-  @HttpCode(HttpStatus.OK)
-  batchCreateCities(
-    @Body() dto: BatchCreateCitiesDto,
-  ): Promise<{ count: number }> {
-    return this.citiesService.batchCreateCities(dto.cities);
-  }
-
-  /**
-   * URL: /api/v1/cities/:id
-   * Updates mutable fields (e.g. description) on a city.
-   */
-  @Post(':id')
-  @UseGuards(InternalApiKeyGuard)
-  @HttpCode(HttpStatus.OK)
-  async updateCity(
-    @Param('id') id: string,
-    @Body() body: { description?: string | null },
-  ): Promise<City> {
-    const city = await this.citiesService.updateCity(Number(id), body);
-    if (!city) throw new NotFoundException(`City "${id}" not found`);
-    return city;
-  }
-
-  /**
-   * URL: /api/v1/cities
-   * Creates a new city.
-   */
-  @Post()
-  @UseGuards(InternalApiKeyGuard)
-  createCity(@Body() dto: CreateCityDto): Promise<City> {
-    return this.citiesService.createCity(dto);
   }
 
   /**
@@ -102,5 +48,62 @@ export class CitiesController {
     @Query() query: GetScrapedCitiesQueryDto,
   ): Promise<number[]> {
     return this.citiesService.getScrapedCities(query);
+  }
+
+  /**
+   * @url /api/v1/cities/with-cinemas
+   * @description Get all cities with at least one cinema.
+   * @returns Cities with at least one cinema.
+   */
+  @Get('with-cinemas')
+  @UseGuards(InternalApiKeyGuard)
+  getCitiesWithCinemas(): Promise<CityResponse[]> {
+    return this.citiesService.getCitiesWithCinemas();
+  }
+
+  /**
+   * @url /api/v1/cities/:idOrSlug
+   * @description Get city by ID or slug.
+   * @param idOrSlug - City ID or slug.
+   * @returns City.
+   */
+  @Get(':idOrSlug')
+  @UseGuards(InternalApiKeyGuard)
+  async getCityByIdOrSlug(
+    @Param('idOrSlug') idOrSlug: string,
+  ): Promise<CityDetailResponse | null> {
+    return await this.citiesService.getCityByIdOrSlug(idOrSlug);
+  }
+
+  /**
+   * @url /api/v1/cities/batch
+   * @description Create cities batch.
+   * @param dto - Create cities dto.
+   * @param dto.cities - Cities.
+   * @returns Void.
+   */
+  @Post('batch')
+  @UseGuards(InternalApiKeyGuard)
+  @HttpCode(HttpStatus.OK)
+  createCitiesBatch(@Body() dto: BatchCreateCitiesDto): Promise<void> {
+    return this.citiesService.createCitiesBatch(dto.cities);
+  }
+
+  /**
+   * @url /api/v1/cities/:idOrSlug
+   * @description Update city by ID or slug.
+   * @param id - City ID.
+   * @param body - Update city body.
+   * @param body.description - City description.
+   * @returns City.
+   */
+  @Post(':idOrSlug')
+  @UseGuards(InternalApiKeyGuard)
+  @HttpCode(HttpStatus.OK)
+  updateCityByIdOrSlug(
+    @Param('idOrSlug') idOrSlug: string,
+    @Body() body: { description?: string | null },
+  ): Promise<City> {
+    return this.citiesService.updateCityByIdOrSlug(idOrSlug, body);
   }
 }
