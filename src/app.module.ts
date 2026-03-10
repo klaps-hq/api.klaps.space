@@ -20,10 +20,6 @@ import { HealthModule } from './health/health.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     AppLoggerModule,
-    ThrottlerModule.forRoot([
-      { name: 'short', ttl: 10_000, limit: 30 },
-      { name: 'long', ttl: 60_000, limit: 100 },
-    ]),
     DatabaseModule,
     HealthModule,
     MoviesModule,
@@ -33,6 +29,10 @@ import { HealthModule } from './health/health.module';
     SocialsModule,
     ScreeningsModule,
     ShowtimesModule,
+    ThrottlerModule.forRoot([
+      { name: 'short', ttl: 10_000, limit: 30 },
+      { name: 'long', ttl: 60_000, limit: 100 },
+    ]),
   ],
   controllers: [AppController],
   providers: [

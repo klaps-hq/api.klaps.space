@@ -9,6 +9,7 @@ import type { CreateCinemaDto } from './dto/create-cinema.dto';
 import type { Cinema } from '../database/schemas/cinemas.schema';
 import type { CinemaGroupResponse, CinemaResponse } from '../lib/response-types';
 import { mapCity, mapCinemaDetail } from '../lib/response-mappers';
+import { sortAndChunk } from '../wrappers/chunked-upsert';
 import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
 import { toSlug, uniqueSlug } from '../lib/slug';
 
@@ -163,23 +164,26 @@ export class CinemasService {
       return { ...c, slug };
     });
 
-    await withDeadlockRetry(
-      () =>
-        this.db
-          .insert(schema.cinemas)
-          .values(values)
-          .onDuplicateKeyUpdate({
-            set: {
-              name: sql`VALUES(${schema.cinemas.name})`,
-              url: sql`VALUES(${schema.cinemas.url})`,
-              sourceCityId: sql`VALUES(${schema.cinemas.sourceCityId})`,
-              longitude: sql`VALUES(${schema.cinemas.longitude})`,
-              latitude: sql`VALUES(${schema.cinemas.latitude})`,
-              street: sql`VALUES(${schema.cinemas.street})`,
-            },
-          }),
-      { label: 'batchCreateCinemas' },
-    );
+    const chunks = sortAndChunk(values, (c) => c.sourceId);
+    for (const chunk of chunks) {
+      await withDeadlockRetry(
+        () =>
+          this.db
+            .insert(schema.cinemas)
+            .values(chunk)
+            .onDuplicateKeyUpdate({
+              set: {
+                name: sql`VALUES(${schema.cinemas.name})`,
+                url: sql`VALUES(${schema.cinemas.url})`,
+                sourceCityId: sql`VALUES(${schema.cinemas.sourceCityId})`,
+                longitude: sql`VALUES(${schema.cinemas.longitude})`,
+                latitude: sql`VALUES(${schema.cinemas.latitude})`,
+                street: sql`VALUES(${schema.cinemas.street})`,
+              },
+            }),
+        { label: 'batchCreateCinemas' },
+      );
+    }
 
     return { count: cinemas.length };
   }
