@@ -9,7 +9,7 @@
  *     newer duplicates get -2, -3 … only when there is a genuine name conflict.
  *  4. Updates only rows whose slug changed.
  *
- * Usage: npx ts-node -r dotenv/config src/scripts/fix-duplicate-slugs.ts
+ * Usage: bunx ts-node -r dotenv/config src/scripts/fix-duplicate-slugs.ts
  */
 import 'dotenv/config';
 import { createConnection } from 'mysql2/promise';

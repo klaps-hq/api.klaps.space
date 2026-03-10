@@ -52,4 +52,8 @@ export class CreateCinemaDto {
   @IsString()
   @MaxLength(255)
   street?: string | null;
+
+  @IsOptional()
+  @IsString()
+  description?: string | null;
 }

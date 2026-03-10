@@ -21,14 +21,16 @@ import { BatchCreateCitiesDto } from './dto/batch-create-cities.dto';
 export class CitiesController {
   constructor(private readonly citiesService: CitiesService) {}
 
-  /**
-   * URL: /api/v1/cities
-   * Returns all cities (clean, no DB internals).
-   */
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getCities(): Promise<(City & { numberOfCinemas: number })[]> {
+  getCities(): Promise<City[]> {
     return this.citiesService.getCities();
+  }
+
+  @Get('with-cinemas')
+  @UseGuards(InternalApiKeyGuard)
+  getCitiesWithCinemas(): Promise<(City & { numberOfCinemas: number })[]> {
+    return this.citiesService.getCitiesWithCinemas();
   }
 
   @Get(':idOrSlug')
@@ -46,6 +48,19 @@ export class CitiesController {
   }
 
   /**
+   * URL: /api/v1/cities/batch
+   * Bulk upserts cities in a single transaction.
+   */
+  @Post('batch')
+  @UseGuards(InternalApiKeyGuard)
+  @HttpCode(HttpStatus.OK)
+  batchCreateCities(
+    @Body() dto: BatchCreateCitiesDto,
+  ): Promise<{ count: number }> {
+    return this.citiesService.batchCreateCities(dto.cities);
+  }
+
+  /**
    * URL: /api/v1/cities/:id
    * Updates mutable fields (e.g. description) on a city.
    */
@@ -59,19 +74,6 @@ export class CitiesController {
     const city = await this.citiesService.updateCity(Number(id), body);
     if (!city) throw new NotFoundException(`City "${id}" not found`);
     return city;
-  }
-
-  /**
-   * URL: /api/v1/cities/batch
-   * Bulk upserts cities in a single transaction.
-   */
-  @Post('batch')
-  @UseGuards(InternalApiKeyGuard)
-  @HttpCode(HttpStatus.OK)
-  batchCreateCities(
-    @Body() dto: BatchCreateCitiesDto,
-  ): Promise<{ count: number }> {
-    return this.citiesService.batchCreateCities(dto.cities);
   }
 
   /**

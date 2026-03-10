@@ -28,7 +28,7 @@ const run = async () => {
   } catch {
     console.error(
       `Could not read ${journalPath}.\n` +
-        'Run "yarn db:generate" first to create the baseline migration.',
+        'Run "bun run db:generate" first to create the baseline migration.',
     );
     process.exit(1);
   }

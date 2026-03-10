@@ -57,6 +57,20 @@
       "when": 1772500000000,
       "tag": "0007_add_description_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1773001390521,
+      "tag": "0008_harsh_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1773100000000,
+      "tag": "0009_add_cities_last_scraped_at",
+      "breakpoints": true
     }
   ]
 }

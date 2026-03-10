@@ -2,7 +2,7 @@
  * One-time backfill script that populates the `slug` column for all existing
  * rows in movies, cinemas, cities, and genres tables.
  *
- * Usage: npx ts-node -r dotenv/config src/scripts/backfill-slugs.ts
+ * Usage: bunx ts-node -r dotenv/config src/scripts/backfill-slugs.ts
  */
 import 'dotenv/config';
 import { createConnection } from 'mysql2/promise';

@@ -34,4 +34,13 @@ export class CreateCityDto {
   @Type(() => Number)
   @IsInt()
   areacode?: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  population?: number;
 }
