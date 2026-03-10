@@ -7,22 +7,11 @@ import { getDateRangeUpToMonthFromNow } from '../lib/utils';
 import { randomInt } from 'node:crypto';
 import type { GetScreeningsParams, Screening } from './screenings.types';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
-import {
-  and,
-  countDistinct,
-  eq,
-  gte,
-  inArray,
-  isNotNull,
-  like,
-  lte,
-  ne,
-} from 'drizzle-orm';
+import { and, eq, gte, inArray, isNotNull, like, lte, ne } from 'drizzle-orm';
 import type {
   ScreeningResponse,
   ScreeningGroupResponse,
   RandomScreeningResponse,
-  PaginatedResponse,
 } from '../lib/response-types';
 import {
   mapScreening,
@@ -32,9 +21,6 @@ import {
 
 type FullSchema = typeof schema & typeof relations;
 
-const DEFAULT_PAGE = 1;
-const DEFAULT_MOVIE_LIMIT = 10;
-const MAX_MOVIE_LIMIT = 100;
 const RETRO_YEAR_THRESHOLD = 2026;
 
 @Injectable()
@@ -46,22 +32,13 @@ export class ScreeningsService {
 
   // === READ ===
 
-  /**
-   * When movieId is provided: returns paginated flat ScreeningResponse[].
-   * When movieId is absent: returns paginated ScreeningGroupResponse[] grouped by movie.
-   */
   async getScreenings(
     params?: GetScreeningsParams,
-  ): Promise<PaginatedResponse<ScreeningResponse | ScreeningGroupResponse>> {
+  ): Promise<(ScreeningResponse | ScreeningGroupResponse)[]> {
     const { startDay, endDay } = getDateRangeUpToMonthFromNow(
       params?.dateFrom,
       params?.dateTo,
     );
-    const page = params?.page ?? DEFAULT_PAGE;
-    const limit = params?.limit
-      ? Math.min(params.limit, MAX_MOVIE_LIMIT)
-      : DEFAULT_MOVIE_LIMIT;
-    const offset = (page - 1) * limit;
 
     const cityCondition = params?.cityId
       ? eq(schema.cities.id, params.cityId)
@@ -128,50 +105,21 @@ export class ScreeningsService {
       genreCondition,
     );
 
-    const [totalResult, movieIdsResult] = await Promise.all([
-      this.db
-        .select({
-          total: countDistinct(schema.screenings.movieId),
-        })
-        .from(schema.screenings)
-        .innerJoin(
-          schema.showtimes,
-          eq(schema.screenings.showtimeId, schema.showtimes.id),
-        )
-        .leftJoin(
-          schema.movies_genres,
-          eq(schema.screenings.movieId, schema.movies_genres.movieId),
-        )
-        .where(whereConditions),
-
-      this.db
-        .selectDistinct({ movieId: schema.screenings.movieId })
-        .from(schema.screenings)
-        .innerJoin(
-          schema.showtimes,
-          eq(schema.screenings.showtimeId, schema.showtimes.id),
-        )
-        .leftJoin(
-          schema.movies_genres,
-          eq(schema.screenings.movieId, schema.movies_genres.movieId),
-        )
-        .where(whereConditions)
-        .limit(limit)
-        .offset(offset),
-    ]);
-
-    const total = totalResult[0]?.total ?? 0;
-    const meta = {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+    const movieIdsResult = await this.db
+      .selectDistinct({ movieId: schema.screenings.movieId })
+      .from(schema.screenings)
+      .innerJoin(
+        schema.showtimes,
+        eq(schema.screenings.showtimeId, schema.showtimes.id),
+      )
+      .leftJoin(
+        schema.movies_genres,
+        eq(schema.screenings.movieId, schema.movies_genres.movieId),
+      )
+      .where(whereConditions);
 
     const movieIds = movieIdsResult.map((r) => r.movieId);
-    if (movieIds.length === 0) {
-      return { data: [], meta };
-    }
+    if (movieIds.length === 0) return [];
 
     const movies = await this.db.query.movies.findMany({
       where: inArray(schema.movies.id, movieIds),
@@ -191,25 +139,14 @@ export class ScreeningsService {
     const filtered = movies.filter(({ screenings }) => screenings.length > 0);
 
     if (params?.movieId) {
-      return {
-        data: filtered.flatMap(({ screenings }) =>
-          screenings.map(mapScreening),
-        ),
-        meta,
-      };
+      return filtered.flatMap(({ screenings }) => screenings.map(mapScreening));
     }
 
-    return {
-      data: filtered.map(({ screenings, ...movie }) =>
-        mapScreeningGroup(movie, screenings),
-      ),
-      meta,
-    };
+    return filtered.map(({ screenings, ...movie }) =>
+      mapScreeningGroup(movie, screenings),
+    );
   }
 
-  /**
-   * Returns a random retro screening with MovieHeroResponse.
-   */
   async getRandomRetroScreening(): Promise<RandomScreeningResponse | null> {
     const { startDay, endDay } = getDateRangeUpToMonthFromNow();
 

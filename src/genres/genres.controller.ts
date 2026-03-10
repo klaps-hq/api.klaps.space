@@ -7,14 +7,12 @@ import {
   NotFoundException,
   Param,
   Post,
-  Query,
   UseGuards,
 } from '@nestjs/common';
 import { GenresService } from './genres.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { Genre } from '../database/schemas/genres.schema';
 import type { GenreResponse } from '../lib/response-types';
-import { GetGenresQueryDto } from './dto/get-genres-query.dto';
 import { UpdateGenreDto } from './dto/update-genre.dto';
 
 @Controller('genres')
@@ -23,8 +21,8 @@ export class GenresController {
 
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getGenres(@Query() query: GetGenresQueryDto): Promise<Genre[]> {
-    return this.genresService.getGenres(query);
+  getGenres(): Promise<Genre[]> {
+    return this.genresService.getGenres();
   }
 
   @Get(':idOrSlug')
@@ -34,6 +32,7 @@ export class GenresController {
   ): Promise<GenreResponse> {
     const genre = await this.genresService.getGenreByIdOrSlug(idOrSlug);
     if (!genre) throw new NotFoundException(`Genre "${idOrSlug}" not found`);
+
     return genre;
   }
 
@@ -48,6 +47,7 @@ export class GenresController {
       idOrSlug,
       body,
     );
+
     if (!genre) throw new NotFoundException(`Genre "${idOrSlug}" not found`);
     return genre;
   }

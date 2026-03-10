@@ -8,15 +8,6 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
-/**
- * Query DTO for GET /screenings.
- * dateFrom: optional, YYYY-MM-DD (defaults to today in service).
- * dateTo: optional, YYYY-MM-DD (defaults to 30 days from today in service).
- * movieId: optional, positive integer.
- * cityId: optional, positive integer.
- * page: optional, page number (default 1).
- * limit: optional, max number of movies per page (default 10).
- */
 export class GetScreeningsQueryDto {
   @IsOptional()
   @IsDateString({})
@@ -71,22 +62,4 @@ export class GetScreeningsQueryDto {
     typeof value === 'string' ? value.trim() : undefined,
   )
   search?: string;
-
-  @IsOptional()
-  @Transform(({ value }) =>
-    value !== undefined && value !== '' ? Number(value) : undefined,
-  )
-  @Type(() => Number)
-  @IsInt({ message: 'page must be an integer' })
-  @Min(1, { message: 'page must be at least 1' })
-  page?: number;
-
-  @IsOptional()
-  @Transform(({ value }) =>
-    value !== undefined && value !== '' ? Number(value) : undefined,
-  )
-  @Type(() => Number)
-  @IsInt({ message: 'limit must be an integer' })
-  @Min(1, { message: 'limit must be at least 1' })
-  limit?: number;
 }

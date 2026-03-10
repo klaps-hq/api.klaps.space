@@ -18,16 +18,13 @@ import type {
   MovieSummaryResponse,
   MovieResponse,
   MultiCityMovieResponse,
-  PaginatedResponse,
 } from '../lib/response-types';
 import { mapMovieSummary, mapMovieDetail } from '../lib/response-mappers';
-import { and, count, desc, eq, gte, inArray, like, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, like, sql } from 'drizzle-orm';
 import { toSlug, movieSlug, uniqueSlug } from '../lib/slug';
 
 type FullSchema = typeof schema & typeof relations;
 
-const DEFAULT_PAGE = 1;
-const DEFAULT_MOVIES_LIMIT = 20;
 const DEFAULT_MULTI_CITY_LIMIT = 5;
 const DEFAULT_MIN_CITIES = 2;
 
@@ -43,16 +40,7 @@ export class MoviesService {
 
   // === READ ===
 
-  /**
-   * Returns a paginated list of all movies mapped to MovieSummaryResponse.
-   */
-  async getMovies(
-    params?: GetMoviesParams,
-  ): Promise<PaginatedResponse<MovieSummaryResponse>> {
-    const page = params?.page ?? DEFAULT_PAGE;
-    const limit = params?.limit ?? DEFAULT_MOVIES_LIMIT;
-    const offset = (page - 1) * limit;
-
+  async getMovies(params?: GetMoviesParams): Promise<MovieSummaryResponse[]> {
     const searchCondition = params?.search
       ? like(schema.movies.title, `%${params.search}%`)
       : undefined;
@@ -79,57 +67,39 @@ export class MoviesService {
         )
       : undefined;
 
-    const whereConditions = and(searchCondition, genreCondition);
-
-    const [totalResult, data] = await Promise.all([
-      this.db
-        .select({ total: count() })
-        .from(schema.movies)
-        .where(whereConditions),
-      this.db.query.movies.findMany({
-        where: whereConditions,
-        limit,
-        offset,
-        orderBy: desc(schema.movies.id),
-        with: {
-          movies_genres: {
-            with: {
-              genre: true,
-            },
-          },
-          movies_actors: {
-            with: {
-              actor: true,
-            },
-          },
-          movies_directors: {
-            with: {
-              director: true,
-            },
-          },
-          movies_scriptwriters: {
-            with: {
-              scriptwriter: true,
-            },
-          },
-          movies_countries: {
-            with: {
-              country: true,
-            },
+    const data = await this.db.query.movies.findMany({
+      where: and(searchCondition, genreCondition),
+      orderBy: desc(schema.movies.id),
+      with: {
+        movies_genres: {
+          with: {
+            genre: true,
           },
         },
-      }),
-    ]);
-    const total = totalResult[0]?.total ?? 0;
-    return {
-      data: data.map(mapMovieSummary),
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+        movies_actors: {
+          with: {
+            actor: true,
+          },
+        },
+        movies_directors: {
+          with: {
+            director: true,
+          },
+        },
+        movies_scriptwriters: {
+          with: {
+            scriptwriter: true,
+          },
+        },
+        movies_countries: {
+          with: {
+            country: true,
+          },
+        },
       },
-    };
+    });
+
+    return data.map(mapMovieSummary);
   }
 
   /**

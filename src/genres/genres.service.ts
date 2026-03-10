@@ -6,11 +6,7 @@ import type { Genre } from '../database/schemas/genres.schema';
 import type { GenreResponse } from '../lib/response-types';
 import { mapGenre } from '../lib/response-mappers';
 import { eq } from 'drizzle-orm';
-import type { GetGenresQueryDto } from './dto/get-genres-query.dto';
 import type { UpdateGenreDto } from './dto/update-genre.dto';
-
-const DEFAULT_GENRE_LIMIT = 50;
-const MAX_GENRE_LIMIT = 200;
 
 @Injectable()
 export class GenresService {
@@ -21,10 +17,8 @@ export class GenresService {
 
   // === READ ===
 
-  async getGenres(query: GetGenresQueryDto): Promise<Genre[]> {
-    const limit = Math.min(query.limit ?? DEFAULT_GENRE_LIMIT, MAX_GENRE_LIMIT);
-    const offset = ((query.page ?? 1) - 1) * limit;
-    return this.db.query.genres.findMany({ limit, offset });
+  async getGenres(): Promise<Genre[]> {
+    return this.db.query.genres.findMany();
   }
 
   async getGenreByIdOrSlug(idOrSlug: string): Promise<GenreResponse | null> {
