@@ -19,20 +19,22 @@ export class ShowtimesController {
   constructor(private readonly showtimesService: ShowtimesService) {}
 
   /**
+   * @url /api/v1/showtimes
    * @description Get showtimes by date range and city.
-   * @param query.dateFrom - Start date.
-   * @param query.dateTo - End date.
-   * @param query.cityId - City ID.
-   * @param query.citySlug - City slug.
+   * @param dto.dateFrom - Start date.
+   * @param dto.dateTo - End date.
+   * @param dto.cityId - City ID.
+   * @param dto.citySlug - City slug.
    * @returns Showtimes.
    */
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getShowtimes(@Query() query: GetShowtimesQueryDto): Promise<Showtime[]> {
-    return this.showtimesService.getShowtimes(query);
+  getShowtimes(@Query() dto: GetShowtimesQueryDto): Promise<Showtime[]> {
+    return this.showtimesService.getShowtimes(dto);
   }
 
   /**
+   * @url /api/v1/showtimes/batch
    * @description Create showtimes batch.
    * @param dto - Create showtimes dto.
    * @param dto.showtimes - Showtimes.
