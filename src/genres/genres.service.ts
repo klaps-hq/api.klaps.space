@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { MySql2Database } from 'drizzle-orm/mysql2';
 import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
@@ -6,6 +6,8 @@ import type { Genre } from '../database/schemas/genres.schema';
 import type { GenreResponse } from '../lib/response-types';
 import { mapGenre } from '../lib/response-mappers';
 import { eq } from 'drizzle-orm';
+import type { GetGenresDto } from './dto/get-genres.dto';
+import type { PostGenreDto } from './dto/post-genres.dto';
 
 const DEFAULT_GENRE_LIMIT = 50;
 const MAX_GENRE_LIMIT = 200;
@@ -17,34 +19,43 @@ export class GenresService {
     private readonly db: MySql2Database<typeof schema>,
   ) {}
 
-  async getGenres(params?: { page?: number; limit?: number }): Promise<Genre[]> {
-    const limit = Math.min(params?.limit ?? DEFAULT_GENRE_LIMIT, MAX_GENRE_LIMIT);
-    const offset = ((params?.page ?? 1) - 1) * limit;
+  async getGenres(query: GetGenresDto): Promise<Genre[]> {
+    const limit = Math.min(query.limit ?? DEFAULT_GENRE_LIMIT, MAX_GENRE_LIMIT);
+    const offset = ((query.page ?? 1) - 1) * limit;
     return this.db.query.genres.findMany({ limit, offset });
   }
 
-  async getGenreByIdOrSlug(idOrSlug: string): Promise<GenreResponse | null> {
+  async getGenreByIdOrSlug(idOrSlug: string): Promise<GenreResponse> {
     const numericId = Number(idOrSlug);
-    const condition =
-      Number.isInteger(numericId) && numericId > 0
-        ? eq(schema.genres.id, numericId)
-        : eq(schema.genres.slug, idOrSlug);
+    const isId = Number.isInteger(numericId) && numericId > 0;
 
-    const genre = await this.db.query.genres.findFirst({ where: condition });
-    if (!genre) return null;
+    const genre = await this.db.query.genres.findFirst({
+      where: isId
+        ? eq(schema.genres.id, numericId)
+        : eq(schema.genres.slug, idOrSlug),
+    });
+
+    if (!genre) throw new NotFoundException(`Genre "${idOrSlug}" not found`);
     return mapGenre(genre);
   }
 
-  async updateGenre(
-    id: number,
-    data: { description?: string | null },
-  ): Promise<Genre | null> {
+  async updateGenreByIdOrSlug(
+    idOrSlug: string,
+    data: PostGenreDto,
+  ): Promise<Genre> {
+    const numericId = Number(idOrSlug);
+    const isId = Number.isInteger(numericId) && numericId > 0;
+    const condition = isId
+      ? eq(schema.genres.id, numericId)
+      : eq(schema.genres.slug, idOrSlug);
+
     await this.db
       .update(schema.genres)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(schema.genres.id, id));
-    return (await this.db.query.genres.findFirst({
-      where: eq(schema.genres.id, id),
-    })) ?? null;
+      .where(condition);
+
+    const genre = await this.db.query.genres.findFirst({ where: condition });
+    if (!genre) throw new NotFoundException(`Genre "${idOrSlug}" not found`);
+    return genre;
   }
 }
