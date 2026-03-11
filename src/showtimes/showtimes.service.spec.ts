@@ -15,8 +15,8 @@ describe('ShowtimesService', () => {
         {
           provide: ShowtimesRepository,
           useValue: {
-            findShowtimes: jest.fn(),
-            insertBatch: jest.fn(),
+            findAll: jest.fn(),
+            upsertBatch: jest.fn(),
             updateCitiesLastScrapedAt: jest.fn(),
           },
         },
@@ -43,7 +43,7 @@ describe('ShowtimesService', () => {
           id: 1,
           url: 'https://kino.pl/1',
           cityId: 3,
-          date: new Date('2025-01-15'),
+          date: '2025-01-15',
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -51,12 +51,12 @@ describe('ShowtimesService', () => {
           id: 2,
           url: 'https://kino.pl/2',
           cityId: 3,
-          date: new Date('2025-01-16'),
+          date: '2025-01-16',
           createdAt: new Date(),
           updatedAt: new Date(),
         },
       ];
-      repo.findShowtimes.mockResolvedValue(showtimes);
+      repo.findAll.mockResolvedValue(showtimes);
 
       const result = await service.getShowtimes({
         dateFrom: '2025-01-10',
@@ -64,8 +64,11 @@ describe('ShowtimesService', () => {
         cityId: 3,
       } as any);
 
-      expect(result).toEqual(showtimes);
-      expect(repo.findShowtimes).toHaveBeenCalledWith(
+      expect(result).toEqual([
+        { id: 1, url: 'https://kino.pl/1', cityId: 3, date: '2025-01-15' },
+        { id: 2, url: 'https://kino.pl/2', cityId: 3, date: '2025-01-16' },
+      ]);
+      expect(repo.findAll).toHaveBeenCalledWith(
         new Date('2025-01-10'),
         new Date('2025-01-20'),
         3,
@@ -78,7 +81,7 @@ describe('ShowtimesService', () => {
         id: 7,
         slug: 'gdansk',
       } as any);
-      repo.findShowtimes.mockResolvedValue([]);
+      repo.findAll.mockResolvedValue([]);
 
       await service.getShowtimes({
         dateFrom: '2025-01-10',
@@ -87,7 +90,7 @@ describe('ShowtimesService', () => {
       } as any);
 
       expect(citiesService.findBySlug).toHaveBeenCalledWith('gdansk');
-      expect(repo.findShowtimes).toHaveBeenCalledWith(
+      expect(repo.findAll).toHaveBeenCalledWith(
         new Date('2025-01-10'),
         new Date('2025-01-20'),
         7,
@@ -95,14 +98,14 @@ describe('ShowtimesService', () => {
     });
 
     it('should pass undefined cityId when neither cityId nor citySlug provided', async () => {
-      repo.findShowtimes.mockResolvedValue([]);
+      repo.findAll.mockResolvedValue([]);
 
       await service.getShowtimes({
         dateFrom: '2025-02-01',
         dateTo: '2025-02-28',
       } as any);
 
-      expect(repo.findShowtimes).toHaveBeenCalledWith(
+      expect(repo.findAll).toHaveBeenCalledWith(
         new Date('2025-02-01'),
         new Date('2025-02-28'),
         undefined,
@@ -110,23 +113,23 @@ describe('ShowtimesService', () => {
     });
 
     it('should use new Date() when dateFrom/dateTo are not provided', async () => {
-      repo.findShowtimes.mockResolvedValue([]);
+      repo.findAll.mockResolvedValue([]);
       const before = new Date();
 
       await service.getShowtimes({} as any);
 
-      const [startDay, endDay] = repo.findShowtimes.mock.calls[0];
+      const [startDay, endDay] = repo.findAll.mock.calls[0];
       expect(startDay.getTime()).toBeGreaterThanOrEqual(before.getTime() - 100);
       expect(endDay.getTime()).toBeGreaterThanOrEqual(before.getTime() - 100);
     });
 
     it('should return undefined cityId when citySlug resolves to no city', async () => {
       citiesService.findBySlug.mockResolvedValue(null);
-      repo.findShowtimes.mockResolvedValue([]);
+      repo.findAll.mockResolvedValue([]);
 
       await service.getShowtimes({ citySlug: 'nonexistent' } as any);
 
-      expect(repo.findShowtimes).toHaveBeenCalledWith(
+      expect(repo.findAll).toHaveBeenCalledWith(
         expect.any(Date),
         expect.any(Date),
         undefined,
@@ -141,23 +144,23 @@ describe('ShowtimesService', () => {
         scrapedCityIds: [1],
       } as any);
 
-      expect(repo.insertBatch).not.toHaveBeenCalled();
+      expect(repo.upsertBatch).not.toHaveBeenCalled();
       expect(repo.updateCitiesLastScrapedAt).not.toHaveBeenCalled();
     });
 
-    it('should call insertBatch with showtimes', async () => {
+    it('should call upsertBatch with showtimes', async () => {
       const showtimes = [
         { url: 'https://kino.pl/1', cityId: 3, date: '2025-01-15' },
         { url: 'https://kino.pl/2', cityId: 3, date: '2025-01-16' },
       ];
-      repo.insertBatch.mockResolvedValue(undefined);
+      repo.upsertBatch.mockResolvedValue(undefined);
 
       await service.createShowtimesBatch({
         showtimes,
         scrapedCityIds: undefined,
       } as any);
 
-      expect(repo.insertBatch).toHaveBeenCalledWith(showtimes);
+      expect(repo.upsertBatch).toHaveBeenCalledWith(showtimes);
       expect(repo.updateCitiesLastScrapedAt).not.toHaveBeenCalled();
     });
 
@@ -165,7 +168,7 @@ describe('ShowtimesService', () => {
       const showtimes = [
         { url: 'https://kino.pl/1', cityId: 3, date: '2025-01-15' },
       ];
-      repo.insertBatch.mockResolvedValue(undefined);
+      repo.upsertBatch.mockResolvedValue(undefined);
       repo.updateCitiesLastScrapedAt.mockResolvedValue(undefined);
 
       await service.createShowtimesBatch({
@@ -173,7 +176,7 @@ describe('ShowtimesService', () => {
         scrapedCityIds: [3, 5],
       } as any);
 
-      expect(repo.insertBatch).toHaveBeenCalledWith(showtimes);
+      expect(repo.upsertBatch).toHaveBeenCalledWith(showtimes);
       expect(repo.updateCitiesLastScrapedAt).toHaveBeenCalledWith([3, 5]);
     });
 
@@ -181,14 +184,14 @@ describe('ShowtimesService', () => {
       const showtimes = [
         { url: 'https://kino.pl/1', cityId: 3, date: '2025-01-15' },
       ];
-      repo.insertBatch.mockResolvedValue(undefined);
+      repo.upsertBatch.mockResolvedValue(undefined);
 
       await service.createShowtimesBatch({
         showtimes,
         scrapedCityIds: [],
       } as any);
 
-      expect(repo.insertBatch).toHaveBeenCalledWith(showtimes);
+      expect(repo.upsertBatch).toHaveBeenCalledWith(showtimes);
       expect(repo.updateCitiesLastScrapedAt).not.toHaveBeenCalled();
     });
   });

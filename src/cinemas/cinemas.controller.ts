@@ -25,7 +25,7 @@ export class CinemasController {
   @Get()
   @UseGuards(InternalApiKeyGuard)
   getCinemas(@Query() query: GetCinemasQueryDto): Promise<Cinema[]> {
-    return this.cinemasService.getCinemas(query.cityId, query.citySlug);
+    return this.cinemasService.getCinemas(query);
   }
 
   @Get(':slug')

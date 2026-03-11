@@ -40,7 +40,7 @@ describe('ScreeningsService', () => {
             findRetroMovieIds: jest.fn(),
             findCandidateRetroMovieIds: jest.fn(),
             findMovieWithScreeningsById: jest.fn(),
-            insertScreening: jest.fn(),
+            insert: jest.fn(),
           },
         },
       ],
@@ -209,12 +209,12 @@ describe('ScreeningsService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      repo.insertScreening.mockResolvedValue(created);
+      repo.insert.mockResolvedValue(created);
 
       const result = await service.createScreening(dto as any);
 
       expect(result).toEqual(created);
-      expect(repo.insertScreening).toHaveBeenCalledWith(dto);
+      expect(repo.insert).toHaveBeenCalledWith(dto);
     });
   });
 });

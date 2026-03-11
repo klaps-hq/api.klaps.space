@@ -102,6 +102,6 @@ export class ScreeningsService {
   // === WRITE ===
 
   async createScreening(dto: CreateScreeningDto): Promise<Screening> {
-    return this.repo.insertScreening(dto);
+    return this.repo.insert(dto);
   }
 }

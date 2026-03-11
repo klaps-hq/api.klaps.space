@@ -158,7 +158,7 @@ export class ScreeningsRepository {
 
   // === WRITE ===
 
-  async insertScreening(dto: CreateScreeningDto): Promise<Screening> {
+  async insert(dto: CreateScreeningDto): Promise<Screening> {
     const values = { ...dto, date: new Date(dto.date) };
     const [result] = await this.db
       .insert(schema.screenings)

@@ -20,6 +20,8 @@ import type {
   ScoredCandidate,
   ScreeningWithCinemaCity,
 } from './socials.types';
+import type { GetSocialCandidateQueryDto } from './dto/get-socials-candidate-query.dto';
+import type { SocialsActionDto } from './dto/socials-action.dto';
 import { SocialsRepository } from './socials.repository';
 
 @Injectable()
@@ -29,17 +31,13 @@ export class SocialsService {
   // === READ ===
 
   async getCandidate(
-    dateFromParam: string,
-    dateToParam: string,
-    minScoreParam: number,
-    platformParam: string,
-    numberOfCandidatesParam?: number,
+    query: GetSocialCandidateQueryDto,
   ): Promise<SocialsGetCandidateResponse> {
-    const dateFrom = getDate(dateFromParam);
-    const dateTo = getDate(dateToParam);
-    const minScore = Number(minScoreParam);
-    const platform = platformParam.trim().toLowerCase();
-    const numberOfCandidates = numberOfCandidatesParam ?? 10;
+    const dateFrom = getDate(query.dateFrom);
+    const dateTo = getDate(query.dateTo);
+    const minScore = query.minScore;
+    const platform = query.platform;
+    const numberOfCandidates = query.numberOfCandidates ?? 10;
 
     const socialsPosts = await this.repo.findPostsByDateAndPlatform(
       dateFrom,
@@ -131,12 +129,8 @@ export class SocialsService {
 
   // === WRITE ===
 
-  async reserveCandidate(
-    platformParam: string,
-    screeningIdParam: number,
-  ): Promise<void> {
-    const platform = platformParam.trim().toLowerCase();
-    const screeningId = screeningIdParam;
+  async reserveCandidate(dto: SocialsActionDto): Promise<void> {
+    const { platform, screeningId } = dto;
 
     const screening = await this.repo.findScreeningById(screeningId);
     if (!screening) {
@@ -168,12 +162,8 @@ export class SocialsService {
     });
   }
 
-  async publishCandidate(
-    platformParam: string,
-    screeningIdParam: number,
-  ): Promise<void> {
-    const platform = platformParam.trim().toLowerCase();
-    const screeningId = screeningIdParam;
+  async publishCandidate(dto: SocialsActionDto): Promise<void> {
+    const { platform, screeningId } = dto;
 
     const screening = await this.repo.findScreeningById(screeningId);
     if (!screening) {

@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ShowtimesService } from './showtimes.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
-import type { Showtime } from './showtimes.types';
+import type { ShowtimeResponse } from './showtimes.types';
 import { GetShowtimesQueryDto } from './dto/get-showtimes-query.dto';
 import { CreateShowtimesBatchDto } from './dto/create-showtimes-batch.dto';
 
@@ -20,7 +20,7 @@ export class ShowtimesController {
 
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getShowtimes(@Query() dto: GetShowtimesQueryDto): Promise<Showtime[]> {
+  getShowtimes(@Query() dto: GetShowtimesQueryDto): Promise<ShowtimeResponse[]> {
     return this.showtimesService.getShowtimes(dto);
   }
 

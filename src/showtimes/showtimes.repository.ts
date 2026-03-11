@@ -20,7 +20,7 @@ export class ShowtimesRepository {
 
   // === READ ===
 
-  async findShowtimes(
+  async findAll(
     startDay: Date,
     endDay: Date,
     cityId?: number,
@@ -36,7 +36,7 @@ export class ShowtimesRepository {
 
   // === WRITE ===
 
-  async insertBatch(showtimes: CreateShowtimesBatchItemDto[]): Promise<void> {
+  async upsertBatch(showtimes: CreateShowtimesBatchItemDto[]): Promise<void> {
     const values = showtimes.map((s) => ({ ...s, date: new Date(s.date) }));
     const chunks = sortAndChunk(values, (s) => s.url);
 

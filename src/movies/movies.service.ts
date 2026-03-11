@@ -40,8 +40,8 @@ export class MoviesService {
     const filter = { search: params?.search, genreId };
 
     const [data, total] = await Promise.all([
-      this.repo.findMovies({ ...filter, limit, offset }),
-      this.repo.countMovies(filter),
+      this.repo.findAll({ ...filter, limit, offset }),
+      this.repo.count(filter),
     ]);
 
     return paginate(data.map(mapMovieSummary), total, page, limit);
@@ -62,6 +62,6 @@ export class MoviesService {
   // === WRITE ===
 
   async createMoviesBatch(movies: CreateMoviesBatchItemDto[]): Promise<void> {
-    return this.repo.createBatch(movies);
+    return this.repo.upsertBatch(movies);
   }
 }
