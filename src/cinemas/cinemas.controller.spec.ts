@@ -67,13 +67,13 @@ describe('CinemasController', () => {
 
   describe('getCinemas', () => {
     it('should pass query params to service', async () => {
-      service.getCinemas.mockResolvedValue([mockCinema as any]);
+      service.getCinemas.mockResolvedValue([mockCinemaResponse as any]);
 
       const query = { cityId: 5, citySlug: 'warszawa' } as any;
       const result = await controller.getCinemas(query);
 
       expect(service.getCinemas).toHaveBeenCalledWith(query);
-      expect(result).toEqual([mockCinema]);
+      expect(result).toEqual([mockCinemaResponse]);
     });
 
     it('should pass empty object when no query params', async () => {
@@ -127,7 +127,7 @@ describe('CinemasController', () => {
 
   describe('updateCinemaBySlug', () => {
     it('should return updated cinema when found', async () => {
-      service.updateCinemaBySlug.mockResolvedValue(mockCinema as any);
+      service.updateCinemaBySlug.mockResolvedValue(mockCinemaResponse);
 
       const body = { description: 'Zaktualizowany opis' } as any;
       const result = await controller.updateCinemaBySlug('kino-muranow', body);
@@ -136,7 +136,7 @@ describe('CinemasController', () => {
         'kino-muranow',
         body,
       );
-      expect(result).toEqual(mockCinema);
+      expect(result).toEqual(mockCinemaResponse);
     });
 
     it('should throw NotFoundException when cinema not found', async () => {

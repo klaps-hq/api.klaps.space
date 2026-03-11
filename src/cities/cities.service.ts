@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import type { City } from './cities.types';
+import type { City, CityDetailResponse, CityResponse } from './cities.types';
 import type { CreateCitiesBatchItemDto } from './dto/create-cities-batch.dto';
 import type { UpdateCityDto } from './dto/update-city.dto';
 import type { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dto';
-import type { CityDetailResponse, CityResponse } from './cities.types';
 import { mapCity } from './cities.mapper';
 import { ScreeningsService } from '../screenings/screenings.service';
 import { CitiesRepository } from './cities.repository';
@@ -17,8 +16,9 @@ export class CitiesService {
 
   // === READ ===
 
-  async getCities(): Promise<City[]> {
-    return this.repo.findAll();
+  async getCities(): Promise<CityResponse[]> {
+    const cities = await this.repo.findAll();
+    return cities.map((c) => mapCity(c));
   }
 
   async findBySlug(slug: string): Promise<City | null> {
@@ -63,7 +63,9 @@ export class CitiesService {
   async updateCityBySlug(
     slug: string,
     data: UpdateCityDto,
-  ): Promise<City | null> {
-    return this.repo.updateBySlug(slug, data);
+  ): Promise<CityResponse | null> {
+    const city = await this.repo.updateBySlug(slug, data);
+    if (!city) return null;
+    return mapCity(city);
   }
 }

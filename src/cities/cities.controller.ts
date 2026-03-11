@@ -12,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { CitiesService } from './cities.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
-import type { City } from './cities.types';
 import type { CityDetailResponse, CityResponse } from './cities.types';
 import { CreateCitiesBatchDto } from './dto/create-cities-batch.dto';
 import { UpdateCityDto } from './dto/update-city.dto';
@@ -24,7 +23,7 @@ export class CitiesController {
 
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getCities(): Promise<City[]> {
+  getCities(): Promise<CityResponse[]> {
     return this.citiesService.getCities();
   }
 
@@ -65,7 +64,7 @@ export class CitiesController {
   async updateCityBySlug(
     @Param('slug') slug: string,
     @Body() body: UpdateCityDto,
-  ): Promise<City> {
+  ): Promise<CityResponse> {
     const city = await this.citiesService.updateCityBySlug(slug, body);
     if (!city) throw new NotFoundException(`City "${slug}" not found`);
     return city;

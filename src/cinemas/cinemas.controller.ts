@@ -12,8 +12,7 @@ import {
 } from '@nestjs/common';
 import { CinemasService } from './cinemas.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
-import type { Cinema } from '../database/schemas/cinemas.schema';
-import type { CinemaResponse } from './cinemas.types';
+import type { CinemaResponse, CinemaSummaryResponse } from './cinemas.types';
 import { GetCinemasQueryDto } from './dto/get-cinemas-query.dto';
 import { CreateCinemasBatchDto } from './dto/create-cinemas-batch.dto';
 import { UpdateCinemaDto } from './dto/update-cinema.dto';
@@ -24,7 +23,7 @@ export class CinemasController {
 
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getCinemas(@Query() query: GetCinemasQueryDto): Promise<Cinema[]> {
+  getCinemas(@Query() query: GetCinemasQueryDto): Promise<CinemaSummaryResponse[]> {
     return this.cinemasService.getCinemas(query);
   }
 
@@ -50,7 +49,7 @@ export class CinemasController {
   async updateCinemaBySlug(
     @Param('slug') slug: string,
     @Body() body: UpdateCinemaDto,
-  ): Promise<Cinema> {
+  ): Promise<CinemaResponse> {
     const cinema = await this.cinemasService.updateCinemaBySlug(slug, body);
 
     if (!cinema) throw new NotFoundException(`Cinema "${slug}" not found`);

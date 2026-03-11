@@ -64,12 +64,12 @@ describe('CitiesController', () => {
 
   describe('getCities', () => {
     it('should delegate to service.getCities', async () => {
-      service.getCities.mockResolvedValue([mockCity as any]);
+      service.getCities.mockResolvedValue([mockCityResponse]);
 
       const result = await controller.getCities();
 
       expect(service.getCities).toHaveBeenCalled();
-      expect(result).toEqual([mockCity]);
+      expect(result).toEqual([mockCityResponse]);
     });
   });
 
@@ -135,13 +135,13 @@ describe('CitiesController', () => {
 
   describe('updateCityBySlug', () => {
     it('should return updated city when found', async () => {
-      service.updateCityBySlug.mockResolvedValue(mockCity as any);
+      service.updateCityBySlug.mockResolvedValue(mockCityResponse);
 
       const body = { description: 'Zaktualizowany opis' } as any;
       const result = await controller.updateCityBySlug('warszawa', body);
 
       expect(service.updateCityBySlug).toHaveBeenCalledWith('warszawa', body);
-      expect(result).toEqual(mockCity);
+      expect(result).toEqual(mockCityResponse);
     });
 
     it('should throw NotFoundException when city not found', async () => {

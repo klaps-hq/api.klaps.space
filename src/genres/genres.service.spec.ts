@@ -46,12 +46,15 @@ describe('GenresService', () => {
   });
 
   describe('getGenres', () => {
-    it('should return all genres from repo', async () => {
+    it('should return mapped genre responses', async () => {
       repo.findAll.mockResolvedValue([mockGenre, mockGenreNoDesc]);
 
       const result = await service.getGenres();
 
-      expect(result).toEqual([mockGenre, mockGenreNoDesc]);
+      expect(result).toEqual([
+        { id: 1, slug: 'action', name: 'Action', description: 'Action movies' },
+        { id: 2, slug: 'comedy', name: 'Comedy', description: null },
+      ]);
       expect(repo.findAll).toHaveBeenCalled();
     });
 
@@ -120,7 +123,7 @@ describe('GenresService', () => {
   });
 
   describe('updateGenreBySlug', () => {
-    it('should delegate to repo and return updated genre', async () => {
+    it('should return mapped genre response after update', async () => {
       const updated = { ...mockGenre, description: 'Updated description' };
       repo.updateBySlug.mockResolvedValue(updated);
 
@@ -128,7 +131,12 @@ describe('GenresService', () => {
         description: 'Updated description',
       });
 
-      expect(result).toEqual(updated);
+      expect(result).toEqual({
+        id: 1,
+        slug: 'action',
+        name: 'Action',
+        description: 'Updated description',
+      });
       expect(repo.updateBySlug).toHaveBeenCalledWith('action', {
         description: 'Updated description',
       });

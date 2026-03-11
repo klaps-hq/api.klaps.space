@@ -64,14 +64,22 @@ describe('CitiesService', () => {
     screeningsService = module.get(ScreeningsService);
   });
 
+  const mockCityResponse = {
+    id: 5,
+    slug: 'warszawa',
+    name: 'Warszawa',
+    nameDeclinated: 'Warszawie',
+    description: 'Stolica Polski',
+  };
+
   describe('getCities', () => {
-    it('should delegate to repo.findAll', async () => {
+    it('should return mapped city responses', async () => {
       repo.findAll.mockResolvedValue([mockCity as any]);
 
       const result = await service.getCities();
 
       expect(repo.findAll).toHaveBeenCalled();
-      expect(result).toEqual([mockCity]);
+      expect(result).toEqual([mockCityResponse]);
     });
   });
 
@@ -201,7 +209,7 @@ describe('CitiesService', () => {
   });
 
   describe('updateCityBySlug', () => {
-    it('should delegate to repo.updateBySlug and return result', async () => {
+    it('should return mapped city response after update', async () => {
       repo.updateBySlug.mockResolvedValue(mockCity as any);
 
       const result = await service.updateCityBySlug('warszawa', {
@@ -211,7 +219,7 @@ describe('CitiesService', () => {
       expect(repo.updateBySlug).toHaveBeenCalledWith('warszawa', {
         description: 'Nowy opis',
       });
-      expect(result).toEqual(mockCity);
+      expect(result).toEqual(mockCityResponse);
     });
 
     it('should return null when city not found', async () => {
