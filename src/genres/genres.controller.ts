@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { GenresService } from './genres.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
-import type { Genre } from '../database/schemas/genres.schema';
 import type { GenreResponse } from './genres.types';
 import { UpdateGenreDto } from './dto/update-genre.dto';
 
@@ -21,7 +20,7 @@ export class GenresController {
 
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getGenres(): Promise<Genre[]> {
+  getGenres(): Promise<GenreResponse[]> {
     return this.genresService.getGenres();
   }
 
@@ -40,7 +39,7 @@ export class GenresController {
   async updateGenreBySlug(
     @Param('slug') slug: string,
     @Body() body: UpdateGenreDto,
-  ): Promise<Genre> {
+  ): Promise<GenreResponse> {
     const genre = await this.genresService.updateGenreBySlug(slug, body);
 
     if (!genre) throw new NotFoundException(`Genre "${slug}" not found`);

@@ -73,25 +73,39 @@ describe('CinemasService', () => {
     citiesService = module.get(CitiesService);
   });
 
+  const mockCinemaSummaryResponse = {
+    id: 1,
+    slug: 'kino-muranow',
+    name: 'Kino Muranow',
+    street: 'ul. Andersa 1',
+    city: {
+      id: 5,
+      slug: 'warszawa',
+      name: 'Warszawa',
+      nameDeclinated: 'Warszawie',
+      description: null,
+    },
+  };
+
   describe('getCinemas', () => {
-    it('should call repo.findAll with undefined when no slug provided', async () => {
-      repo.findAll.mockResolvedValue([mockCinema]);
+    it('should return mapped cinema summaries', async () => {
+      repo.findAll.mockResolvedValue([mockCinemaWithCity as any]);
 
       const result = await service.getCinemas({});
 
       expect(repo.findAll).toHaveBeenCalledWith(undefined);
-      expect(result).toEqual([mockCinema]);
+      expect(result).toEqual([mockCinemaSummaryResponse]);
     });
 
     it('should resolve sourceCityId via citiesService when citySlug provided', async () => {
       citiesService.findBySlug.mockResolvedValue(mockCity);
-      repo.findAll.mockResolvedValue([mockCinema]);
+      repo.findAll.mockResolvedValue([mockCinemaWithCity as any]);
 
       const result = await service.getCinemas({ citySlug: 'warszawa' });
 
       expect(citiesService.findBySlug).toHaveBeenCalledWith('warszawa');
       expect(repo.findAll).toHaveBeenCalledWith(10);
-      expect(result).toEqual([mockCinema]);
+      expect(result).toEqual([mockCinemaSummaryResponse]);
     });
 
     it('should pass undefined sourceCityId when city not found by slug', async () => {
@@ -161,8 +175,8 @@ describe('CinemasService', () => {
   });
 
   describe('updateCinemaBySlug', () => {
-    it('should delegate to repo.updateBySlug and return result', async () => {
-      repo.updateBySlug.mockResolvedValue(mockCinema as any);
+    it('should return mapped cinema response after update', async () => {
+      repo.updateBySlug.mockResolvedValue(mockCinemaWithCity as any);
 
       const result = await service.updateCinemaBySlug('kino-muranow', {
         description: 'Updated',
@@ -171,7 +185,23 @@ describe('CinemasService', () => {
       expect(repo.updateBySlug).toHaveBeenCalledWith('kino-muranow', {
         description: 'Updated',
       });
-      expect(result).toEqual(mockCinema);
+      expect(result).toEqual({
+        id: 1,
+        slug: 'kino-muranow',
+        name: 'Kino Muranow',
+        street: 'ul. Andersa 1',
+        description: 'Kino artystyczne w centrum Warszawy',
+        city: {
+          id: 5,
+          slug: 'warszawa',
+          name: 'Warszawa',
+          nameDeclinated: 'Warszawie',
+          description: null,
+        },
+        latitude: 52.2463,
+        longitude: 21.0027,
+        filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
+      });
     });
 
     it('should return null when cinema not found', async () => {

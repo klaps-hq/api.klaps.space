@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import type { Genre } from '../database/schemas/genres.schema';
 import type { GenreResponse } from './genres.types';
 import { mapGenre } from './genres.mapper';
 import type { UpdateGenreDto } from './dto/update-genre.dto';
@@ -11,11 +10,12 @@ export class GenresService {
 
   // === READ ===
 
-  async getGenres(): Promise<Genre[]> {
-    return this.repo.findAll();
+  async getGenres(): Promise<GenreResponse[]> {
+    const genres = await this.repo.findAll();
+    return genres.map(mapGenre);
   }
 
-  async findBySlug(slug: string): Promise<Genre | null> {
+  async findBySlug(slug: string) {
     const genre = await this.repo.findBySlug(slug);
     return genre ?? null;
   }
@@ -31,7 +31,9 @@ export class GenresService {
   async updateGenreBySlug(
     slug: string,
     data: UpdateGenreDto,
-  ): Promise<Genre | null> {
-    return this.repo.updateBySlug(slug, data);
+  ): Promise<GenreResponse | null> {
+    const genre = await this.repo.updateBySlug(slug, data);
+    if (!genre) return null;
+    return mapGenre(genre);
   }
 }

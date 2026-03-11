@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { Cinema } from '../database/schemas/cinemas.schema';
-import type { CinemaResponse } from './cinemas.types';
-import { mapCinemaDetail } from './cinemas.mapper';
+import type { CinemaResponse, CinemaSummaryResponse } from './cinemas.types';
+import { mapCinemaDetail, mapCinemaSummary } from './cinemas.mapper';
 import type { CreateCinemasBatchItemDto } from './dto/create-cinemas-batch.dto';
 import type { GetCinemasQueryDto } from './dto/get-cinemas-query.dto';
 import type { UpdateCinemaDto } from './dto/update-cinema.dto';
@@ -17,9 +16,10 @@ export class CinemasService {
 
   // === READ ===
 
-  async getCinemas(query: GetCinemasQueryDto): Promise<Cinema[]> {
+  async getCinemas(query: GetCinemasQueryDto): Promise<CinemaSummaryResponse[]> {
     const sourceCityId = await this.resolveSourceCityId(query.citySlug);
-    return this.repo.findAll(sourceCityId);
+    const cinemas = await this.repo.findAll(sourceCityId);
+    return cinemas.map(mapCinemaSummary);
   }
 
   async getCinemaBySlug(slug: string): Promise<CinemaResponse | null> {
@@ -39,8 +39,10 @@ export class CinemasService {
   async updateCinemaBySlug(
     slug: string,
     data: UpdateCinemaDto,
-  ): Promise<Cinema | null> {
-    return this.repo.updateBySlug(slug, data);
+  ): Promise<CinemaResponse | null> {
+    const cinema = await this.repo.updateBySlug(slug, data);
+    if (!cinema) return null;
+    return mapCinemaDetail(cinema);
   }
 
   // === PRIVATE ===

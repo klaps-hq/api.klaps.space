@@ -27,6 +27,7 @@ export class CinemasRepository {
       where: sourceCityId
         ? eq(schema.cinemas.sourceCityId, sourceCityId)
         : undefined,
+      with: { city: true },
     });
   }
 
@@ -83,7 +84,10 @@ export class CinemasRepository {
       .set({ ...data, updatedAt: new Date() })
       .where(condition);
 
-    const cinema = await this.db.query.cinemas.findFirst({ where: condition });
+    const cinema = await this.db.query.cinemas.findFirst({
+      where: condition,
+      with: { city: true },
+    });
     return cinema ?? null;
   }
 

@@ -50,11 +50,11 @@ describe('GenresController', () => {
 
   describe('getGenres', () => {
     it('should return all genres from service', async () => {
-      service.getGenres.mockResolvedValue([mockGenre]);
+      service.getGenres.mockResolvedValue([mockGenreResponse]);
 
       const result = await controller.getGenres();
 
-      expect(result).toEqual([mockGenre]);
+      expect(result).toEqual([mockGenreResponse]);
       expect(service.getGenres).toHaveBeenCalled();
     });
   });
@@ -83,7 +83,7 @@ describe('GenresController', () => {
 
   describe('updateGenreBySlug', () => {
     it('should return updated genre', async () => {
-      const updated = { ...mockGenre, description: 'Updated' };
+      const updated = { ...mockGenreResponse, description: 'Updated' };
       service.updateGenreBySlug.mockResolvedValue(updated);
 
       const result = await controller.updateGenreBySlug('action', {
