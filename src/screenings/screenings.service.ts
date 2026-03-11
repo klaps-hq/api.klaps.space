@@ -227,6 +227,7 @@ export class ScreeningsService {
         },
       })
       .$returningId();
+
     const screening = await this.db.query.screenings.findFirst({
       where: eq(schema.screenings.id, result.id),
     });

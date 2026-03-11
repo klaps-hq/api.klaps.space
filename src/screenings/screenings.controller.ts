@@ -27,32 +27,23 @@ export class ScreeningsController {
   getScreenings(
     @Query() query: GetScreeningsQueryDto,
   ): Promise<(ScreeningResponse | ScreeningGroupResponse)[]> {
-    return this.screeningsService.getScreenings({
-      dateFrom: query.dateFrom,
-      dateTo: query.dateTo,
-      movieId: query.movieId,
-      cityId: query.cityId,
-      citySlug: query.citySlug,
-      genreId: query.genreId,
-      genreSlug: query.genreSlug,
-      cinemaSlug: query.cinemaSlug,
-      search: query.search,
-    });
-  }
-
-  @Post()
-  @UseGuards(InternalApiKeyGuard)
-  createScreening(@Body() dto: CreateScreeningDto): Promise<Screening> {
-    return this.screeningsService.createScreening(dto);
+    return this.screeningsService.getScreenings(query);
   }
 
   @Get('random-screening')
   @UseGuards(InternalApiKeyGuard)
   async getRandomRetroScreening(): Promise<RandomScreeningResponse> {
     const screening = await this.screeningsService.getRandomRetroScreening();
+
     if (!screening) {
       throw new NotFoundException('No retro screening found');
     }
     return screening;
+  }
+
+  @Post()
+  @UseGuards(InternalApiKeyGuard)
+  createScreening(@Body() dto: CreateScreeningDto): Promise<Screening> {
+    return this.screeningsService.createScreening(dto);
   }
 }
