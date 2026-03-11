@@ -1,22 +1,15 @@
-import { Inject, Injectable } from '@nestjs/common';
-import type { MySql2Database } from 'drizzle-orm/mysql2';
-import * as schema from '../database/schemas';
-import * as relations from '../database/schemas/relations';
-import { DRIZZLE } from '../database/constants';
+import { Injectable } from '@nestjs/common';
 import type { Showtime } from './showtimes.types';
-import { and, eq, gte, inArray, lte } from 'drizzle-orm';
-import { sortAndChunk } from '../wrappers/chunked-upsert';
-import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
-import { GetShowtimesQueryDto } from './dto/get-showtimes-query.dto';
-import { CreateShowtimesBatchDto } from './dto/create-showtimes-batch.dto';
-
-type FullSchema = typeof schema & typeof relations;
+import type { GetShowtimesQueryDto } from './dto/get-showtimes-query.dto';
+import type { CreateShowtimesBatchDto } from './dto/create-showtimes-batch.dto';
+import { ShowtimesRepository } from './showtimes.repository';
+import { CitiesService } from '../cities/cities.service';
 
 @Injectable()
 export class ShowtimesService {
   constructor(
-    @Inject(DRIZZLE)
-    private readonly db: MySql2Database<FullSchema>,
+    private readonly repo: ShowtimesRepository,
+    private readonly citiesService: CitiesService,
   ) {}
 
   // === READ ===
@@ -26,28 +19,9 @@ export class ShowtimesService {
     const startDay = dateFrom ? new Date(dateFrom) : new Date();
     const endDay = dateTo ? new Date(dateTo) : new Date();
 
-    let cityCondition;
+    const resolvedCityId = cityId ?? (await this.resolveCityId(citySlug));
 
-    if (cityId) {
-      cityCondition = eq(schema.showtimes.cityId, cityId);
-    } else if (citySlug) {
-      const cityIdBySlug = this.db
-        .select({ id: schema.cities.id })
-        .from(schema.cities)
-        .where(eq(schema.cities.slug, citySlug));
-
-      cityCondition = inArray(schema.showtimes.cityId, cityIdBySlug);
-    }
-
-    const showtimes = await this.db.query.showtimes.findMany({
-      where: and(
-        gte(schema.showtimes.createdAt, startDay),
-        lte(schema.showtimes.createdAt, endDay),
-        cityCondition,
-      ),
-    });
-
-    return showtimes;
+    return this.repo.findShowtimes(startDay, endDay, resolvedCityId);
   }
 
   // === WRITE ===
@@ -56,29 +30,18 @@ export class ShowtimesService {
     const { showtimes, scrapedCityIds } = dto;
     if (showtimes.length === 0) return;
 
-    const values = showtimes.map((s) => ({ ...s, date: new Date(s.date) }));
-    const chunks = sortAndChunk(values, (s) => s.url);
-
-    for (const chunk of chunks) {
-      await withDeadlockRetry(
-        () => this.db.insert(schema.showtimes).values(chunk),
-        { label: 'createShowtimesBatch' },
-      );
-    }
+    await this.repo.insertBatch(showtimes);
 
     if (scrapedCityIds && scrapedCityIds.length > 0) {
-      const cityChunks = sortAndChunk(scrapedCityIds, (id) => id);
-
-      for (const chunk of cityChunks) {
-        await withDeadlockRetry(
-          () =>
-            this.db
-              .update(schema.cities)
-              .set({ lastScrapedAt: new Date() })
-              .where(inArray(schema.cities.id, chunk)),
-          { label: 'createShowtimesBatch:lastScrapedAt' },
-        );
-      }
+      await this.repo.updateCitiesLastScrapedAt(scrapedCityIds);
     }
+  }
+
+  // === PRIVATE ===
+
+  private async resolveCityId(citySlug?: string): Promise<number | undefined> {
+    if (!citySlug) return undefined;
+    const city = await this.citiesService.findByIdOrSlug(citySlug);
+    return city?.id;
   }
 }

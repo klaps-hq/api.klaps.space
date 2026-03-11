@@ -69,6 +69,7 @@ export class MoviesController {
     if (!movie) {
       throw new NotFoundException(`Movie "${idOrSlug}" not found`);
     }
+
     return movie;
   }
 }

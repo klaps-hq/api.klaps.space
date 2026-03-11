@@ -1,71 +1,45 @@
-import { Inject, Injectable } from '@nestjs/common';
-import type { MySql2Database } from 'drizzle-orm/mysql2';
-import * as schema from '../database/schemas';
-import { DRIZZLE } from '../database/constants';
+import { Injectable } from '@nestjs/common';
 import type { City } from './cities.types';
 import type { CreateCitiesBatchItemDto } from './dto/create-cities-batch.dto';
 import type { UpdateCityDto } from './dto/update-city.dto';
 import type { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dto';
 import type { CityDetailResponse, CityResponse } from '../lib/response-types';
 import { mapCity } from '../lib/response-mappers';
-import { and, eq, getTableColumns, gte, lte, sql } from 'drizzle-orm';
 import { ScreeningsService } from '../screenings/screenings.service';
-import { sortAndChunk } from '../wrappers/chunked-upsert';
-import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
-import { toSlug, uniqueSlug } from '../lib/slug';
+import { CitiesRepository } from './cities.repository';
 
 @Injectable()
 export class CitiesService {
   constructor(
-    @Inject(DRIZZLE)
-    private readonly db: MySql2Database<typeof schema>,
+    private readonly repo: CitiesRepository,
     private readonly screeningsService: ScreeningsService,
   ) {}
 
   // === READ ===
 
   async getCities(): Promise<City[]> {
-    return this.db.query.cities.findMany();
+    return this.repo.findAll();
+  }
+
+  async findByIdOrSlug(idOrSlug: string): Promise<City | null> {
+    const city = await this.repo.findByIdOrSlug(idOrSlug);
+    return city ?? null;
   }
 
   async getCitiesWithCinemas(): Promise<CityResponse[]> {
-    const cityColumns = getTableColumns(schema.cities);
-
-    const cities = await this.db
-      .select({
-        ...cityColumns,
-        numberOfCinemas: sql<number>`count(${schema.cinemas.id})`,
-      })
-      .from(schema.cities)
-      .innerJoin(
-        schema.cinemas,
-        eq(schema.cinemas.sourceCityId, schema.cities.sourceId),
-      )
-      .groupBy(...Object.values(cityColumns));
-
+    const cities = await this.repo.findWithCinemaCount();
     return cities.map((c) => mapCity(c, c.numberOfCinemas));
   }
 
   async getCityByIdOrSlug(
     idOrSlug: string,
   ): Promise<CityDetailResponse | null> {
-    const numericId = Number(idOrSlug);
-    const isId = Number.isInteger(numericId) && numericId > 0;
-
-    const city = await this.db.query.cities.findFirst({
-      where: isId
-        ? eq(schema.cities.id, numericId)
-        : eq(schema.cities.slug, idOrSlug),
-    });
-
+    const city = await this.repo.findByIdOrSlug(idOrSlug);
     if (!city) return null;
 
-    const [screenings, [{ count: numberOfCinemas }]] = await Promise.all([
+    const [screenings, numberOfCinemas] = await Promise.all([
       this.screeningsService.getScreenings({ cityId: city.id }),
-      this.db
-        .select({ count: sql<number>`count(*)` })
-        .from(schema.cinemas)
-        .where(eq(schema.cinemas.sourceCityId, city.sourceId)),
+      this.repo.countCinemasBySourceId(city.sourceId),
     ]);
 
     return {
@@ -79,69 +53,19 @@ export class CitiesService {
     const startDay = dateFrom ? new Date(dateFrom) : new Date();
     const endDay = dateTo ? new Date(dateTo) : new Date();
 
-    const cities = await this.db
-      .select({ id: schema.cities.id })
-      .from(schema.cities)
-      .where(
-        and(
-          gte(schema.cities.lastScrapedAt, startDay),
-          lte(schema.cities.lastScrapedAt, endDay),
-          cityId ? eq(schema.cities.id, cityId) : undefined,
-          citySlug ? eq(schema.cities.slug, citySlug) : undefined,
-        ),
-      );
-
-    return cities.map((c) => c.id);
+    return this.repo.findScrapedCityIds(startDay, endDay, cityId, citySlug);
   }
 
   // === WRITE ===
 
   async createCitiesBatch(cities: CreateCitiesBatchItemDto[]): Promise<void> {
-    if (cities.length === 0) return;
-
-    const existingSlugs = await this.db
-      .select({ slug: schema.cities.slug })
-      .from(schema.cities);
-    const taken = new Set(existingSlugs.map((r) => r.slug));
-
-    const values = cities.map((c) => {
-      const slug = uniqueSlug(toSlug(c.name), taken);
-      taken.add(slug);
-      return { ...c, slug };
-    });
-
-    const chunks = sortAndChunk(values, (c) => c.sourceId);
-    for (const chunk of chunks) {
-      await withDeadlockRetry(
-        () =>
-          this.db
-            .insert(schema.cities)
-            .values(chunk)
-            .onDuplicateKeyUpdate({
-              set: {
-                name: sql`VALUES(${schema.cities.name})`,
-                nameDeclinated: sql`VALUES(${schema.cities.nameDeclinated})`,
-                areacode: sql`VALUES(${schema.cities.areacode})`,
-              },
-            }),
-        { label: 'createCitiesBatch' },
-      );
-    }
+    return this.repo.upsertBatch(cities);
   }
 
   async updateCityByIdOrSlug(
     idOrSlug: string,
     data: UpdateCityDto,
   ): Promise<City | null> {
-    const numericId = Number(idOrSlug);
-    const isId = Number.isInteger(numericId) && numericId > 0;
-    const condition = isId
-      ? eq(schema.cities.id, numericId)
-      : eq(schema.cities.slug, idOrSlug);
-
-    await this.db.update(schema.cities).set(data).where(condition);
-
-    const city = await this.db.query.cities.findFirst({ where: condition });
-    return city ?? null;
+    return this.repo.updateByIdOrSlug(idOrSlug, data);
   }
 }
