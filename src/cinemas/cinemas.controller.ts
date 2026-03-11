@@ -27,10 +27,19 @@ export class CinemasController {
 
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getCinemas(
+  getCinemas(@Query() query: GetCinemasQueryDto): Promise<Cinema[]> {
+    return this.cinemasService.getCinemas(query.cityId, query.citySlug);
+  }
+
+  @Get('grouped')
+  @UseGuards(InternalApiKeyGuard)
+  getCinemasGroupedByCity(
     @Query() query: GetCinemasQueryDto,
-  ): Promise<{ data: CinemaGroupResponse[] } | { data: Cinema[] }> {
-    return this.cinemasService.getCinemas(query);
+  ): Promise<CinemaGroupResponse[]> {
+    return this.cinemasService.getCinemasGroupedByCity(
+      query.cityId,
+      query.citySlug,
+    );
   }
 
   @Get(':idOrSlug')

@@ -1,13 +1,8 @@
 import {
   BadRequestException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { MySql2Database } from 'drizzle-orm/mysql2';
-import { DRIZZLE } from '../database/constants';
-import * as schema from '../database/schemas';
-import * as relations from '../database/schemas/relations';
 import type { SocialsGetCandidateResponse } from '../lib/response-types';
 import {
   getDate,
@@ -15,7 +10,6 @@ import {
   getTodayInPoland,
   toDateOnlyString,
 } from '../lib/date';
-import { and, asc, eq, gte, inArray, lt, lte } from 'drizzle-orm';
 import {
   CLASSIC_YEAR_THRESHOLD,
   DEEP_CLASSIC_YEAR_THRESHOLD,
@@ -26,16 +20,14 @@ import type {
   ScoredCandidate,
   ScreeningWithCinemaCity,
 } from './socials.types';
+import { SocialsRepository } from './socials.repository';
 
-type FullSchema = typeof schema & typeof relations;
 @Injectable()
 export class SocialsService {
-  constructor(
-    @Inject(DRIZZLE)
-    private readonly db: MySql2Database<FullSchema>,
-  ) {}
+  constructor(private readonly repo: SocialsRepository) {}
 
   // === READ ===
+
   async getCandidate(
     dateFromParam: string,
     dateToParam: string,
@@ -45,26 +37,20 @@ export class SocialsService {
   ): Promise<SocialsGetCandidateResponse> {
     const dateFrom = getDate(dateFromParam);
     const dateTo = getDate(dateToParam);
-
     const minScore = Number(minScoreParam);
     const platform = platformParam.trim().toLowerCase();
     const numberOfCandidates = numberOfCandidatesParam ?? 10;
 
-    const socialsPosts = await this.db.query.socials_posts.findMany({
-      where: and(
-        gte(schema.socials_posts.postDate, dateFrom),
-        lte(schema.socials_posts.postDate, dateTo),
-        eq(schema.socials_posts.platform, platform),
-      ),
-    });
+    const socialsPosts = await this.repo.findPostsByDateAndPlatform(
+      dateFrom,
+      dateTo,
+      platform,
+    );
 
     if (socialsPosts.length > 0) {
       return {
         publish: false,
-        date: {
-          from: dateFrom,
-          to: dateTo,
-        },
+        date: { from: dateFrom, to: dateTo },
         reason: 'ALREADY_PUBLISHED',
         meta: {
           candidatesChecked: socialsPosts.length,
@@ -77,25 +63,10 @@ export class SocialsService {
 
     const dateToNextDay = getDatePlusDays(dateTo, 1);
 
-    const screenings = await this.db.query.screenings.findMany({
-      where: and(
-        gte(schema.screenings.date, new Date(dateFrom)),
-        lt(schema.screenings.date, new Date(dateToNextDay)),
-      ),
-      orderBy: asc(schema.screenings.date),
-      with: {
-        movie: {
-          with: {
-            movies_genres: true,
-          },
-        },
-        cinema: {
-          with: {
-            city: true,
-          },
-        },
-      },
-    });
+    const screenings = await this.repo.findScreeningsInRange(
+      dateFrom,
+      dateToNextDay,
+    );
 
     const scoredCandidates = this.computeScoredCandidates(
       screenings,
@@ -105,10 +76,7 @@ export class SocialsService {
     if (screenings.length === 0) {
       return {
         publish: false,
-        date: {
-          from: dateFrom,
-          to: dateTo,
-        },
+        date: { from: dateFrom, to: dateTo },
         reason: 'NO_SCREENINGS_IN_RANGE',
         meta: {
           candidatesChecked: screenings.length,
@@ -132,25 +100,9 @@ export class SocialsService {
       }),
     );
 
-    const screeningsWithMovieAndCinema =
-      await this.db.query.screenings.findMany({
-        where: inArray(
-          schema.screenings.id,
-          candidates.map((candidate) => candidate.screeningId),
-        ),
-        with: {
-          movie: {
-            with: {
-              movies_genres: true,
-            },
-          },
-          cinema: {
-            with: {
-              city: true,
-            },
-          },
-        },
-      });
+    const screeningsWithMovieAndCinema = await this.repo.findScreeningsByIds(
+      candidates.map((c) => c.screeningId),
+    );
 
     const screeningById = new Map(
       screeningsWithMovieAndCinema.map((s) => [s.id, s]),
@@ -164,10 +116,7 @@ export class SocialsService {
 
     return {
       publish: hasHighQualityCandidate,
-      date: {
-        from: dateFrom,
-        to: dateTo,
-      },
+      date: { from: dateFrom, to: dateTo },
       reason: hasHighQualityCandidate
         ? 'HAS_HIGH_QUALITY_CANDIDATE'
         : 'NO_HIGH_QUALITY_CANDIDATE',
@@ -181,6 +130,7 @@ export class SocialsService {
   }
 
   // === WRITE ===
+
   async reserveCandidate(
     platformParam: string,
     screeningIdParam: number,
@@ -188,21 +138,15 @@ export class SocialsService {
     const platform = platformParam.trim().toLowerCase();
     const screeningId = screeningIdParam;
 
-    const screening = await this.db.query.screenings.findFirst({
-      where: eq(schema.screenings.id, screeningId),
-    });
-
+    const screening = await this.repo.findScreeningById(screeningId);
     if (!screening) {
       throw new NotFoundException('Screening not found');
     }
 
-    const socialsPost = await this.db.query.socials_posts.findFirst({
-      where: and(
-        eq(schema.socials_posts.platform, platform),
-        eq(schema.socials_posts.screeningId, screeningId),
-      ),
-    });
-
+    const socialsPost = await this.repo.findPostByPlatformAndScreening(
+      platform,
+      screeningId,
+    );
     if (socialsPost) {
       throw new BadRequestException('Socials post already reserved', {
         cause: 'ALREADY_RESERVED',
@@ -212,30 +156,16 @@ export class SocialsService {
     const score = this.computeScoredCandidates([screening], 1)[0]?.score ?? 0;
     const postDate = toDateOnlyString(screening.date);
 
-    await this.db
-      .insert(schema.socials_posts)
-      .values({
-        postDate,
-        platform,
-        score,
-        screeningId,
-        movieId: screening.movieId,
-        contentType: 'feed_candidate',
-        published: false,
-        reason: 'RESERVED',
-      })
-      .onDuplicateKeyUpdate({
-        set: {
-          published: false,
-          reason: 'RESERVED',
-          postDate,
-          score,
-          screeningId,
-          platform,
-          movieId: screening.movieId,
-          contentType: 'feed_candidate',
-        },
-      });
+    await this.repo.upsertPost({
+      postDate,
+      platform,
+      score,
+      screeningId,
+      movieId: screening.movieId,
+      contentType: 'feed_candidate',
+      published: false,
+      reason: 'RESERVED',
+    });
   }
 
   async publishCandidate(
@@ -245,44 +175,29 @@ export class SocialsService {
     const platform = platformParam.trim().toLowerCase();
     const screeningId = screeningIdParam;
 
-    const screening = await this.db.query.screenings.findFirst({
-      where: eq(schema.screenings.id, screeningId),
-    });
-
+    const screening = await this.repo.findScreeningById(screeningId);
     if (!screening) {
       throw new NotFoundException('Screening not found');
     }
 
-    const socialsPost = await this.db.query.socials_posts.findFirst({
-      where: and(
-        eq(schema.socials_posts.platform, platform),
-        eq(schema.socials_posts.screeningId, screeningId),
-      ),
-    });
-
+    const socialsPost = await this.repo.findPostByPlatformAndScreening(
+      platform,
+      screeningId,
+    );
     if (!socialsPost) {
       throw new NotFoundException('Socials post not found');
     }
 
-    const socialPostStatus = socialsPost.published
-      ? 'ALREADY_PUBLISHED'
-      : 'PUBLISHED';
-
-    if (socialPostStatus === 'ALREADY_PUBLISHED') {
+    if (socialsPost.published) {
       throw new BadRequestException('Socials post already published', {
-        cause: socialPostStatus,
+        cause: 'ALREADY_PUBLISHED',
       });
     }
 
-    await this.db
-      .update(schema.socials_posts)
-      .set({
-        published: true,
-        reason: 'PUBLISHED',
-        postDate: getTodayInPoland(),
-      })
-      .where(eq(schema.socials_posts.id, socialsPost.id));
+    await this.repo.markPostPublished(socialsPost.id, getTodayInPoland());
   }
+
+  // === PRIVATE ===
 
   private computeScoredCandidates(
     screenings: ScreeningWithCinemaCity[],
@@ -292,12 +207,10 @@ export class SocialsService {
 
     for (const s of screenings) {
       const cityId = s.cinema?.city?.id;
-
       if (cityId === undefined) continue;
 
       const set = cityIdsByMovieId.get(s.movieId) ?? new Set();
       set.add(cityId);
-
       cityIdsByMovieId.set(s.movieId, set);
     }
 
@@ -338,12 +251,12 @@ export class SocialsService {
       ([, a], [, b]) => b.score - a.score,
     );
 
-    const topCandidates = sortedCandidates
+    return sortedCandidates
       .slice(0, numberOfCandidates)
-      .map(([movieId, { screeningId, score }]) => {
-        return { movieId, screeningId, score };
-      });
-
-    return topCandidates;
+      .map(([movieId, { screeningId, score }]) => ({
+        movieId,
+        screeningId,
+        score,
+      }));
   }
 }
