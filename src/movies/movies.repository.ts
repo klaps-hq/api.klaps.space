@@ -12,11 +12,9 @@ import { and, desc, eq, gte, inArray, like, sql } from 'drizzle-orm';
 import { movieSlug, toSlug, uniqueSlug } from '../lib/slug';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
+import { MULTI_CITY } from './movies.constants';
 
 type FullSchema = typeof schema & typeof relations;
-
-const DEFAULT_MULTI_CITY_LIMIT = 5;
-const DEFAULT_MIN_CITIES = 2;
 
 const MOVIE_RELATIONS = {
   movies_genres: { with: { genre: true } },
@@ -80,7 +78,7 @@ export class MoviesRepository {
   }
 
   async findMultiCityMovies(params?: GetMultiCityMoviesParams) {
-    const limit = params?.limit ?? DEFAULT_MULTI_CITY_LIMIT;
+    const limit = params?.limit ?? MULTI_CITY.DEFAULT_LIMIT;
     const citiesCount =
       sql<number>`COUNT(DISTINCT ${schema.cities.id})`.mapWith(Number);
 
@@ -115,7 +113,7 @@ export class MoviesRepository {
         schema.movies.description,
         schema.movies.duration,
       )
-      .having(gte(citiesCount, DEFAULT_MIN_CITIES))
+      .having(gte(citiesCount, MULTI_CITY.MIN_CITIES))
       .orderBy(desc(citiesCount))
       .limit(limit);
   }

@@ -12,9 +12,7 @@ import { parsePagination, paginate } from '../lib/paginate';
 import { mapMovieSummary, mapMovieDetail } from './movies.mapper';
 import { MoviesRepository } from './movies.repository';
 import { GenresService } from '../genres/genres.service';
-
-const DEFAULT_MOVIES_LIMIT = 20;
-const MAX_MOVIES_LIMIT = 100;
+import { PAGINATION } from './movies.constants';
 
 @Injectable()
 export class MoviesService {
@@ -36,7 +34,7 @@ export class MoviesService {
 
     const { page, limit, offset } = parsePagination(
       { page: params?.page, limit: params?.limit },
-      { limit: DEFAULT_MOVIES_LIMIT, maxLimit: MAX_MOVIES_LIMIT },
+      { limit: PAGINATION.DEFAULT_LIMIT, maxLimit: PAGINATION.MAX_LIMIT },
     );
 
     const filter = { search: params?.search, genreId };
