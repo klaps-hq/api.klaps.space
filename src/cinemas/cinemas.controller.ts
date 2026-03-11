@@ -13,10 +13,7 @@ import {
 import { CinemasService } from './cinemas.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { Cinema } from '../database/schemas/cinemas.schema';
-import type {
-  CinemaGroupResponse,
-  CinemaResponse,
-} from '../lib/response-types';
+import type { CinemaResponse } from './cinemas.types';
 import { GetCinemasQueryDto } from './dto/get-cinemas-query.dto';
 import { CreateCinemasBatchDto } from './dto/create-cinemas-batch.dto';
 import { UpdateCinemaDto } from './dto/update-cinema.dto';
@@ -29,17 +26,6 @@ export class CinemasController {
   @UseGuards(InternalApiKeyGuard)
   getCinemas(@Query() query: GetCinemasQueryDto): Promise<Cinema[]> {
     return this.cinemasService.getCinemas(query.cityId, query.citySlug);
-  }
-
-  @Get('grouped')
-  @UseGuards(InternalApiKeyGuard)
-  getCinemasGroupedByCity(
-    @Query() query: GetCinemasQueryDto,
-  ): Promise<CinemaGroupResponse[]> {
-    return this.cinemasService.getCinemasGroupedByCity(
-      query.cityId,
-      query.citySlug,
-    );
   }
 
   @Get(':slug')

@@ -12,7 +12,7 @@ import {
 import { GenresService } from './genres.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { Genre } from '../database/schemas/genres.schema';
-import type { GenreResponse } from '../lib/response-types';
+import type { GenreResponse } from './genres.types';
 import { UpdateGenreDto } from './dto/update-genre.dto';
 
 @Controller('genres')

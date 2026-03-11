@@ -13,7 +13,7 @@ import {
 import { CitiesService } from './cities.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { City } from './cities.types';
-import type { CityDetailResponse, CityResponse } from '../lib/response-types';
+import type { CityDetailResponse, CityResponse } from './cities.types';
 import { CreateCitiesBatchDto } from './dto/create-cities-batch.dto';
 import { UpdateCityDto } from './dto/update-city.dto';
 import { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dto';

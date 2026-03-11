@@ -16,7 +16,7 @@ import type {
   ScreeningResponse,
   ScreeningGroupResponse,
   RandomScreeningResponse,
-} from '../lib/response-types';
+} from './screenings.types';
 
 @Controller('screenings')
 export class ScreeningsController {

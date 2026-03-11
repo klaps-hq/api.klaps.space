@@ -18,7 +18,7 @@ import type {
   MovieSummaryResponse,
   MovieResponse,
   MultiCityMovieResponse,
-} from '../lib/response-types';
+} from './movies.types';
 import { GetMultiCityMoviesQueryDto } from './dto/get-multi-city-movies-query.dto';
 import { GetMoviesQueryDto } from './dto/get-movies-query.dto';
 import { CreateMoviesBatchDto } from './dto/create-movies-batch.dto';
@@ -34,11 +34,7 @@ export class MoviesController {
   getMovies(
     @Query() query: GetMoviesQueryDto,
   ): Promise<MovieSummaryResponse[]> {
-    return this.moviesService.getMovies({
-      search: query.search,
-      genreId: query.genreId,
-      genreSlug: query.genreSlug,
-    });
+    return this.moviesService.getMovies(query);
   }
 
   @Post('batch')

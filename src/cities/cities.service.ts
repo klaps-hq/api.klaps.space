@@ -3,8 +3,8 @@ import type { City } from './cities.types';
 import type { CreateCitiesBatchItemDto } from './dto/create-cities-batch.dto';
 import type { UpdateCityDto } from './dto/update-city.dto';
 import type { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dto';
-import type { CityDetailResponse, CityResponse } from '../lib/response-types';
-import { mapCity } from '../lib/response-mappers';
+import type { CityDetailResponse, CityResponse } from './cities.types';
+import { mapCity } from './cities.mapper';
 import { ScreeningsService } from '../screenings/screenings.service';
 import { CitiesRepository } from './cities.repository';
 

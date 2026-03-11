@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { SocialsGetCandidateResponse } from '../lib/response-types';
+import type { SocialsGetCandidateResponse } from './socials.types';
 import {
   getDate,
   getDatePlusDays,

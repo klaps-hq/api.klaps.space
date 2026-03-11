@@ -5,8 +5,8 @@ import type {
   MovieSummaryResponse,
   MovieResponse,
   MultiCityMovieResponse,
-} from '../lib/response-types';
-import { mapMovieSummary, mapMovieDetail } from '../lib/response-mappers';
+} from './movies.types';
+import { mapMovieSummary, mapMovieDetail } from './movies.mapper';
 import { MoviesRepository } from './movies.repository';
 import { MoviesBatchService } from './movies-batch.service';
 import { GenresService } from '../genres/genres.service';
@@ -18,6 +18,8 @@ export class MoviesService {
     private readonly batchService: MoviesBatchService,
     private readonly genresService: GenresService,
   ) {}
+
+  // === READ ===
 
   async getMovies(params?: GetMoviesParams): Promise<MovieSummaryResponse[]> {
     let genreId = params?.genreId;
@@ -43,6 +45,8 @@ export class MoviesService {
   ): Promise<MultiCityMovieResponse[]> {
     return this.repo.findMultiCityMovies(params);
   }
+
+  // === WRITE ===
 
   async createMoviesBatch(movies: CreateMoviesBatchItemDto[]): Promise<void> {
     return this.batchService.createBatch(movies);
