@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   Post,
@@ -12,7 +14,6 @@ import {
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { MoviesService } from './movies.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
-import type { Movie } from './movies.types';
 import type {
   MovieSummaryResponse,
   MovieResponse,
@@ -20,9 +21,8 @@ import type {
 } from '../lib/response-types';
 import { GetMultiCityMoviesQueryDto } from './dto/get-multi-city-movies-query.dto';
 import { GetMoviesQueryDto } from './dto/get-movies-query.dto';
-import { CreateMovieDto } from './dto/create-movie.dto';
+import { CreateMoviesBatchDto } from './dto/create-movies-batch.dto';
 
-/** Cache TTL for multi-city movies endpoint: 15 minutes (in ms). */
 const MULTI_CITY_CACHE_TTL = 900_000;
 
 @Controller('movies')
@@ -41,10 +41,11 @@ export class MoviesController {
     });
   }
 
-  @Post()
+  @Post('batch')
   @UseGuards(InternalApiKeyGuard)
-  createMovie(@Body() dto: CreateMovieDto): Promise<Movie> {
-    return this.moviesService.createMovie(dto);
+  @HttpCode(HttpStatus.OK)
+  createMoviesBatch(@Body() dto: CreateMoviesBatchDto): Promise<void> {
+    return this.moviesService.createMoviesBatch(dto.movies);
   }
 
   @Get('multi-city')

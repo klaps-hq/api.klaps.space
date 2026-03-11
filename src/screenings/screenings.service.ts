@@ -3,7 +3,7 @@ import type { MySql2Database } from 'drizzle-orm/mysql2';
 import { DRIZZLE } from '../database/constants';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
-import { getDateRangeUpToMonthFromNow } from '../lib/utils';
+import { getDateRangeUpToMonthFromNow } from '../lib/date';
 import { randomInt } from 'node:crypto';
 import type { GetScreeningsParams, Screening } from './screenings.types';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
