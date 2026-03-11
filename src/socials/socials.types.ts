@@ -9,7 +9,9 @@ export type ScoredCandidate = {
 
 export type ScreeningWithCinemaCity = Screening & {
   cinema?: { city?: { id: number } } | null;
-  movie?: (Movie & { movies_genres?: unknown[] }) | null;
+  movie?:
+    | (Movie & { movies_genres?: { id: number; genreId: number }[] })
+    | null;
 };
 
 export type CandidateByMovieSet = {
