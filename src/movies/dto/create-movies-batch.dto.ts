@@ -55,10 +55,7 @@ export class GenreInsertDto {
   slug?: string;
 }
 
-/**
- * Body DTO for POST /movies.
- */
-export class CreateMovieDto {
+export class CreateMoviesBatchItemDto {
   @Type(() => Number)
   @IsInt()
   sourceId: number;
@@ -189,4 +186,11 @@ export class CreateMovieDto {
   @ValidateNested({ each: true })
   @Type(() => GenreInsertDto)
   genres?: GenreInsertDto[];
+}
+
+export class CreateMoviesBatchDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateMoviesBatchItemDto)
+  movies: CreateMoviesBatchItemDto[];
 }

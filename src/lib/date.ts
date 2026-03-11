@@ -22,3 +22,35 @@ export const getDatePlusDays = (dateParam: string, days: number): string => {
   const ms = Date.UTC(y, m - 1, d) + days * 86400000;
   return new Date(ms).toISOString().slice(0, 10);
 };
+
+/** Returns a date range: defaults to today through 30 days out. */
+export const getDateRangeUpToMonthFromNow = (
+  dateFrom?: string,
+  dateTo?: string,
+): {
+  startDay: Date;
+  endDay: Date;
+} => {
+  const start = dateFrom ? new Date(dateFrom) : new Date();
+  start.setHours(0, 0, 0, 0);
+
+  const end = dateTo ? new Date(dateTo) : new Date(start);
+  if (!dateTo) {
+    end.setDate(end.getDate() + 30);
+  }
+  end.setHours(23, 59, 59, 999);
+
+  return { startDay: start, endDay: end };
+};
+
+const TIME_START_OF_DAY = ' 00:00:00';
+const TIME_END_OF_DAY = ' 23:59:59';
+export const getDateRange = (
+  dateStr: string,
+): {
+  startOfDay: string;
+  endOfDay: string;
+} => ({
+  startOfDay: dateStr + TIME_START_OF_DAY,
+  endOfDay: dateStr + TIME_END_OF_DAY,
+});

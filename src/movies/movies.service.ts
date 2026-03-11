@@ -3,17 +3,11 @@ import type { MySql2Database } from 'drizzle-orm/mysql2';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
+import type { GetMoviesParams, GetMultiCityMoviesParams } from './movies.types';
 import type {
-  GetMoviesParams,
-  GetMultiCityMoviesParams,
-  Movie,
-} from './movies.types';
-import type {
-  CreateMovieDto,
+  CreateMoviesBatchItemDto,
   ActorInsertDto,
-  CountryInsertDto,
-  GenreInsertDto,
-} from './dto/create-movie.dto';
+} from './dto/create-movies-batch.dto';
 import type {
   MovieSummaryResponse,
   MovieResponse,
@@ -22,15 +16,22 @@ import type {
 import { mapMovieSummary, mapMovieDetail } from '../lib/response-mappers';
 import { and, desc, eq, gte, inArray, like, sql } from 'drizzle-orm';
 import { toSlug, movieSlug, uniqueSlug } from '../lib/slug';
+import { sortAndChunk } from '../wrappers/chunked-upsert';
+import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
 
 type FullSchema = typeof schema & typeof relations;
 
 const DEFAULT_MULTI_CITY_LIMIT = 5;
 const DEFAULT_MIN_CITIES = 2;
 
-/**
- * Service for movie-related business logic and persistence.
- */
+const MOVIE_RELATIONS = {
+  movies_genres: { with: { genre: true } },
+  movies_actors: { with: { actor: true } },
+  movies_directors: { with: { director: true } },
+  movies_scriptwriters: { with: { scriptwriter: true } },
+  movies_countries: { with: { country: true } },
+} as const;
+
 @Injectable()
 export class MoviesService {
   constructor(
@@ -41,70 +42,22 @@ export class MoviesService {
   // === READ ===
 
   async getMovies(params?: GetMoviesParams): Promise<MovieSummaryResponse[]> {
-    const searchCondition = params?.search
-      ? like(schema.movies.title, `%${params.search}%`)
-      : undefined;
-
-    const genreFilter = params?.genreId
-      ? eq(schema.movies_genres.genreId, params.genreId)
-      : params?.genreSlug
-        ? inArray(
-            schema.movies_genres.genreId,
-            this.db
-              .select({ id: schema.genres.id })
-              .from(schema.genres)
-              .where(eq(schema.genres.slug, params.genreSlug)),
-          )
-        : undefined;
-
-    const genreCondition = genreFilter
-      ? inArray(
-          schema.movies.id,
-          this.db
-            .select({ movieId: schema.movies_genres.movieId })
-            .from(schema.movies_genres)
-            .where(genreFilter),
-        )
-      : undefined;
+    const where = and(
+      params?.search
+        ? like(schema.movies.title, `%${params.search}%`)
+        : undefined,
+      this.buildGenreCondition(params?.genreId, params?.genreSlug),
+    );
 
     const data = await this.db.query.movies.findMany({
-      where: and(searchCondition, genreCondition),
+      where,
       orderBy: desc(schema.movies.id),
-      with: {
-        movies_genres: {
-          with: {
-            genre: true,
-          },
-        },
-        movies_actors: {
-          with: {
-            actor: true,
-          },
-        },
-        movies_directors: {
-          with: {
-            director: true,
-          },
-        },
-        movies_scriptwriters: {
-          with: {
-            scriptwriter: true,
-          },
-        },
-        movies_countries: {
-          with: {
-            country: true,
-          },
-        },
-      },
+      with: MOVIE_RELATIONS,
     });
 
     return data.map(mapMovieSummary);
   }
 
-  /**
-   * Returns a single movie by numeric id or slug, mapped to full MovieResponse.
-   */
   async getMovieByIdOrSlug(idOrSlug: string): Promise<MovieResponse | null> {
     const numericId = Number(idOrSlug);
     const condition =
@@ -114,39 +67,20 @@ export class MoviesService {
 
     const movie = await this.db.query.movies.findFirst({
       where: condition,
-      with: {
-        movies_genres: {
-          with: { genre: true },
-        },
-        movies_actors: {
-          with: { actor: true },
-        },
-        movies_directors: {
-          with: { director: true },
-        },
-        movies_scriptwriters: {
-          with: { scriptwriter: true },
-        },
-        movies_countries: {
-          with: { country: true },
-        },
-      },
+      with: MOVIE_RELATIONS,
     });
 
     if (!movie) return null;
     return mapMovieDetail(movie);
   }
 
-  /**
-   * Returns movies shown in the most unique cities based on upcoming screenings.
-   * Filters only future screenings, groups by movie, and counts distinct cities.
-   */
   async getMultiCityMovies(
     params?: GetMultiCityMoviesParams,
   ): Promise<MultiCityMovieResponse[]> {
     const limit = params?.limit ?? DEFAULT_MULTI_CITY_LIMIT;
-    const citiesCountExpression =
+    const citiesCount =
       sql<number>`COUNT(DISTINCT ${schema.cities.id})`.mapWith(Number);
+
     return this.db
       .select({
         id: schema.movies.id,
@@ -156,7 +90,7 @@ export class MoviesService {
         posterUrl: schema.movies.posterUrl,
         description: schema.movies.description,
         duration: schema.movies.duration,
-        citiesCount: citiesCountExpression,
+        citiesCount,
       })
       .from(schema.screenings)
       .innerJoin(schema.movies, eq(schema.screenings.movieId, schema.movies.id))
@@ -178,274 +112,377 @@ export class MoviesService {
         schema.movies.description,
         schema.movies.duration,
       )
-      .having(gte(citiesCountExpression, DEFAULT_MIN_CITIES))
-      .orderBy(desc(citiesCountExpression))
+      .having(gte(citiesCount, DEFAULT_MIN_CITIES))
+      .orderBy(desc(citiesCount))
       .limit(limit);
   }
 
   // === WRITE ===
 
-  /**
-   * Creates or updates a movie (upserts on duplicate sourceId) and returns the row.
-   * Also upserts related actors, directors, scriptwriters, countries, genres
-   * and creates the corresponding junction table entries.
-   */
-  async createMovie(dto: CreateMovieDto): Promise<Movie> {
-    const {
-      actors,
-      directors,
-      scriptwriters,
-      countries,
-      genres,
-      ...movieFields
-    } = dto;
+  async createMoviesBatch(movies: CreateMoviesBatchItemDto[]): Promise<void> {
+    if (movies.length === 0) return;
 
-    const slug = await this.generateMovieSlug(
-      movieFields.title,
-      movieFields.productionYear,
-    );
+    const existingSlugs = await this.db
+      .select({ slug: schema.movies.slug })
+      .from(schema.movies);
+    const taken = new Set(existingSlugs.map((r) => r.slug));
 
-    const values = {
-      ...movieFields,
-      slug,
-      worldPremiereDate: movieFields.worldPremiereDate
-        ? new Date(movieFields.worldPremiereDate)
-        : undefined,
-      polishPremiereDate: movieFields.polishPremiereDate
-        ? new Date(movieFields.polishPremiereDate)
-        : undefined,
-    };
-
-    await this.db
-      .insert(schema.movies)
-      .values(values)
-      .onDuplicateKeyUpdate({
-        set: {
-          url: movieFields.url,
-          title: movieFields.title,
-          titleOriginal: movieFields.titleOriginal,
-          description: movieFields.description,
-          productionYear: movieFields.productionYear,
-          worldPremiereDate: values.worldPremiereDate,
-          polishPremiereDate: values.polishPremiereDate,
-          usersRating: movieFields.usersRating,
-          usersRatingVotes: movieFields.usersRatingVotes,
-          criticsRating: movieFields.criticsRating,
-          criticsRatingVotes: movieFields.criticsRatingVotes,
-          language: movieFields?.language ?? null,
-          duration: movieFields.duration,
-          posterUrl: movieFields.posterUrl,
-          backdropUrl: movieFields.backdropUrl,
-          videoUrl: movieFields.videoUrl,
-          boxoffice: movieFields.boxoffice,
-          budget: movieFields.budget,
-          distribution: movieFields.distribution,
-        },
-      });
-
-    const movie = await this.db.query.movies.findFirst({
-      where: eq(schema.movies.sourceId, movieFields.sourceId),
+    const movieValues = movies.map((m) => {
+      const slug = uniqueSlug(movieSlug(m.title, m.productionYear), taken);
+      taken.add(slug);
+      return {
+        sourceId: m.sourceId,
+        url: m.url,
+        title: m.title,
+        slug,
+        titleOriginal: m.titleOriginal,
+        description: m.description,
+        productionYear: m.productionYear,
+        worldPremiereDate: m.worldPremiereDate
+          ? new Date(m.worldPremiereDate)
+          : undefined,
+        polishPremiereDate: m.polishPremiereDate
+          ? new Date(m.polishPremiereDate)
+          : undefined,
+        usersRating: m.usersRating,
+        usersRatingVotes: m.usersRatingVotes,
+        criticsRating: m.criticsRating,
+        criticsRatingVotes: m.criticsRatingVotes,
+        language: m.language,
+        duration: m.duration,
+        posterUrl: m.posterUrl,
+        backdropUrl: m.backdropUrl,
+        videoUrl: m.videoUrl,
+        boxoffice: m.boxoffice,
+        budget: m.budget,
+        distribution: m.distribution,
+      };
     });
 
-    const movieId = movie!.id;
+    const movieChunks = sortAndChunk(movieValues, (m) => m.sourceId);
+    for (const chunk of movieChunks) {
+      await withDeadlockRetry(
+        () =>
+          this.db
+            .insert(schema.movies)
+            .values(chunk)
+            .onDuplicateKeyUpdate({
+              set: {
+                url: sql`VALUES(${schema.movies.url})`,
+                title: sql`VALUES(${schema.movies.title})`,
+                titleOriginal: sql`VALUES(${schema.movies.titleOriginal})`,
+                description: sql`VALUES(${schema.movies.description})`,
+                productionYear: sql`VALUES(${schema.movies.productionYear})`,
+                worldPremiereDate: sql`VALUES(${schema.movies.worldPremiereDate})`,
+                polishPremiereDate: sql`VALUES(${schema.movies.polishPremiereDate})`,
+                usersRating: sql`VALUES(${schema.movies.usersRating})`,
+                usersRatingVotes: sql`VALUES(${schema.movies.usersRatingVotes})`,
+                criticsRating: sql`VALUES(${schema.movies.criticsRating})`,
+                criticsRatingVotes: sql`VALUES(${schema.movies.criticsRatingVotes})`,
+                language: sql`VALUES(${schema.movies.language})`,
+                duration: sql`VALUES(${schema.movies.duration})`,
+                posterUrl: sql`VALUES(${schema.movies.posterUrl})`,
+                backdropUrl: sql`VALUES(${schema.movies.backdropUrl})`,
+                videoUrl: sql`VALUES(${schema.movies.videoUrl})`,
+                boxoffice: sql`VALUES(${schema.movies.boxoffice})`,
+                budget: sql`VALUES(${schema.movies.budget})`,
+                distribution: sql`VALUES(${schema.movies.distribution})`,
+              },
+            }),
+        { label: 'createMoviesBatch:movies' },
+      );
+    }
+
+    const sourceIds = movies.map((m) => m.sourceId);
+    const movieRows = await this.db
+      .select({ id: schema.movies.id, sourceId: schema.movies.sourceId })
+      .from(schema.movies)
+      .where(inArray(schema.movies.sourceId, sourceIds));
+    const movieIdMap = new Map(movieRows.map((r) => [r.sourceId, r.id]));
 
     await Promise.all([
-      this.upsertActors(movieId, actors),
-      this.upsertDirectors(movieId, directors),
-      this.upsertScriptwriters(movieId, scriptwriters),
-      this.upsertCountries(movieId, countries),
-      this.upsertGenres(movieId, genres),
+      this.batchUpsertPersons(
+        movies,
+        movieIdMap,
+        'actors',
+        'movies_actors',
+        'actorId',
+      ),
+      this.batchUpsertPersons(
+        movies,
+        movieIdMap,
+        'directors',
+        'movies_directors',
+        'directorId',
+      ),
+      this.batchUpsertPersons(
+        movies,
+        movieIdMap,
+        'scriptwriters',
+        'movies_scriptwriters',
+        'scriptwriterId',
+      ),
+      this.batchUpsertCountries(movies, movieIdMap),
+      this.batchUpsertGenres(movies, movieIdMap),
     ]);
-
-    return movie!;
   }
 
   // === PRIVATE ===
 
-  /**
-   * Upserts actors and links them to the movie via movies_actors.
-   */
-  private async upsertActors(
-    movieId: number,
-    actors?: ActorInsertDto[],
-  ): Promise<void> {
-    if (!actors?.length) return;
+  private buildGenreCondition(genreId?: number, genreSlug?: string) {
+    const filter = genreId
+      ? eq(schema.movies_genres.genreId, genreId)
+      : genreSlug
+        ? inArray(
+            schema.movies_genres.genreId,
+            this.db
+              .select({ id: schema.genres.id })
+              .from(schema.genres)
+              .where(eq(schema.genres.slug, genreSlug)),
+          )
+        : undefined;
 
-    for (const actor of actors) {
-      await this.db
-        .insert(schema.actors)
-        .values({
-          sourceId: actor.sourceId,
-          name: actor.name,
-          url: actor.url,
-        })
-        .onDuplicateKeyUpdate({
-          set: { name: actor.name, url: actor.url },
-        });
+    if (!filter) return undefined;
 
-      const row = await this.db.query.actors.findFirst({
-        where: eq(schema.actors.sourceId, actor.sourceId),
-      });
-
-      if (!row) continue;
-
-      await this.db
-        .insert(schema.movies_actors)
-        .values({ movieId, actorId: row.id })
-        .onDuplicateKeyUpdate({ set: { movieId } });
-    }
-  }
-
-  /**
-   * Upserts directors and links them to the movie via movies_directors.
-   */
-  private async upsertDirectors(
-    movieId: number,
-    directors?: ActorInsertDto[],
-  ): Promise<void> {
-    if (!directors?.length) return;
-
-    for (const director of directors) {
-      await this.db
-        .insert(schema.directors)
-        .values({
-          sourceId: director.sourceId,
-          name: director.name,
-          url: director.url,
-        })
-        .onDuplicateKeyUpdate({
-          set: { name: director.name, url: director.url },
-        });
-
-      const row = await this.db.query.directors.findFirst({
-        where: eq(schema.directors.sourceId, director.sourceId),
-      });
-
-      if (!row) continue;
-
-      await this.db
-        .insert(schema.movies_directors)
-        .values({ movieId, directorId: row.id })
-        .onDuplicateKeyUpdate({ set: { movieId } });
-    }
-  }
-
-  /**
-   * Upserts scriptwriters and links them to the movie via movies_scriptwriters.
-   */
-  private async upsertScriptwriters(
-    movieId: number,
-    scriptwriters?: ActorInsertDto[],
-  ): Promise<void> {
-    if (!scriptwriters?.length) return;
-
-    for (const sw of scriptwriters) {
-      await this.db
-        .insert(schema.scriptwriters)
-        .values({
-          sourceId: sw.sourceId,
-          name: sw.name,
-          url: sw.url,
-        })
-        .onDuplicateKeyUpdate({
-          set: { name: sw.name, url: sw.url },
-        });
-
-      const row = await this.db.query.scriptwriters.findFirst({
-        where: eq(schema.scriptwriters.sourceId, sw.sourceId),
-      });
-
-      if (!row) continue;
-
-      await this.db
-        .insert(schema.movies_scriptwriters)
-        .values({ movieId, scriptwriterId: row.id })
-        .onDuplicateKeyUpdate({ set: { movieId } });
-    }
-  }
-
-  /**
-   * Upserts countries and links them to the movie via movies_countries.
-   */
-  private async upsertCountries(
-    movieId: number,
-    countries?: CountryInsertDto[],
-  ): Promise<void> {
-    if (!countries?.length) return;
-
-    for (const country of countries) {
-      await this.db
-        .insert(schema.countries)
-        .values({
-          name: country.name,
-          countryCode: country.countryCode,
-        })
-        .onDuplicateKeyUpdate({
-          set: { name: country.name },
-        });
-
-      const row = await this.db.query.countries.findFirst({
-        where: eq(schema.countries.countryCode, country.countryCode),
-      });
-
-      if (!row) continue;
-
-      await this.db
-        .insert(schema.movies_countries)
-        .values({ movieId, countryId: row.id })
-        .onDuplicateKeyUpdate({ set: { movieId } });
-    }
-  }
-
-  /**
-   * Upserts genres and links them to the movie via movies_genres.
-   * Also generates and persists a slug for each genre.
-   */
-  private async upsertGenres(
-    movieId: number,
-    genres?: GenreInsertDto[],
-  ): Promise<void> {
-    if (!genres?.length) return;
-
-    for (const genre of genres) {
-      const genreSlug = toSlug(genre.name);
-
-      await this.db
-        .insert(schema.genres)
-        .values({
-          sourceId: genre.sourceId,
-          slug: genreSlug,
-          name: genre.name,
-        })
-        .onDuplicateKeyUpdate({
-          set: { name: genre.name, slug: genreSlug },
-        });
-
-      const row = await this.db.query.genres.findFirst({
-        where: eq(schema.genres.sourceId, genre.sourceId),
-      });
-
-      if (!row) continue;
-
-      await this.db
-        .insert(schema.movies_genres)
-        .values({ movieId, genreId: row.id })
-        .onDuplicateKeyUpdate({ set: { movieId } });
-    }
-  }
-
-  private async generateMovieSlug(
-    title: string,
-    productionYear: number,
-  ): Promise<string> {
-    const base = movieSlug(title, productionYear);
-    const existing = await this.db
-      .select({ slug: schema.movies.slug })
-      .from(schema.movies)
-      .where(like(schema.movies.slug, `${base}%`));
-    return uniqueSlug(
-      base,
-      existing.map((r) => r.slug),
+    return inArray(
+      schema.movies.id,
+      this.db
+        .select({ movieId: schema.movies_genres.movieId })
+        .from(schema.movies_genres)
+        .where(filter),
     );
+  }
+
+  private async batchUpsertPersons(
+    movies: CreateMoviesBatchItemDto[],
+    movieIdMap: Map<number, number>,
+    personKey: 'actors' | 'directors' | 'scriptwriters',
+    junctionKey: 'movies_actors' | 'movies_directors' | 'movies_scriptwriters',
+    fkName: 'actorId' | 'directorId' | 'scriptwriterId',
+  ): Promise<void> {
+    const personMap = new Map<number, ActorInsertDto>();
+    const junctionPairs: { movieSourceId: number; personSourceId: number }[] =
+      [];
+
+    for (const movie of movies) {
+      const persons = movie[personKey];
+      if (!persons?.length) continue;
+      for (const person of persons) {
+        personMap.set(person.sourceId, person);
+        junctionPairs.push({
+          movieSourceId: movie.sourceId,
+          personSourceId: person.sourceId,
+        });
+      }
+    }
+
+    if (personMap.size === 0) return;
+
+    const entityTable = schema[personKey];
+    const personChunks = sortAndChunk(
+      [...personMap.values()],
+      (p) => p.sourceId,
+    );
+
+    for (const chunk of personChunks) {
+      await withDeadlockRetry(
+        () =>
+          this.db
+            .insert(entityTable)
+            .values(chunk)
+            .onDuplicateKeyUpdate({
+              set: {
+                name: sql`VALUES(${entityTable.name})`,
+                url: sql`VALUES(${entityTable.url})`,
+              },
+            }),
+        { label: `createMoviesBatch:${personKey}` },
+      );
+    }
+
+    const personRows = await this.db
+      .select({ id: entityTable.id, sourceId: entityTable.sourceId })
+      .from(entityTable)
+      .where(inArray(entityTable.sourceId, [...personMap.keys()]));
+    const personIdMap = new Map(personRows.map((r) => [r.sourceId, r.id]));
+
+    const junctionTable = schema[junctionKey];
+    const junctionValues = junctionPairs
+      .map((pair) => ({
+        movieId: movieIdMap.get(pair.movieSourceId)!,
+        [fkName]: personIdMap.get(pair.personSourceId)!,
+      }))
+      .filter((v) => v.movieId != null && v[fkName] != null);
+
+    if (junctionValues.length === 0) return;
+
+    const junctionChunks = sortAndChunk(junctionValues, (v) => v.movieId);
+    for (const chunk of junctionChunks) {
+      await withDeadlockRetry(
+        () =>
+          this.db
+            .insert(junctionTable)
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            .values(chunk as any)
+            .onDuplicateKeyUpdate({
+              set: { movieId: sql`VALUES(${junctionTable.movieId})` },
+            }),
+        { label: `createMoviesBatch:${junctionKey}` },
+      );
+    }
+  }
+
+  private async batchUpsertCountries(
+    movies: CreateMoviesBatchItemDto[],
+    movieIdMap: Map<number, number>,
+  ): Promise<void> {
+    const countryMap = new Map<string, { name: string; countryCode: string }>();
+    const junctionPairs: { movieSourceId: number; countryCode: string }[] = [];
+
+    for (const movie of movies) {
+      if (!movie.countries?.length) continue;
+      for (const country of movie.countries) {
+        countryMap.set(country.countryCode, country);
+        junctionPairs.push({
+          movieSourceId: movie.sourceId,
+          countryCode: country.countryCode,
+        });
+      }
+    }
+
+    if (countryMap.size === 0) return;
+
+    const countryChunks = sortAndChunk(
+      [...countryMap.values()],
+      (c) => c.countryCode,
+    );
+
+    for (const chunk of countryChunks) {
+      await withDeadlockRetry(
+        () =>
+          this.db
+            .insert(schema.countries)
+            .values(chunk)
+            .onDuplicateKeyUpdate({
+              set: { name: sql`VALUES(${schema.countries.name})` },
+            }),
+        { label: 'createMoviesBatch:countries' },
+      );
+    }
+
+    const countryRows = await this.db
+      .select({
+        id: schema.countries.id,
+        countryCode: schema.countries.countryCode,
+      })
+      .from(schema.countries)
+      .where(inArray(schema.countries.countryCode, [...countryMap.keys()]));
+    const countryIdMap = new Map(countryRows.map((r) => [r.countryCode, r.id]));
+
+    const junctionValues = junctionPairs
+      .map((pair) => ({
+        movieId: movieIdMap.get(pair.movieSourceId)!,
+        countryId: countryIdMap.get(pair.countryCode)!,
+      }))
+      .filter((v) => v.movieId != null && v.countryId != null);
+
+    if (junctionValues.length === 0) return;
+
+    const junctionChunks = sortAndChunk(junctionValues, (v) => v.movieId);
+    for (const chunk of junctionChunks) {
+      await withDeadlockRetry(
+        () =>
+          this.db
+            .insert(schema.movies_countries)
+            .values(chunk)
+            .onDuplicateKeyUpdate({
+              set: {
+                movieId: sql`VALUES(${schema.movies_countries.movieId})`,
+              },
+            }),
+        { label: 'createMoviesBatch:movies_countries' },
+      );
+    }
+  }
+
+  private async batchUpsertGenres(
+    movies: CreateMoviesBatchItemDto[],
+    movieIdMap: Map<number, number>,
+  ): Promise<void> {
+    const genreMap = new Map<number, { sourceId: number; name: string }>();
+    const junctionPairs: { movieSourceId: number; genreSourceId: number }[] =
+      [];
+
+    for (const movie of movies) {
+      if (!movie.genres?.length) continue;
+      for (const genre of movie.genres) {
+        genreMap.set(genre.sourceId, genre);
+        junctionPairs.push({
+          movieSourceId: movie.sourceId,
+          genreSourceId: genre.sourceId,
+        });
+      }
+    }
+
+    if (genreMap.size === 0) return;
+
+    const existingSlugs = await this.db
+      .select({ slug: schema.genres.slug })
+      .from(schema.genres);
+    const taken = new Set(existingSlugs.map((r) => r.slug));
+
+    const genreValues = [...genreMap.values()].map((g) => {
+      const slug = uniqueSlug(toSlug(g.name), taken);
+      taken.add(slug);
+      return { sourceId: g.sourceId, name: g.name, slug };
+    });
+
+    const genreChunks = sortAndChunk(genreValues, (g) => g.sourceId);
+    for (const chunk of genreChunks) {
+      await withDeadlockRetry(
+        () =>
+          this.db
+            .insert(schema.genres)
+            .values(chunk)
+            .onDuplicateKeyUpdate({
+              set: {
+                name: sql`VALUES(${schema.genres.name})`,
+                slug: sql`VALUES(${schema.genres.slug})`,
+              },
+            }),
+        { label: 'createMoviesBatch:genres' },
+      );
+    }
+
+    const genreRows = await this.db
+      .select({ id: schema.genres.id, sourceId: schema.genres.sourceId })
+      .from(schema.genres)
+      .where(inArray(schema.genres.sourceId, [...genreMap.keys()]));
+    const genreIdMap = new Map(genreRows.map((r) => [r.sourceId, r.id]));
+
+    const junctionValues = junctionPairs
+      .map((pair) => ({
+        movieId: movieIdMap.get(pair.movieSourceId)!,
+        genreId: genreIdMap.get(pair.genreSourceId)!,
+      }))
+      .filter((v) => v.movieId != null && v.genreId != null);
+
+    if (junctionValues.length === 0) return;
+
+    const junctionChunks = sortAndChunk(junctionValues, (v) => v.movieId);
+    for (const chunk of junctionChunks) {
+      await withDeadlockRetry(
+        () =>
+          this.db
+            .insert(schema.movies_genres)
+            .values(chunk)
+            .onDuplicateKeyUpdate({
+              set: {
+                movieId: sql`VALUES(${schema.movies_genres.movieId})`,
+              },
+            }),
+        { label: 'createMoviesBatch:movies_genres' },
+      );
+    }
   }
 }
