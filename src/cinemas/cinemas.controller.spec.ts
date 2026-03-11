@@ -8,21 +8,6 @@ describe('CinemasController', () => {
   let controller: CinemasController;
   let service: jest.Mocked<CinemasService>;
 
-  const mockCinema = {
-    id: 1,
-    sourceId: 101,
-    slug: 'kino-muranow',
-    name: 'Kino Muranow',
-    street: 'ul. Andersa 1',
-    description: 'Kino artystyczne w centrum Warszawy',
-    sourceCityId: 10,
-    url: 'https://www.filmweb.pl/cinema/kino-muranow',
-    latitude: 52.2463,
-    longitude: 21.0027,
-    createdAt: new Date('2025-01-01'),
-    updatedAt: new Date('2025-01-01'),
-  };
-
   const mockCinemaResponse = {
     id: 1,
     slug: 'kino-muranow',

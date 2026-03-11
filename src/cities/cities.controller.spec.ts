@@ -8,18 +8,6 @@ describe('CitiesController', () => {
   let controller: CitiesController;
   let service: jest.Mocked<CitiesService>;
 
-  const mockCity = {
-    id: 5,
-    sourceId: 10,
-    slug: 'warszawa',
-    name: 'Warszawa',
-    nameDeclinated: 'Warszawie',
-    description: 'Stolica Polski',
-    lastScrapedAt: new Date('2025-06-01'),
-    createdAt: new Date('2025-01-01'),
-    updatedAt: new Date('2025-06-01'),
-  };
-
   const mockCityResponse = {
     id: 5,
     slug: 'warszawa',
