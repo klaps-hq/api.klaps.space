@@ -39,14 +39,10 @@ export class CitiesRepository {
       .groupBy(...Object.values(cityColumns));
   }
 
-  async findByIdOrSlug(idOrSlug: string) {
-    const numericId = Number(idOrSlug);
-    const condition =
-      Number.isInteger(numericId) && numericId > 0
-        ? eq(schema.cities.id, numericId)
-        : eq(schema.cities.slug, idOrSlug);
-
-    return this.db.query.cities.findFirst({ where: condition });
+  async findBySlug(slug: string) {
+    return this.db.query.cities.findFirst({
+      where: eq(schema.cities.slug, slug),
+    });
   }
 
   async countCinemasBySourceId(sourceCityId: number): Promise<number> {
@@ -109,15 +105,8 @@ export class CitiesRepository {
     }
   }
 
-  async updateByIdOrSlug(
-    idOrSlug: string,
-    data: UpdateCityDto,
-  ): Promise<City | null> {
-    const numericId = Number(idOrSlug);
-    const condition =
-      Number.isInteger(numericId) && numericId > 0
-        ? eq(schema.cities.id, numericId)
-        : eq(schema.cities.slug, idOrSlug);
+  async updateBySlug(slug: string, data: UpdateCityDto): Promise<City | null> {
+    const condition = eq(schema.cities.slug, slug);
 
     await this.db.update(schema.cities).set(data).where(condition);
 

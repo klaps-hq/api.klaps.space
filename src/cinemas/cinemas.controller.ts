@@ -42,13 +42,11 @@ export class CinemasController {
     );
   }
 
-  @Get(':idOrSlug')
+  @Get(':slug')
   @UseGuards(InternalApiKeyGuard)
-  async getCinemaByIdOrSlug(
-    @Param('idOrSlug') idOrSlug: string,
-  ): Promise<CinemaResponse> {
-    const cinema = await this.cinemasService.getCinemaByIdOrSlug(idOrSlug);
-    if (!cinema) throw new NotFoundException(`Cinema "${idOrSlug}" not found`);
+  async getCinemaBySlug(@Param('slug') slug: string): Promise<CinemaResponse> {
+    const cinema = await this.cinemasService.getCinemaBySlug(slug);
+    if (!cinema) throw new NotFoundException(`Cinema "${slug}" not found`);
 
     return cinema;
   }
@@ -60,19 +58,16 @@ export class CinemasController {
     return this.cinemasService.createCinemasBatch(dto.cinemas);
   }
 
-  @Post(':idOrSlug')
+  @Post(':slug')
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
-  async updateCinemaByIdOrSlug(
-    @Param('idOrSlug') idOrSlug: string,
+  async updateCinemaBySlug(
+    @Param('slug') slug: string,
     @Body() body: UpdateCinemaDto,
   ): Promise<Cinema> {
-    const cinema = await this.cinemasService.updateCinemaByIdOrSlug(
-      idOrSlug,
-      body,
-    );
+    const cinema = await this.cinemasService.updateCinemaBySlug(slug, body);
 
-    if (!cinema) throw new NotFoundException(`Cinema "${idOrSlug}" not found`);
+    if (!cinema) throw new NotFoundException(`Cinema "${slug}" not found`);
     return cinema;
   }
 }

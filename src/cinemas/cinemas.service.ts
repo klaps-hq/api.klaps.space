@@ -64,8 +64,8 @@ export class CinemasService {
     );
   }
 
-  async getCinemaByIdOrSlug(idOrSlug: string): Promise<CinemaResponse | null> {
-    const cinema = await this.repo.findByIdOrSlug(idOrSlug);
+  async getCinemaBySlug(slug: string): Promise<CinemaResponse | null> {
+    const cinema = await this.repo.findBySlug(slug);
     if (!cinema) return null;
     return mapCinemaDetail(cinema);
   }
@@ -78,11 +78,11 @@ export class CinemasService {
     return this.repo.upsertBatch(cinemas);
   }
 
-  async updateCinemaByIdOrSlug(
-    idOrSlug: string,
+  async updateCinemaBySlug(
+    slug: string,
     data: UpdateCinemaDto,
   ): Promise<Cinema | null> {
-    return this.repo.updateByIdOrSlug(idOrSlug, data);
+    return this.repo.updateBySlug(slug, data);
   }
 
   // === PRIVATE ===
@@ -91,9 +91,8 @@ export class CinemasService {
     cityId?: number,
     citySlug?: string,
   ): Promise<number | undefined> {
-    const identifier = cityId?.toString() ?? citySlug;
-    if (!identifier) return undefined;
-    const city = await this.citiesService.findByIdOrSlug(identifier);
+    if (!citySlug) return undefined;
+    const city = await this.citiesService.findBySlug(citySlug);
     return city?.sourceId;
   }
 }

@@ -15,23 +15,23 @@ export class GenresService {
     return this.repo.findAll();
   }
 
-  async findByIdOrSlug(idOrSlug: string): Promise<Genre | null> {
-    const genre = await this.repo.findByIdOrSlug(idOrSlug);
+  async findBySlug(slug: string): Promise<Genre | null> {
+    const genre = await this.repo.findBySlug(slug);
     return genre ?? null;
   }
 
-  async getGenreByIdOrSlug(idOrSlug: string): Promise<GenreResponse | null> {
-    const genre = await this.repo.findByIdOrSlug(idOrSlug);
+  async getGenreBySlug(slug: string): Promise<GenreResponse | null> {
+    const genre = await this.repo.findBySlug(slug);
     if (!genre) return null;
     return mapGenre(genre);
   }
 
   // === WRITE ===
 
-  async updateGenreByIdOrSlug(
-    idOrSlug: string,
+  async updateGenreBySlug(
+    slug: string,
     data: UpdateGenreDto,
   ): Promise<Genre | null> {
-    return this.repo.updateByIdOrSlug(idOrSlug, data);
+    return this.repo.updateBySlug(slug, data);
   }
 }

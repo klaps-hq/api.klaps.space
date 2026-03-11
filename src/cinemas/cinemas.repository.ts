@@ -39,15 +39,9 @@ export class CinemasRepository {
     });
   }
 
-  async findByIdOrSlug(idOrSlug: string) {
-    const numericId = Number(idOrSlug);
-    const condition =
-      Number.isInteger(numericId) && numericId > 0
-        ? eq(schema.cinemas.id, numericId)
-        : eq(schema.cinemas.slug, idOrSlug);
-
+  async findBySlug(slug: string) {
     return this.db.query.cinemas.findFirst({
-      where: condition,
+      where: eq(schema.cinemas.slug, slug),
       with: { city: true },
     });
   }
@@ -87,15 +81,11 @@ export class CinemasRepository {
     }
   }
 
-  async updateByIdOrSlug(
-    idOrSlug: string,
+  async updateBySlug(
+    slug: string,
     data: UpdateCinemaDto,
   ): Promise<Cinema | null> {
-    const numericId = Number(idOrSlug);
-    const condition =
-      Number.isInteger(numericId) && numericId > 0
-        ? eq(schema.cinemas.id, numericId)
-        : eq(schema.cinemas.slug, idOrSlug);
+    const condition = eq(schema.cinemas.slug, slug);
 
     await this.db
       .update(schema.cinemas)

@@ -47,15 +47,9 @@ export class MoviesRepository {
     });
   }
 
-  async findByIdOrSlug(idOrSlug: string) {
-    const numericId = Number(idOrSlug);
-    const condition =
-      Number.isInteger(numericId) && numericId > 0
-        ? eq(schema.movies.id, numericId)
-        : eq(schema.movies.slug, idOrSlug);
-
+  async findBySlug(slug: string) {
     return this.db.query.movies.findFirst({
-      where: condition,
+      where: eq(schema.movies.slug, slug),
       with: MOVIE_RELATIONS,
     });
   }
