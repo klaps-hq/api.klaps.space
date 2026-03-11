@@ -23,8 +23,7 @@ import type { PaginatedResponse } from '../lib/paginate';
 import { GetMultiCityMoviesQueryDto } from './dto/get-multi-city-movies-query.dto';
 import { GetMoviesQueryDto } from './dto/get-movies-query.dto';
 import { CreateMoviesBatchDto } from './dto/create-movies-batch.dto';
-
-const MULTI_CITY_CACHE_TTL = 900_000;
+import { CACHE_TTL } from './movies.constants';
 
 @Controller('movies')
 export class MoviesController {
@@ -48,7 +47,7 @@ export class MoviesController {
   @Get('multi-city')
   @UseGuards(InternalApiKeyGuard)
   @UseInterceptors(CacheInterceptor)
-  @CacheTTL(MULTI_CITY_CACHE_TTL)
+  @CacheTTL(CACHE_TTL.MULTI_CITY_MS)
   getMultiCityMovies(
     @Query() query: GetMultiCityMoviesQueryDto,
   ): Promise<MultiCityMovieResponse[]> {

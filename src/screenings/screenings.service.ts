@@ -12,8 +12,7 @@ import type { CreateScreeningDto } from './dto/create-screening.dto';
 import { mapScreening, mapScreeningGroup } from './screenings.mapper';
 import { mapMovieHero } from '../movies/movies.mapper';
 import { ScreeningsRepository } from './screenings.repository';
-
-const RETRO_YEAR_THRESHOLD = 2026;
+import { RETRO_YEAR_THRESHOLD } from './screenings.constants';
 
 @Injectable()
 export class ScreeningsService {
