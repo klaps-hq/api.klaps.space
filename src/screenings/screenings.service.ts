@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { getDateRangeUpToMonthFromNow } from '../lib/date';
 import { randomInt } from 'node:crypto';
-import type { GetScreeningsParams, Screening } from './screenings.types';
-import type { CreateScreeningDto } from './dto/create-screening.dto';
 import type {
+  GetScreeningsParams,
+  Screening,
   ScreeningResponse,
   ScreeningGroupResponse,
   RandomScreeningResponse,
 } from './screenings.types';
+import type { CreateScreeningDto } from './dto/create-screening.dto';
 import { mapScreening, mapScreeningGroup } from './screenings.mapper';
 import { mapMovieHero } from '../movies/movies.mapper';
 import { ScreeningsRepository } from './screenings.repository';
