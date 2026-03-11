@@ -95,12 +95,13 @@ describe('SocialsService', () => {
     it('should return ALREADY_PUBLISHED when posts exist for date range and platform', async () => {
       repo.findPostsByDateAndPlatform.mockResolvedValue([{ id: 1 }] as any);
 
-      const result = await service.getCandidate(
-        '2025-03-10',
-        '2025-03-12',
-        20,
-        'instagram',
-      );
+      const result = await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 20,
+        platform: 'instagram',
+        numberOfCandidates: 10,
+      });
 
       expect(result.publish).toBe(false);
       expect(result.reason).toBe('ALREADY_PUBLISHED');
@@ -113,12 +114,13 @@ describe('SocialsService', () => {
       repo.findPostsByDateAndPlatform.mockResolvedValue([]);
       repo.findScreeningsInRange.mockResolvedValue([]);
 
-      const result = await service.getCandidate(
-        '2025-03-10',
-        '2025-03-12',
-        20,
-        'instagram',
-      );
+      const result = await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 20,
+        platform: 'instagram',
+        numberOfCandidates: 10,
+      });
 
       expect(result.publish).toBe(false);
       expect(result.reason).toBe('NO_SCREENINGS_IN_RANGE');
@@ -145,12 +147,13 @@ describe('SocialsService', () => {
       repo.findScreeningsInRange.mockResolvedValue([screening]);
       repo.findScreeningsByIds.mockResolvedValue([screening]);
 
-      const result = await service.getCandidate(
-        '2025-03-10',
-        '2025-03-12',
-        30,
-        'instagram',
-      );
+      const result = await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 30,
+        platform: 'instagram',
+        numberOfCandidates: 10,
+      });
 
       expect(result.publish).toBe(true);
       expect(result.reason).toBe('HAS_HIGH_QUALITY_CANDIDATE');
@@ -172,12 +175,13 @@ describe('SocialsService', () => {
       repo.findScreeningsByIds.mockResolvedValue([screening]);
 
       // normal year = 10 points, minScore = 50
-      const result = await service.getCandidate(
-        '2025-03-10',
-        '2025-03-12',
-        50,
-        'instagram',
-      );
+      const result = await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 50,
+        platform: 'instagram',
+        numberOfCandidates: 10,
+      });
 
       expect(result.publish).toBe(false);
       expect(result.reason).toBe('NO_HIGH_QUALITY_CANDIDATE');
@@ -185,15 +189,16 @@ describe('SocialsService', () => {
       expect(result.meta.minScore).toBe(50);
     });
 
-    it('should trim and lowercase platform param', async () => {
+    it('should pass platform directly to repo (DTO handles normalization)', async () => {
       repo.findPostsByDateAndPlatform.mockResolvedValue([{ id: 1 }] as any);
 
-      await service.getCandidate(
-        '2025-03-10',
-        '2025-03-12',
-        20,
-        '  Instagram  ',
-      );
+      await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 20,
+        platform: 'instagram',
+        numberOfCandidates: 10,
+      });
 
       expect(repo.findPostsByDateAndPlatform).toHaveBeenCalledWith(
         '2025-03-10',
@@ -216,12 +221,13 @@ describe('SocialsService', () => {
       repo.findScreeningsInRange.mockResolvedValue(screenings);
       repo.findScreeningsByIds.mockResolvedValue(screenings.slice(0, 10));
 
-      const result = await service.getCandidate(
-        '2025-03-10',
-        '2025-03-12',
-        5,
-        'instagram',
-      );
+      const result = await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 5,
+        platform: 'instagram',
+        numberOfCandidates: 10,
+      });
 
       expect(result.meta.candidatesChecked).toBe(10);
       expect(repo.findScreeningsByIds).toHaveBeenCalledWith(
@@ -250,12 +256,13 @@ describe('SocialsService', () => {
       ]);
       repo.findScreeningsByIds.mockResolvedValue([screeningHigh, screeningLow]);
 
-      const result = await service.getCandidate(
-        '2025-03-10',
-        '2025-03-12',
-        5,
-        'instagram',
-      );
+      const result = await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 5,
+        platform: 'instagram',
+        numberOfCandidates: 10,
+      });
 
       expect(result.candidates[0]).toEqual(screeningHigh);
     });
@@ -267,12 +274,13 @@ describe('SocialsService', () => {
       repo.findScreeningsInRange.mockResolvedValue(screenings);
       repo.findScreeningsByIds.mockResolvedValue(screenings);
 
-      const result = await service.getCandidate(
-        '2025-03-10',
-        '2025-03-12',
-        0,
-        'instagram',
-      );
+      const result = await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 0,
+        platform: 'instagram',
+        numberOfCandidates: 10,
+      });
       return result;
     };
 
@@ -466,9 +474,9 @@ describe('SocialsService', () => {
     it('should throw NotFoundException when screening does not exist', async () => {
       repo.findScreeningById.mockResolvedValue(null);
 
-      await expect(service.reserveCandidate('instagram', 999)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.reserveCandidate({ platform: 'instagram', screeningId: 999 }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException when post already reserved', async () => {
@@ -476,9 +484,9 @@ describe('SocialsService', () => {
       repo.findScreeningById.mockResolvedValue(screening);
       repo.findPostByPlatformAndScreening.mockResolvedValue({ id: 1 } as any);
 
-      await expect(service.reserveCandidate('instagram', 5)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.reserveCandidate({ platform: 'instagram', screeningId: 5 }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should call upsertPost with correct data on success', async () => {
@@ -492,7 +500,7 @@ describe('SocialsService', () => {
       repo.findPostByPlatformAndScreening.mockResolvedValue(null);
       repo.upsertPost.mockResolvedValue(undefined);
 
-      await service.reserveCandidate('Instagram', 5);
+      await service.reserveCandidate({ platform: 'instagram', screeningId: 5 });
 
       expect(repo.upsertPost).toHaveBeenCalledWith({
         postDate: '2025-03-15',
@@ -505,29 +513,15 @@ describe('SocialsService', () => {
         reason: 'RESERVED',
       });
     });
-
-    it('should trim and lowercase platform param', async () => {
-      const screening = makeScreening({ id: 5, movieId: 1 });
-      repo.findScreeningById.mockResolvedValue(screening);
-      repo.findPostByPlatformAndScreening.mockResolvedValue(null);
-      repo.upsertPost.mockResolvedValue(undefined);
-
-      await service.reserveCandidate('  Twitter  ', 5);
-
-      expect(repo.findPostByPlatformAndScreening).toHaveBeenCalledWith(
-        'twitter',
-        5,
-      );
-    });
   });
 
   describe('publishCandidate', () => {
     it('should throw NotFoundException when screening does not exist', async () => {
       repo.findScreeningById.mockResolvedValue(null);
 
-      await expect(service.publishCandidate('instagram', 999)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.publishCandidate({ platform: 'instagram', screeningId: 999 }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when socials post does not exist', async () => {
@@ -535,9 +529,9 @@ describe('SocialsService', () => {
       repo.findScreeningById.mockResolvedValue(screening);
       repo.findPostByPlatformAndScreening.mockResolvedValue(null);
 
-      await expect(service.publishCandidate('instagram', 5)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.publishCandidate({ platform: 'instagram', screeningId: 5 }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException when post already published', async () => {
@@ -548,9 +542,9 @@ describe('SocialsService', () => {
         published: true,
       } as any);
 
-      await expect(service.publishCandidate('instagram', 5)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.publishCandidate({ platform: 'instagram', screeningId: 5 }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should call markPostPublished on success', async () => {
@@ -562,26 +556,9 @@ describe('SocialsService', () => {
       } as any);
       repo.markPostPublished.mockResolvedValue(undefined);
 
-      await service.publishCandidate('instagram', 5);
+      await service.publishCandidate({ platform: 'instagram', screeningId: 5 });
 
       expect(repo.markPostPublished).toHaveBeenCalledWith(42, '2025-03-11');
-    });
-
-    it('should trim and lowercase platform param', async () => {
-      const screening = makeScreening({ id: 5, movieId: 1 });
-      repo.findScreeningById.mockResolvedValue(screening);
-      repo.findPostByPlatformAndScreening.mockResolvedValue({
-        id: 42,
-        published: false,
-      } as any);
-      repo.markPostPublished.mockResolvedValue(undefined);
-
-      await service.publishCandidate('  Facebook  ', 5);
-
-      expect(repo.findPostByPlatformAndScreening).toHaveBeenCalledWith(
-        'facebook',
-        5,
-      );
     });
   });
 });

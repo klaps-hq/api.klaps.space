@@ -51,13 +51,7 @@ describe('SocialsController', () => {
 
       const result = await controller.getCandidate(query as any);
 
-      expect(service.getCandidate).toHaveBeenCalledWith(
-        '2025-03-10',
-        '2025-03-12',
-        20,
-        'instagram',
-        5,
-      );
+      expect(service.getCandidate).toHaveBeenCalledWith(query);
       expect(result).toEqual(mockResponse);
     });
 
@@ -79,13 +73,7 @@ describe('SocialsController', () => {
 
       await controller.getCandidate(query as any);
 
-      expect(service.getCandidate).toHaveBeenCalledWith(
-        '2025-03-10',
-        '2025-03-12',
-        20,
-        'instagram',
-        undefined,
-      );
+      expect(service.getCandidate).toHaveBeenCalledWith(query);
     });
   });
 
@@ -97,7 +85,7 @@ describe('SocialsController', () => {
 
       await controller.reserve(body as any);
 
-      expect(service.reserveCandidate).toHaveBeenCalledWith('instagram', 42);
+      expect(service.reserveCandidate).toHaveBeenCalledWith(body);
     });
   });
 
@@ -109,7 +97,7 @@ describe('SocialsController', () => {
 
       await controller.publish(body as any);
 
-      expect(service.publishCandidate).toHaveBeenCalledWith('twitter', 99);
+      expect(service.publishCandidate).toHaveBeenCalledWith(body);
     });
   });
 });

@@ -57,11 +57,11 @@ describe('MoviesService', () => {
         {
           provide: MoviesRepository,
           useValue: {
-            findMovies: jest.fn(),
-            countMovies: jest.fn(),
+            findAll: jest.fn(),
+            count: jest.fn(),
             findBySlug: jest.fn(),
             findMultiCityMovies: jest.fn(),
-            createBatch: jest.fn(),
+            upsertBatch: jest.fn(),
           },
         },
         {
@@ -80,8 +80,8 @@ describe('MoviesService', () => {
 
   describe('getMovies', () => {
     it('should return paginated movies', async () => {
-      repo.findMovies.mockResolvedValue([mockDbMovie]);
-      repo.countMovies.mockResolvedValue(1);
+      repo.findAll.mockResolvedValue([mockDbMovie]);
+      repo.count.mockResolvedValue(1);
 
       const result = await service.getMovies({ page: 1, limit: 10 });
 
@@ -90,44 +90,44 @@ describe('MoviesService', () => {
       expect(result.meta.total).toBe(1);
       expect(result.meta.page).toBe(1);
       expect(result.meta.limit).toBe(10);
-      expect(repo.findMovies).toHaveBeenCalledWith(
+      expect(repo.findAll).toHaveBeenCalledWith(
         expect.objectContaining({ limit: 10, offset: 0 }),
       );
-      expect(repo.countMovies).toHaveBeenCalled();
+      expect(repo.count).toHaveBeenCalled();
     });
 
     it('should use default pagination when no params', async () => {
-      repo.findMovies.mockResolvedValue([]);
-      repo.countMovies.mockResolvedValue(0);
+      repo.findAll.mockResolvedValue([]);
+      repo.count.mockResolvedValue(0);
 
       await service.getMovies();
 
-      expect(repo.findMovies).toHaveBeenCalledWith(
+      expect(repo.findAll).toHaveBeenCalledWith(
         expect.objectContaining({ limit: 20, offset: 0 }),
       );
     });
 
     it('should resolve genreSlug via genresService', async () => {
       genresService.findBySlug.mockResolvedValue(mockGenre as any);
-      repo.findMovies.mockResolvedValue([]);
-      repo.countMovies.mockResolvedValue(0);
+      repo.findAll.mockResolvedValue([]);
+      repo.count.mockResolvedValue(0);
 
       await service.getMovies({ genreSlug: 'action' });
 
       expect(genresService.findBySlug).toHaveBeenCalledWith('action');
-      expect(repo.findMovies).toHaveBeenCalledWith(
+      expect(repo.findAll).toHaveBeenCalledWith(
         expect.objectContaining({ genreId: 1 }),
       );
     });
 
     it('should not resolve genreSlug when genreId is provided', async () => {
-      repo.findMovies.mockResolvedValue([]);
-      repo.countMovies.mockResolvedValue(0);
+      repo.findAll.mockResolvedValue([]);
+      repo.count.mockResolvedValue(0);
 
       await service.getMovies({ genreId: 5, genreSlug: 'action' });
 
       expect(genresService.findBySlug).not.toHaveBeenCalled();
-      expect(repo.findMovies).toHaveBeenCalledWith(
+      expect(repo.findAll).toHaveBeenCalledWith(
         expect.objectContaining({ genreId: 5 }),
       );
     });
@@ -167,12 +167,12 @@ describe('MoviesService', () => {
 
   describe('createMoviesBatch', () => {
     it('should delegate to repo', async () => {
-      repo.createBatch.mockResolvedValue(undefined);
+      repo.upsertBatch.mockResolvedValue(undefined);
 
       const movies = [{ sourceId: 1, title: 'Test' }] as any;
       await service.createMoviesBatch(movies);
 
-      expect(repo.createBatch).toHaveBeenCalledWith(movies);
+      expect(repo.upsertBatch).toHaveBeenCalledWith(movies);
     });
   });
 });

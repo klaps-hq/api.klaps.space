@@ -22,7 +22,7 @@ export class CinemasRepository {
 
   // === READ ===
 
-  async findCinemasFlat(sourceCityId?: number) {
+  async findAll(sourceCityId?: number) {
     return this.db.query.cinemas.findMany({
       where: sourceCityId
         ? eq(schema.cinemas.sourceCityId, sourceCityId)

@@ -53,7 +53,7 @@ describe('CinemasService', () => {
         {
           provide: CinemasRepository,
           useValue: {
-            findCinemasFlat: jest.fn(),
+            findAll: jest.fn(),
             findBySlug: jest.fn(),
             upsertBatch: jest.fn(),
             updateBySlug: jest.fn(),
@@ -74,34 +74,34 @@ describe('CinemasService', () => {
   });
 
   describe('getCinemas', () => {
-    it('should call repo.findCinemasFlat with undefined when no slug provided', async () => {
-      repo.findCinemasFlat.mockResolvedValue([mockCinema]);
+    it('should call repo.findAll with undefined when no slug provided', async () => {
+      repo.findAll.mockResolvedValue([mockCinema]);
 
-      const result = await service.getCinemas();
+      const result = await service.getCinemas({});
 
-      expect(repo.findCinemasFlat).toHaveBeenCalledWith(undefined);
+      expect(repo.findAll).toHaveBeenCalledWith(undefined);
       expect(result).toEqual([mockCinema]);
     });
 
     it('should resolve sourceCityId via citiesService when citySlug provided', async () => {
       citiesService.findBySlug.mockResolvedValue(mockCity);
-      repo.findCinemasFlat.mockResolvedValue([mockCinema]);
+      repo.findAll.mockResolvedValue([mockCinema]);
 
-      const result = await service.getCinemas(undefined, 'warszawa');
+      const result = await service.getCinemas({ citySlug: 'warszawa' });
 
       expect(citiesService.findBySlug).toHaveBeenCalledWith('warszawa');
-      expect(repo.findCinemasFlat).toHaveBeenCalledWith(10);
+      expect(repo.findAll).toHaveBeenCalledWith(10);
       expect(result).toEqual([mockCinema]);
     });
 
     it('should pass undefined sourceCityId when city not found by slug', async () => {
       citiesService.findBySlug.mockResolvedValue(null);
-      repo.findCinemasFlat.mockResolvedValue([]);
+      repo.findAll.mockResolvedValue([]);
 
-      const result = await service.getCinemas(undefined, 'nieistniejace');
+      const result = await service.getCinemas({ citySlug: 'nieistniejace' });
 
       expect(citiesService.findBySlug).toHaveBeenCalledWith('nieistniejace');
-      expect(repo.findCinemasFlat).toHaveBeenCalledWith(undefined);
+      expect(repo.findAll).toHaveBeenCalledWith(undefined);
       expect(result).toEqual([]);
     });
   });

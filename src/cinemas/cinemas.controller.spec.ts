@@ -72,17 +72,17 @@ describe('CinemasController', () => {
       const query = { cityId: 5, citySlug: 'warszawa' } as any;
       const result = await controller.getCinemas(query);
 
-      expect(service.getCinemas).toHaveBeenCalledWith(5, 'warszawa');
+      expect(service.getCinemas).toHaveBeenCalledWith(query);
       expect(result).toEqual([mockCinema]);
     });
 
-    it('should pass undefined when no query params', async () => {
+    it('should pass empty object when no query params', async () => {
       service.getCinemas.mockResolvedValue([]);
 
       const query = {} as any;
       const result = await controller.getCinemas(query);
 
-      expect(service.getCinemas).toHaveBeenCalledWith(undefined, undefined);
+      expect(service.getCinemas).toHaveBeenCalledWith(query);
       expect(result).toEqual([]);
     });
   });

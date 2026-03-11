@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import type { Showtime } from './showtimes.types';
+import type { ShowtimeResponse } from './showtimes.types';
 import type { GetShowtimesQueryDto } from './dto/get-showtimes-query.dto';
 import type { CreateShowtimesBatchDto } from './dto/create-showtimes-batch.dto';
+import { mapShowtime } from './showtimes.mapper';
 import { ShowtimesRepository } from './showtimes.repository';
 import { CitiesService } from '../cities/cities.service';
 
@@ -14,14 +15,15 @@ export class ShowtimesService {
 
   // === READ ===
 
-  async getShowtimes(query: GetShowtimesQueryDto): Promise<Showtime[]> {
+  async getShowtimes(query: GetShowtimesQueryDto): Promise<ShowtimeResponse[]> {
     const { dateFrom, dateTo, cityId, citySlug } = query;
     const startDay = dateFrom ? new Date(dateFrom) : new Date();
     const endDay = dateTo ? new Date(dateTo) : new Date();
 
     const resolvedCityId = cityId ?? (await this.resolveCityId(citySlug));
+    const showtimes = await this.repo.findAll(startDay, endDay, resolvedCityId);
 
-    return this.repo.findShowtimes(startDay, endDay, resolvedCityId);
+    return showtimes.map(mapShowtime);
   }
 
   // === WRITE ===
@@ -30,7 +32,7 @@ export class ShowtimesService {
     const { showtimes, scrapedCityIds } = dto;
     if (showtimes.length === 0) return;
 
-    await this.repo.insertBatch(showtimes);
+    await this.repo.upsertBatch(showtimes);
 
     if (scrapedCityIds && scrapedCityIds.length > 0) {
       await this.repo.updateCitiesLastScrapedAt(scrapedCityIds);

@@ -33,7 +33,7 @@ export class MoviesRepository {
 
   // === READ ===
 
-  async findMovies(params?: {
+  async findAll(params?: {
     search?: string;
     genreId?: number;
     limit: number;
@@ -55,7 +55,7 @@ export class MoviesRepository {
     });
   }
 
-  async countMovies(params?: { search?: string; genreId?: number }) {
+  async count(params?: { search?: string; genreId?: number }) {
     const where = and(
       params?.search
         ? like(schema.movies.title, `%${params.search}%`)
@@ -120,7 +120,7 @@ export class MoviesRepository {
 
   // === WRITE ===
 
-  async createBatch(movies: CreateMoviesBatchItemDto[]): Promise<void> {
+  async upsertBatch(movies: CreateMoviesBatchItemDto[]): Promise<void> {
     if (movies.length === 0) return;
 
     await this.upsertMovies(movies);

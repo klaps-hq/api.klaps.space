@@ -23,32 +23,20 @@ export class SocialsController {
   getCandidate(
     @Query() query: GetSocialCandidateQueryDto,
   ): Promise<SocialsGetCandidateResponse> {
-    return this.socialsService.getCandidate(
-      query.dateFrom,
-      query.dateTo,
-      query.minScore,
-      query.platform,
-      query.numberOfCandidates,
-    );
+    return this.socialsService.getCandidate(query);
   }
 
   @Post('reserve')
   @HttpCode(HttpStatus.OK)
   @UseGuards(InternalApiKeyGuard)
   reserve(@Body() body: SocialsActionDto): Promise<void> {
-    return this.socialsService.reserveCandidate(
-      body.platform,
-      body.screeningId,
-    );
+    return this.socialsService.reserveCandidate(body);
   }
 
   @Post('publish')
   @HttpCode(HttpStatus.OK)
   @UseGuards(InternalApiKeyGuard)
   publish(@Body() body: SocialsActionDto): Promise<void> {
-    return this.socialsService.publishCandidate(
-      body.platform,
-      body.screeningId,
-    );
+    return this.socialsService.publishCandidate(body);
   }
 }

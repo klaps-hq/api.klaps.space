@@ -3,6 +3,7 @@ import type { Cinema } from '../database/schemas/cinemas.schema';
 import type { CinemaResponse } from './cinemas.types';
 import { mapCinemaDetail } from './cinemas.mapper';
 import type { CreateCinemasBatchItemDto } from './dto/create-cinemas-batch.dto';
+import type { GetCinemasQueryDto } from './dto/get-cinemas-query.dto';
 import type { UpdateCinemaDto } from './dto/update-cinema.dto';
 import { CinemasRepository } from './cinemas.repository';
 import { CitiesService } from '../cities/cities.service';
@@ -16,9 +17,9 @@ export class CinemasService {
 
   // === READ ===
 
-  async getCinemas(cityId?: number, citySlug?: string): Promise<Cinema[]> {
-    const sourceCityId = await this.resolveSourceCityId(cityId, citySlug);
-    return this.repo.findCinemasFlat(sourceCityId);
+  async getCinemas(query: GetCinemasQueryDto): Promise<Cinema[]> {
+    const sourceCityId = await this.resolveSourceCityId(query.citySlug);
+    return this.repo.findAll(sourceCityId);
   }
 
   async getCinemaBySlug(slug: string): Promise<CinemaResponse | null> {
@@ -45,7 +46,6 @@ export class CinemasService {
   // === PRIVATE ===
 
   private async resolveSourceCityId(
-    cityId?: number,
     citySlug?: string,
   ): Promise<number | undefined> {
     if (!citySlug) return undefined;
