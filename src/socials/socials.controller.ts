@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
-import type { SocialsGetCandidateResponse } from '../lib/response-types';
+import type { SocialsGetCandidateResponse } from './socials.types';
 import { GetSocialCandidateQueryDto } from './dto/get-socials-candidate-query.dto';
 import { SocialsService } from './socials.service';
 import { SocialsActionDto } from './dto/socials-action.dto';

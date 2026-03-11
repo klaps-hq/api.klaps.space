@@ -7,12 +7,9 @@ import type {
   ScreeningResponse,
   ScreeningGroupResponse,
   RandomScreeningResponse,
-} from '../lib/response-types';
-import {
-  mapScreening,
-  mapScreeningGroup,
-  mapMovieHero,
-} from '../lib/response-mappers';
+} from './screenings.types';
+import { mapScreening, mapScreeningGroup } from './screenings.mapper';
+import { mapMovieHero } from '../movies/movies.mapper';
 import { ScreeningsRepository } from './screenings.repository';
 
 const RETRO_YEAR_THRESHOLD = 2026;

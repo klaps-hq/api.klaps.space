@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Genre } from '../database/schemas/genres.schema';
-import type { GenreResponse } from '../lib/response-types';
-import { mapGenre } from '../lib/response-mappers';
+import type { GenreResponse } from './genres.types';
+import { mapGenre } from './genres.mapper';
 import type { UpdateGenreDto } from './dto/update-genre.dto';
 import { GenresRepository } from './genres.repository';
 

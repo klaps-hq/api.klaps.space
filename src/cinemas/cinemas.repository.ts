@@ -30,15 +30,6 @@ export class CinemasRepository {
     });
   }
 
-  async findCinemasWithCity(sourceCityId?: number) {
-    return this.db.query.cinemas.findMany({
-      where: sourceCityId
-        ? eq(schema.cinemas.sourceCityId, sourceCityId)
-        : undefined,
-      with: { city: true },
-    });
-  }
-
   async findBySlug(slug: string) {
     return this.db.query.cinemas.findFirst({
       where: eq(schema.cinemas.slug, slug),
