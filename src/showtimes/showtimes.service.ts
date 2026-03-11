@@ -41,7 +41,7 @@ export class ShowtimesService {
 
   private async resolveCityId(citySlug?: string): Promise<number | undefined> {
     if (!citySlug) return undefined;
-    const city = await this.citiesService.findByIdOrSlug(citySlug);
+    const city = await this.citiesService.findBySlug(citySlug);
     return city?.id;
   }
 }

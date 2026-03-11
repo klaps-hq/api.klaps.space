@@ -19,27 +19,19 @@ export class GenresRepository {
     return this.db.query.genres.findMany();
   }
 
-  async findByIdOrSlug(idOrSlug: string) {
-    const numericId = Number(idOrSlug);
-    const condition =
-      Number.isInteger(numericId) && numericId > 0
-        ? eq(schema.genres.id, numericId)
-        : eq(schema.genres.slug, idOrSlug);
-
-    return this.db.query.genres.findFirst({ where: condition });
+  async findBySlug(slug: string) {
+    return this.db.query.genres.findFirst({
+      where: eq(schema.genres.slug, slug),
+    });
   }
 
   // === WRITE ===
 
-  async updateByIdOrSlug(
-    idOrSlug: string,
+  async updateBySlug(
+    slug: string,
     data: UpdateGenreDto,
   ): Promise<Genre | null> {
-    const numericId = Number(idOrSlug);
-    const condition =
-      Number.isInteger(numericId) && numericId > 0
-        ? eq(schema.genres.id, numericId)
-        : eq(schema.genres.slug, idOrSlug);
+    const condition = eq(schema.genres.slug, slug);
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
 

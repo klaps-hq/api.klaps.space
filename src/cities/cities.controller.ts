@@ -42,13 +42,13 @@ export class CitiesController {
     return this.citiesService.getCitiesWithCinemas();
   }
 
-  @Get(':idOrSlug')
+  @Get(':slug')
   @UseGuards(InternalApiKeyGuard)
-  async getCityByIdOrSlug(
-    @Param('idOrSlug') idOrSlug: string,
+  async getCityBySlug(
+    @Param('slug') slug: string,
   ): Promise<CityDetailResponse> {
-    const city = await this.citiesService.getCityByIdOrSlug(idOrSlug);
-    if (!city) throw new NotFoundException(`City "${idOrSlug}" not found`);
+    const city = await this.citiesService.getCityBySlug(slug);
+    if (!city) throw new NotFoundException(`City "${slug}" not found`);
     return city;
   }
 
@@ -59,15 +59,15 @@ export class CitiesController {
     return this.citiesService.createCitiesBatch(dto.cities);
   }
 
-  @Post(':idOrSlug')
+  @Post(':slug')
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
-  async updateCityByIdOrSlug(
-    @Param('idOrSlug') idOrSlug: string,
+  async updateCityBySlug(
+    @Param('slug') slug: string,
     @Body() body: UpdateCityDto,
   ): Promise<City> {
-    const city = await this.citiesService.updateCityByIdOrSlug(idOrSlug, body);
-    if (!city) throw new NotFoundException(`City "${idOrSlug}" not found`);
+    const city = await this.citiesService.updateCityBySlug(slug, body);
+    if (!city) throw new NotFoundException(`City "${slug}" not found`);
     return city;
   }
 }

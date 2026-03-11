@@ -22,7 +22,7 @@ export class MoviesService {
   async getMovies(params?: GetMoviesParams): Promise<MovieSummaryResponse[]> {
     let genreId = params?.genreId;
     if (!genreId && params?.genreSlug) {
-      const genre = await this.genresService.findByIdOrSlug(params.genreSlug);
+      const genre = await this.genresService.findBySlug(params.genreSlug);
       genreId = genre?.id;
     }
     const data = await this.repo.findMovies({
@@ -32,8 +32,8 @@ export class MoviesService {
     return data.map(mapMovieSummary);
   }
 
-  async getMovieByIdOrSlug(idOrSlug: string): Promise<MovieResponse | null> {
-    const movie = await this.repo.findByIdOrSlug(idOrSlug);
+  async getMovieBySlug(slug: string): Promise<MovieResponse | null> {
+    const movie = await this.repo.findBySlug(slug);
     if (!movie) return null;
     return mapMovieDetail(movie);
   }

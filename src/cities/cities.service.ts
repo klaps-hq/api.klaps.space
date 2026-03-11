@@ -21,8 +21,8 @@ export class CitiesService {
     return this.repo.findAll();
   }
 
-  async findByIdOrSlug(idOrSlug: string): Promise<City | null> {
-    const city = await this.repo.findByIdOrSlug(idOrSlug);
+  async findBySlug(slug: string): Promise<City | null> {
+    const city = await this.repo.findBySlug(slug);
     return city ?? null;
   }
 
@@ -31,10 +31,8 @@ export class CitiesService {
     return cities.map((c) => mapCity(c, c.numberOfCinemas));
   }
 
-  async getCityByIdOrSlug(
-    idOrSlug: string,
-  ): Promise<CityDetailResponse | null> {
-    const city = await this.repo.findByIdOrSlug(idOrSlug);
+  async getCityBySlug(slug: string): Promise<CityDetailResponse | null> {
+    const city = await this.repo.findBySlug(slug);
     if (!city) return null;
 
     const [screenings, numberOfCinemas] = await Promise.all([
@@ -62,10 +60,10 @@ export class CitiesService {
     return this.repo.upsertBatch(cities);
   }
 
-  async updateCityByIdOrSlug(
-    idOrSlug: string,
+  async updateCityBySlug(
+    slug: string,
     data: UpdateCityDto,
   ): Promise<City | null> {
-    return this.repo.updateByIdOrSlug(idOrSlug, data);
+    return this.repo.updateBySlug(slug, data);
   }
 }

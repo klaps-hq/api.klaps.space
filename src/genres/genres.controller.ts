@@ -25,30 +25,25 @@ export class GenresController {
     return this.genresService.getGenres();
   }
 
-  @Get(':idOrSlug')
+  @Get(':slug')
   @UseGuards(InternalApiKeyGuard)
-  async getGenreByIdOrSlug(
-    @Param('idOrSlug') idOrSlug: string,
-  ): Promise<GenreResponse> {
-    const genre = await this.genresService.getGenreByIdOrSlug(idOrSlug);
-    if (!genre) throw new NotFoundException(`Genre "${idOrSlug}" not found`);
+  async getGenreBySlug(@Param('slug') slug: string): Promise<GenreResponse> {
+    const genre = await this.genresService.getGenreBySlug(slug);
+    if (!genre) throw new NotFoundException(`Genre "${slug}" not found`);
 
     return genre;
   }
 
-  @Post(':idOrSlug')
+  @Post(':slug')
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
-  async updateGenreByIdOrSlug(
-    @Param('idOrSlug') idOrSlug: string,
+  async updateGenreBySlug(
+    @Param('slug') slug: string,
     @Body() body: UpdateGenreDto,
   ): Promise<Genre> {
-    const genre = await this.genresService.updateGenreByIdOrSlug(
-      idOrSlug,
-      body,
-    );
+    const genre = await this.genresService.updateGenreBySlug(slug, body);
 
-    if (!genre) throw new NotFoundException(`Genre "${idOrSlug}" not found`);
+    if (!genre) throw new NotFoundException(`Genre "${slug}" not found`);
     return genre;
   }
 }

@@ -60,14 +60,12 @@ export class MoviesController {
     });
   }
 
-  @Get(':idOrSlug')
+  @Get(':slug')
   @UseGuards(InternalApiKeyGuard)
-  async getMovieByIdOrSlug(
-    @Param('idOrSlug') idOrSlug: string,
-  ): Promise<MovieResponse> {
-    const movie = await this.moviesService.getMovieByIdOrSlug(idOrSlug);
+  async getMovieBySlug(@Param('slug') slug: string): Promise<MovieResponse> {
+    const movie = await this.moviesService.getMovieBySlug(slug);
     if (!movie) {
-      throw new NotFoundException(`Movie "${idOrSlug}" not found`);
+      throw new NotFoundException(`Movie "${slug}" not found`);
     }
 
     return movie;
