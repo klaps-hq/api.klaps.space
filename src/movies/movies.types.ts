@@ -7,6 +7,8 @@ export type GetMoviesParams = {
   search?: string;
   genreId?: number;
   genreSlug?: string;
+  page?: number;
+  limit?: number;
 };
 
 export type GetMultiCityMoviesParams = {

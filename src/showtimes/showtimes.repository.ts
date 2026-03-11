@@ -4,8 +4,8 @@ import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
 import { and, eq, gte, inArray, lte } from 'drizzle-orm';
-import { sortAndChunk } from '../wrappers/chunked-upsert';
-import { withDeadlockRetry } from '../wrappers/with-deadlock-retry';
+import { sortAndChunk } from '../lib/chunked-upsert';
+import { withDeadlockRetry } from '../lib/with-deadlock-retry';
 import type { Showtime } from './showtimes.types';
 import type { CreateShowtimesBatchItemDto } from './dto/create-showtimes-batch.dto';
 

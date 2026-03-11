@@ -15,10 +15,11 @@ import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { MoviesService } from './movies.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type {
-  MovieSummaryResponse,
   MovieResponse,
   MultiCityMovieResponse,
+  MovieSummaryResponse,
 } from './movies.types';
+import type { PaginatedResponse } from '../lib/paginate';
 import { GetMultiCityMoviesQueryDto } from './dto/get-multi-city-movies-query.dto';
 import { GetMoviesQueryDto } from './dto/get-movies-query.dto';
 import { CreateMoviesBatchDto } from './dto/create-movies-batch.dto';
@@ -33,7 +34,7 @@ export class MoviesController {
   @UseGuards(InternalApiKeyGuard)
   getMovies(
     @Query() query: GetMoviesQueryDto,
-  ): Promise<MovieSummaryResponse[]> {
+  ): Promise<PaginatedResponse<MovieSummaryResponse>> {
     return this.moviesService.getMovies(query);
   }
 
