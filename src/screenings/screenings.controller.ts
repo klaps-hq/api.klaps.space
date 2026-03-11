@@ -11,8 +11,8 @@ import { ScreeningsService } from './screenings.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import { GetScreeningsQueryDto } from './dto/get-screenings-query.dto';
 import { CreateScreeningDto } from './dto/create-screening.dto';
-import type { Screening } from './screenings.types';
 import type {
+  Screening,
   ScreeningResponse,
   ScreeningGroupResponse,
   RandomScreeningResponse,
@@ -38,6 +38,7 @@ export class ScreeningsController {
     if (!screening) {
       throw new NotFoundException('No retro screening found');
     }
+
     return screening;
   }
 

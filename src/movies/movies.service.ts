@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import type { GetMoviesParams, GetMultiCityMoviesParams } from './movies.types';
-import type { CreateMoviesBatchItemDto } from './dto/create-movies-batch.dto';
 import type {
+  GetMoviesParams,
+  GetMultiCityMoviesParams,
   MovieSummaryResponse,
   MovieResponse,
   MultiCityMovieResponse,
 } from './movies.types';
+import type { CreateMoviesBatchItemDto } from './dto/create-movies-batch.dto';
 import { mapMovieSummary, mapMovieDetail } from './movies.mapper';
 import { MoviesRepository } from './movies.repository';
 import { MoviesBatchService } from './movies-batch.service';

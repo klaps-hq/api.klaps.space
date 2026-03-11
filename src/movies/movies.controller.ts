@@ -51,9 +51,7 @@ export class MoviesController {
   getMultiCityMovies(
     @Query() query: GetMultiCityMoviesQueryDto,
   ): Promise<MultiCityMovieResponse[]> {
-    return this.moviesService.getMultiCityMovies({
-      limit: query.limit,
-    });
+    return this.moviesService.getMultiCityMovies(query);
   }
 
   @Get(':slug')
