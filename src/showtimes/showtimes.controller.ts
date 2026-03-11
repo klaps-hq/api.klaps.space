@@ -20,7 +20,9 @@ export class ShowtimesController {
 
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getShowtimes(@Query() query: GetShowtimesQueryDto): Promise<ShowtimeResponse[]> {
+  getShowtimes(
+    @Query() query: GetShowtimesQueryDto,
+  ): Promise<ShowtimeResponse[]> {
     return this.showtimesService.getShowtimes(query);
   }
 

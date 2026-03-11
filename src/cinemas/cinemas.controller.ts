@@ -23,7 +23,9 @@ export class CinemasController {
 
   @Get()
   @UseGuards(InternalApiKeyGuard)
-  getCinemas(@Query() query: GetCinemasQueryDto): Promise<CinemaSummaryResponse[]> {
+  getCinemas(
+    @Query() query: GetCinemasQueryDto,
+  ): Promise<CinemaSummaryResponse[]> {
     return this.cinemasService.getCinemas(query);
   }
 

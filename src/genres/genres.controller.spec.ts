@@ -4,16 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import { GenresController } from './genres.controller';
 import { GenresService } from './genres.service';
 
-const mockGenre = {
-  id: 1,
-  sourceId: 10,
-  slug: 'action',
-  name: 'Action',
-  description: 'Action movies',
-  createdAt: new Date('2024-01-01'),
-  updatedAt: new Date('2024-01-01'),
-};
-
 const mockGenreResponse = {
   id: 1,
   slug: 'action',

@@ -16,7 +16,9 @@ export class CinemasService {
 
   // === READ ===
 
-  async getCinemas(query: GetCinemasQueryDto): Promise<CinemaSummaryResponse[]> {
+  async getCinemas(
+    query: GetCinemasQueryDto,
+  ): Promise<CinemaSummaryResponse[]> {
     const sourceCityId = await this.resolveSourceCityId(query.citySlug);
     const cinemas = await this.repo.findAll(sourceCityId);
     return cinemas.map(mapCinemaSummary);

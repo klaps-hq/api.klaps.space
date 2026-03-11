@@ -6,5 +6,5 @@ export type ShowtimeResponse = {
   id: number;
   url: string;
   cityId: number;
-  date: string;
+  date: Date;
 };
