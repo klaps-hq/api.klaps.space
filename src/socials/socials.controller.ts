@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import type { SocialsGetCandidateResponse } from './socials.types';
 import { GetSocialCandidateQueryDto } from './dto/get-socials-candidate-query.dto';
@@ -24,6 +33,7 @@ export class SocialsController {
   }
 
   @Post('reserve')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(InternalApiKeyGuard)
   reserve(@Body() body: SocialsActionDto): Promise<void> {
     return this.socialsService.reserveCandidate(
@@ -33,6 +43,7 @@ export class SocialsController {
   }
 
   @Post('publish')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(InternalApiKeyGuard)
   publish(@Body() body: SocialsActionDto): Promise<void> {
     return this.socialsService.publishCandidate(
