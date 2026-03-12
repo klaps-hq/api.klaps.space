@@ -151,22 +151,35 @@ describe('ShowtimesService', () => {
   });
 
   describe('createShowtimesBatch', () => {
-    it('should return early when showtimes array is empty', async () => {
+    it('should skip upsert but still update lastScrapedAt when showtimes empty', async () => {
+      repo.updateCitiesLastScrapedAt.mockResolvedValue(undefined);
+
       await service.createShowtimesBatch({
         showtimes: [],
         scrapedCityIds: [1],
       } as any);
 
       expect(repo.upsertBatch).not.toHaveBeenCalled();
+      expect(repo.updateCitiesLastScrapedAt).toHaveBeenCalledWith([1]);
+    });
+
+    it('should skip both when showtimes empty and no scrapedCityIds', async () => {
+      await service.createShowtimesBatch({
+        showtimes: [],
+        scrapedCityIds: [],
+      } as any);
+
+      expect(repo.upsertBatch).not.toHaveBeenCalled();
       expect(repo.updateCitiesLastScrapedAt).not.toHaveBeenCalled();
     });
 
-    it('should call upsertBatch with showtimes', async () => {
+    it('should derive cityIds from showtimes when scrapedCityIds not provided', async () => {
       const showtimes = [
         { url: 'https://kino.pl/1', cityId: 3, date: '2025-01-15' },
         { url: 'https://kino.pl/2', cityId: 3, date: '2025-01-16' },
       ];
       repo.upsertBatch.mockResolvedValue(undefined);
+      repo.updateCitiesLastScrapedAt.mockResolvedValue(undefined);
 
       await service.createShowtimesBatch({
         showtimes,
@@ -174,7 +187,7 @@ describe('ShowtimesService', () => {
       } as any);
 
       expect(repo.upsertBatch).toHaveBeenCalledWith(showtimes);
-      expect(repo.updateCitiesLastScrapedAt).not.toHaveBeenCalled();
+      expect(repo.updateCitiesLastScrapedAt).toHaveBeenCalledWith([3]);
     });
 
     it('should update cities lastScrapedAt when scrapedCityIds provided', async () => {
@@ -193,11 +206,12 @@ describe('ShowtimesService', () => {
       expect(repo.updateCitiesLastScrapedAt).toHaveBeenCalledWith([3, 5]);
     });
 
-    it('should not update cities when scrapedCityIds is empty array', async () => {
+    it('should derive cityIds from showtimes when scrapedCityIds is empty array', async () => {
       const showtimes = [
         { url: 'https://kino.pl/1', cityId: 3, date: '2025-01-15' },
       ];
       repo.upsertBatch.mockResolvedValue(undefined);
+      repo.updateCitiesLastScrapedAt.mockResolvedValue(undefined);
 
       await service.createShowtimesBatch({
         showtimes,
@@ -205,7 +219,7 @@ describe('ShowtimesService', () => {
       } as any);
 
       expect(repo.upsertBatch).toHaveBeenCalledWith(showtimes);
-      expect(repo.updateCitiesLastScrapedAt).not.toHaveBeenCalled();
+      expect(repo.updateCitiesLastScrapedAt).toHaveBeenCalledWith([3]);
     });
   });
 });
