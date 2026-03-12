@@ -19,7 +19,11 @@ async function bootstrap() {
   app.use(json({ limit: '5mb' }));
   app.setGlobalPrefix('api/v2');
 
-  app.use(helmet());
+  app.use(
+    helmet({
+      hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+    }),
+  );
   app.use(compression());
 
   const frontendUrl = configService.get<string>('FRONTEND_URL');
@@ -32,7 +36,7 @@ async function bootstrap() {
     origin: frontendUrl,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-API-Key'],
-    credentials: !!frontendUrl,
+    credentials: true,
   });
 
   app.useGlobalPipes(
