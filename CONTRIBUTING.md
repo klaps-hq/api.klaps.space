@@ -4,7 +4,7 @@ Thanks for your interest in contributing! This document outlines the process for
 
 ## Prerequisites
 
-- [Node.js 20+](https://nodejs.org)
+- [Node.js 22+](https://nodejs.org)
 - [Bun](https://bun.sh)
 - [MySQL 8](https://www.mysql.com)
 
@@ -15,7 +15,7 @@ Thanks for your interest in contributing! This document outlines the process for
 
 ```bash
 git clone https://github.com/klaps-hq/api.klaps.space.git
-cd klaps-nest-backend
+cd api.klaps.space
 ```
 
 3. Install dependencies:
@@ -29,7 +29,7 @@ bun install
 5. Run the dev server:
 
 ```bash
-bun start:dev
+bun run start:dev
 ```
 
 ## Branching Strategy
@@ -56,9 +56,9 @@ git checkout -b feat/your-feature
 3. Ensure code quality:
 
 ```bash
-bun lint        # ESLint
-bun test        # Unit tests
-bun test:e2e    # E2E tests
+bun run lint        # ESLint
+bun run test        # Unit tests
+bun run test:e2e    # E2E tests
 ```
 
 4. Commit with a clear message:
@@ -100,7 +100,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org):
 If your change modifies the schema:
 
 1. Update the schema file in `src/database/schemas/`
-2. Generate a migration: `bun db:generate`
+2. Generate a migration: `bun run db:generate`
 3. Commit the generated migration file alongside the schema change
 
 ## Questions?

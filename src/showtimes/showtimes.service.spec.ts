@@ -57,7 +57,9 @@ describe('ShowtimesService', () => {
           updatedAt: new Date(),
         },
       ];
-      repo.findAll.mockResolvedValue(showtimes);
+      repo.findAll.mockResolvedValue(
+        showtimes.map((s) => ({ ...s, date: new Date(s.date) })),
+      );
 
       const result = await service.getShowtimes({
         dateFrom: '2025-01-10',
@@ -79,7 +81,10 @@ describe('ShowtimesService', () => {
           date: '2025-01-16' as any,
         },
       ]);
-      const { startDay, endDay } = getDateRangeUpToMonthFromNow('2025-01-10', '2025-01-20');
+      const { startDay, endDay } = getDateRangeUpToMonthFromNow(
+        '2025-01-10',
+        '2025-01-20',
+      );
       expect(repo.findAll).toHaveBeenCalledWith(startDay, endDay, 3);
       expect(citiesService.findBySlug).not.toHaveBeenCalled();
     });
@@ -97,7 +102,10 @@ describe('ShowtimesService', () => {
         citySlug: 'gdansk',
       } as any);
 
-      const { startDay, endDay } = getDateRangeUpToMonthFromNow('2025-01-10', '2025-01-20');
+      const { startDay, endDay } = getDateRangeUpToMonthFromNow(
+        '2025-01-10',
+        '2025-01-20',
+      );
       expect(citiesService.findBySlug).toHaveBeenCalledWith('gdansk');
       expect(repo.findAll).toHaveBeenCalledWith(startDay, endDay, 7);
     });
@@ -110,7 +118,10 @@ describe('ShowtimesService', () => {
         dateTo: '2025-02-28',
       } as any);
 
-      const { startDay, endDay } = getDateRangeUpToMonthFromNow('2025-02-01', '2025-02-28');
+      const { startDay, endDay } = getDateRangeUpToMonthFromNow(
+        '2025-02-01',
+        '2025-02-28',
+      );
       expect(repo.findAll).toHaveBeenCalledWith(startDay, endDay, undefined);
     });
 
