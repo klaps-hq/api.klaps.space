@@ -17,7 +17,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   app.use(json({ limit: '5mb' }));
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api/v2');
 
   app.use(helmet());
   app.use(compression());
