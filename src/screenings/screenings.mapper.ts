@@ -19,7 +19,7 @@ const EMPTY_CINEMA = {
   slug: '',
   name: '',
   street: null,
-  city: { id: 0, slug: '', name: '', nameDeclinated: '', description: null },
+  city: { id: 0, slug: '', name: '', nameDeclinated: '', population: null, description: null },
 } as const;
 
 const extractDateTimeParts = (

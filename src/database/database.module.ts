@@ -1,5 +1,6 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Logger, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { DRIZZLE } from './constants';
 import * as schema from './schemas';
@@ -15,10 +16,26 @@ import * as relations from './schemas/relations';
     {
       provide: DRIZZLE,
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
+      useFactory: async (configService: ConfigService) => {
         const connectionString =
           configService.getOrThrow<string>('DATABASE_URL');
-        return drizzle(connectionString, {
+        const pool = new Pool({
+          connectionString,
+          connectionTimeoutMillis: 5000,
+        });
+
+        try {
+          await pool.query('SELECT 1');
+        } catch (error) {
+          await pool.end();
+          const logger = new Logger('DatabaseModule');
+          logger.error(
+            `Failed to connect to PostgreSQL: ${(error as Error).message}`,
+          );
+          throw error;
+        }
+
+        return drizzle(pool, {
           schema: { ...schema, ...relations },
         });
       },

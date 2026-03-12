@@ -7,6 +7,7 @@ const EMPTY_CITY: CityResponse = {
   slug: '',
   name: '',
   nameDeclinated: '',
+  population: null,
   description: null,
 };
 

@@ -10,7 +10,7 @@ import { json } from 'express';
 const DEFAULT_PORT = 5000;
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create(AppModule);
   app.useLogger(app.get(PinoLogger));
 
   const logger = new Logger('Bootstrap');

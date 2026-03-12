@@ -30,6 +30,7 @@ describe('CinemasService', () => {
       slug: 'warszawa',
       name: 'Warszawa',
       nameDeclinated: 'Warszawie',
+      population: null,
       description: null,
     },
   };
@@ -41,6 +42,7 @@ describe('CinemasService', () => {
     name: 'Warszawa',
     nameDeclinated: 'Warszawie',
     areacode: null,
+    population: null,
     description: null,
     lastScrapedAt: null,
   };
@@ -82,6 +84,7 @@ describe('CinemasService', () => {
       slug: 'warszawa',
       name: 'Warszawa',
       nameDeclinated: 'Warszawie',
+      population: null,
       description: null,
     },
   };
@@ -137,6 +140,7 @@ describe('CinemasService', () => {
           slug: 'warszawa',
           name: 'Warszawa',
           nameDeclinated: 'Warszawie',
+          population: null,
           description: null,
         },
         latitude: 52.2463,
@@ -195,6 +199,7 @@ describe('CinemasService', () => {
           slug: 'warszawa',
           name: 'Warszawa',
           nameDeclinated: 'Warszawie',
+          population: null,
           description: null,
         },
         latitude: 52.2463,

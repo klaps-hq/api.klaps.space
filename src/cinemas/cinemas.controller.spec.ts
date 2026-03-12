@@ -19,6 +19,7 @@ describe('CinemasController', () => {
       slug: 'warszawa',
       name: 'Warszawa',
       nameDeclinated: 'Warszawie',
+      population: null,
       description: null,
     },
     latitude: 52.2463,
