@@ -37,11 +37,6 @@ export class CreateCitiesBatchItemDto {
   @IsOptional()
   @IsString()
   description?: string | null;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  population?: number;
 }
 
 export class CreateCitiesBatchDto {

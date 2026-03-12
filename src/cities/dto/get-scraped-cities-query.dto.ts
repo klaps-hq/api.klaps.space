@@ -6,6 +6,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class GetScrapedCitiesQueryDto {
   @IsOptional()
@@ -17,6 +18,7 @@ export class GetScrapedCitiesQueryDto {
   dateTo?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   cityId?: number;

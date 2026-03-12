@@ -180,7 +180,9 @@ export class ScreeningsRepository {
     const screening = await this.db.query.screenings.findFirst({
       where: eq(schema.screenings.id, result.id),
     });
-    return screening!;
+    if (!screening)
+      throw new Error(`Failed to retrieve inserted screening id=${result.id}`);
+    return screening;
   }
 
   // === PRIVATE ===

@@ -1,4 +1,4 @@
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsString, IsIn, Matches, IsInt, Min } from 'class-validator';
 
 export class SocialsActionDto {
@@ -20,7 +20,8 @@ export class SocialsActionDto {
   ])
   platform!: string;
 
+  @Type(() => Number)
   @IsInt()
-  @Min(0)
+  @Min(1)
   screeningId!: number;
 }

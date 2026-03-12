@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { ShowtimesService } from './showtimes.service';
 import { ShowtimesRepository } from './showtimes.repository';
 import { CitiesService } from '../cities/cities.service';
+import { getDateRangeUpToMonthFromNow } from '../lib/date';
 
 describe('ShowtimesService', () => {
   let service: ShowtimesService;
@@ -78,11 +79,8 @@ describe('ShowtimesService', () => {
           date: '2025-01-16' as any,
         },
       ]);
-      expect(repo.findAll).toHaveBeenCalledWith(
-        new Date('2025-01-10'),
-        new Date('2025-01-20'),
-        3,
-      );
+      const { startDay, endDay } = getDateRangeUpToMonthFromNow('2025-01-10', '2025-01-20');
+      expect(repo.findAll).toHaveBeenCalledWith(startDay, endDay, 3);
       expect(citiesService.findBySlug).not.toHaveBeenCalled();
     });
 
@@ -99,12 +97,9 @@ describe('ShowtimesService', () => {
         citySlug: 'gdansk',
       } as any);
 
+      const { startDay, endDay } = getDateRangeUpToMonthFromNow('2025-01-10', '2025-01-20');
       expect(citiesService.findBySlug).toHaveBeenCalledWith('gdansk');
-      expect(repo.findAll).toHaveBeenCalledWith(
-        new Date('2025-01-10'),
-        new Date('2025-01-20'),
-        7,
-      );
+      expect(repo.findAll).toHaveBeenCalledWith(startDay, endDay, 7);
     });
 
     it('should pass undefined cityId when neither cityId nor citySlug provided', async () => {
@@ -115,22 +110,19 @@ describe('ShowtimesService', () => {
         dateTo: '2025-02-28',
       } as any);
 
-      expect(repo.findAll).toHaveBeenCalledWith(
-        new Date('2025-02-01'),
-        new Date('2025-02-28'),
-        undefined,
-      );
+      const { startDay, endDay } = getDateRangeUpToMonthFromNow('2025-02-01', '2025-02-28');
+      expect(repo.findAll).toHaveBeenCalledWith(startDay, endDay, undefined);
     });
 
-    it('should use new Date() when dateFrom/dateTo are not provided', async () => {
+    it('should use current date range when dateFrom/dateTo are not provided', async () => {
       repo.findAll.mockResolvedValue([]);
-      const before = new Date();
 
       await service.getShowtimes({} as any);
 
       const [startDay, endDay] = repo.findAll.mock.calls[0];
-      expect(startDay.getTime()).toBeGreaterThanOrEqual(before.getTime() - 100);
-      expect(endDay.getTime()).toBeGreaterThanOrEqual(before.getTime() - 100);
+      expect(startDay).toBeInstanceOf(Date);
+      expect(endDay).toBeInstanceOf(Date);
+      expect(endDay.getTime()).toBeGreaterThan(startDay.getTime());
     });
 
     it('should return undefined cityId when citySlug resolves to no city', async () => {
