@@ -170,7 +170,10 @@ describe('CitiesService', () => {
       } as any;
       const result = await service.getScrapedCities(query);
 
-      const { startDay, endDay } = getDateRangeUpToMonthFromNow('2025-06-01', '2025-06-30');
+      const { startDay, endDay } = getDateRangeUpToMonthFromNow(
+        '2025-06-01',
+        '2025-06-30',
+      );
       expect(repo.findScrapedCityIds).toHaveBeenCalledWith(
         startDay,
         endDay,

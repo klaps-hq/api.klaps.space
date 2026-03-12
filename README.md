@@ -56,7 +56,7 @@ Request ──► Helmet ──► CORS ──► ThrottlerGuard ──► Contr
 
 ```
 src/
-├── cinemas/                # Cinemas module (controller, service, DTOs)
+├── cinemas/                # Cinemas module (controller, service, repository, DTOs)
 ├── cities/                 # Cities module
 ├── database/               # Drizzle setup, schemas, migrations
 │   ├── schemas/            # Table definitions & relations
@@ -65,13 +65,13 @@ src/
 ├── genres/                 # Genres module
 ├── guards/                 # InternalApiKeyGuard, InternalBypassThrottlerGuard
 ├── health/                 # Health check (Terminus + Drizzle indicator)
-├── lib/                    # Response types, mappers, utilities
+├── lib/                    # Utilities (pagination, slugs, dates, batch helpers, deadlock retry)
 ├── logger/                 # Pino logger module
 ├── movies/                 # Movies module
 ├── screenings/             # Screenings module
-├── scripts/                # DB baseline & wipe scripts
 ├── showtimes/              # Showtimes module (ingestion pipeline)
-├── wrappers/               # withDeadlockRetry utility
+├── socials/                # Socials module (candidate scoring & post tracking)
+├── scripts/                # DB scripts (baseline, wipe, slug backfill)
 ├── app.module.ts           # Root module
 └── main.ts                 # Bootstrap (port, CORS, Helmet, pipes)
 test/
@@ -81,7 +81,7 @@ test/
 
 ## API Endpoints
 
-All routes are prefixed with `/api/v1`. Endpoints marked with a lock require the `x-internal-api-key` header.
+All routes are prefixed with `/api/v1`. All endpoints require the `x-internal-api-key` header (except `/health`).
 
 ### Health
 
@@ -91,57 +91,63 @@ All routes are prefixed with `/api/v1`. Endpoints marked with a lock require the
 
 ### Cities
 
-| Method | Route           | Params / Body                                     | Description              |
-| ------ | --------------- | ------------------------------------------------- | ------------------------ |
-| GET    | `/cities`       | —                                                 | List all cities          |
-| GET    | `/cities/:id`   | `:id` (number)                                    | City detail + screenings |
-| POST   | `/cities`       | `sourceId`, `name`, `nameDeclinated`, `areacode?` | Create/update city       |
-| POST   | `/cities/batch` | `cities: CreateCityDto[]`                         | Batch upsert cities      |
+| Method | Route                 | Params / Body              | Description                    |
+| ------ | --------------------- | -------------------------- | ------------------------------ |
+| GET    | `/cities`             | —                          | List all cities                |
+| GET    | `/cities/scraped`     | `?dateFrom`, `?dateTo`, `?cityId`, `?citySlug` | Scraped city IDs in date range |
+| GET    | `/cities/with-cinemas`| —                          | Cities with cinema count       |
+| GET    | `/cities/:slug`       | `:slug`                    | City detail + screenings       |
+| POST   | `/cities/batch`       | `CreateCitiesBatchDto`     | Batch upsert cities            |
+| POST   | `/cities/:slug`       | `UpdateCityDto`            | Update city by slug            |
 
 ### Cinemas
 
-| Method | Route            | Params / Body                                                                   | Description                  |
-| ------ | ---------------- | ------------------------------------------------------------------------------- | ---------------------------- |
-| GET    | `/cinemas`       | `?cityId`, `?limit`                                                             | List cinemas grouped by city |
-| GET    | `/cinemas/:id`   | `:id` (number)                                                                  | Cinema detail with city      |
-| POST   | `/cinemas`       | `sourceId`, `name`, `url`, `sourceCityId`, `longitude?`, `latitude?`, `street?` | Create/update cinema         |
-| POST   | `/cinemas/batch` | `cinemas: CreateCinemaDto[]`                                                    | Batch upsert cinemas         |
+| Method | Route             | Params / Body           | Description             |
+| ------ | ----------------- | ----------------------- | ----------------------- |
+| GET    | `/cinemas`        | `?cityId`, `?citySlug`  | List cinemas            |
+| GET    | `/cinemas/:slug`  | `:slug`                 | Cinema detail with city |
+| POST   | `/cinemas/batch`  | `CreateCinemasBatchDto` | Batch upsert cinemas    |
+| POST   | `/cinemas/:slug`  | `UpdateCinemaDto`       | Update cinema by slug   |
 
 ### Genres
 
-| Method | Route     | Description     |
-| ------ | --------- | --------------- |
-| GET    | `/genres` | List all genres |
+| Method | Route            | Params / Body    | Description         |
+| ------ | ---------------- | ---------------- | ------------------- |
+| GET    | `/genres`        | —                | List all genres     |
+| GET    | `/genres/:slug`  | `:slug`          | Genre detail        |
+| POST   | `/genres/:slug`  | `UpdateGenreDto` | Update genre by slug|
 
 ### Movies
 
-| Method | Route                | Params / Body                                      | Description                                       |
-| ------ | -------------------- | -------------------------------------------------- | ------------------------------------------------- |
-| GET    | `/movies`            | `?search`, `?genreId`, `?page`, `?limit`           | Paginated movie list                              |
-| GET    | `/movies/multi-city` | `?limit` (1–50)                                    | Movies screened in the most cities (cached 15min) |
-| GET    | `/movies/:id`        | `:id` (number)                                     | Full movie detail with relations                  |
-| POST   | `/movies`            | `CreateMovieDto` (actors, directors, genres, etc.) | Create/update movie with relations                |
+| Method | Route                | Params / Body                              | Description                                       |
+| ------ | -------------------- | ------------------------------------------ | ------------------------------------------------- |
+| GET    | `/movies`            | `?search`, `?genreId`, `?genreSlug`, `?page`, `?limit` | Paginated movie list                 |
+| GET    | `/movies/multi-city` | `?limit` (1-50)                            | Movies screened in the most cities (cached 15min)  |
+| GET    | `/movies/:slug`      | `:slug`                                    | Full movie detail with relations                   |
+| POST   | `/movies/batch`      | `CreateMoviesBatchDto`                     | Batch upsert movies with relations                 |
 
 ### Screenings
 
-| Method | Route                          | Params / Body                                                                           | Description                                     |
-| ------ | ------------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| GET    | `/screenings`                  | `?dateFrom`, `?dateTo`, `?movieId`, `?cityId`, `?genreId`, `?search`, `?page`, `?limit` | Paginated screenings (grouped by movie or flat) |
-| GET    | `/screenings/random-screening` | —                                                                                       | Random retro screening for hero                 |
-| POST   | `/screenings`                  | `CreateScreeningDto`                                                                    | Create/update screening                         |
+| Method | Route                          | Params / Body                                                                                    | Description                    |
+| ------ | ------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------ |
+| GET    | `/screenings`                  | `?dateFrom`, `?dateTo`, `?movieId`, `?cityId`, `?citySlug`, `?genreId`, `?genreSlug`, `?cinemaSlug`, `?search` | Screenings (grouped by movie) |
+| GET    | `/screenings/random-screening` | —                                                                                                | Random retro screening         |
+| POST   | `/screenings`                  | `CreateScreeningDto`                                                                             | Create screening               |
 
 ### Showtimes
 
-| Method | Route                            | Params / Body                    | Description                      |
-| ------ | -------------------------------- | -------------------------------- | -------------------------------- |
-| GET    | `/showtimes`                     | —                                | List all showtimes               |
-| GET    | `/showtimes/unprocessed`         | `?from`, `?to` (YYYY-MM-DD)      | Unprocessed showtimes in range   |
-| GET    | `/showtimes/processed-city-ids`  | `?from`, `?to` (YYYY-MM-DD)      | City IDs already processed       |
-| POST   | `/showtimes`                     | `CreateShowtimeDto`              | Create/update showtime           |
-| POST   | `/showtimes/batch`               | `showtimes: CreateShowtimeDto[]` | Batch upsert showtimes           |
-| POST   | `/showtimes/mark-city-processed` | `cityId`, `processedAt?`         | Mark city as processed           |
-| POST   | `/showtimes/mark-processed`      | `showtimeId`                     | Mark showtime as processed       |
-| POST   | `/showtimes/:id/process`         | `movieId?`, `screenings[]`       | Process showtime into screenings |
+| Method | Route              | Params / Body                              | Description        |
+| ------ | ------------------ | ------------------------------------------ | ------------------ |
+| GET    | `/showtimes`       | `?dateFrom`, `?dateTo`, `?cityId`, `?citySlug` | List showtimes |
+| POST   | `/showtimes/batch` | `CreateShowtimesBatchDto`                  | Batch upsert       |
+
+### Socials
+
+| Method | Route               | Params / Body                                                  | Description              |
+| ------ | ------------------- | -------------------------------------------------------------- | ------------------------ |
+| GET    | `/socials/candidate` | `?dateFrom`, `?dateTo`, `?minScore`, `?numberOfCandidates`, `?platform` | Get scored candidate |
+| POST   | `/socials/reserve`   | `SocialsActionDto` (`platform`, `screeningId`)                | Reserve candidate        |
+| POST   | `/socials/publish`   | `SocialsActionDto` (`platform`, `screeningId`)                | Publish candidate        |
 
 ## Getting Started
 
@@ -162,12 +168,14 @@ INTERNAL_API_KEY=your-secret-api-key
 FRONTEND_URL=http://localhost:3000
 ```
 
-| Variable           | Required | Description                                           |
-| ------------------ | -------- | ----------------------------------------------------- |
-| `PORT`             | No       | Server port (default: `5000`)                         |
-| `DATABASE_URL`     | Yes      | MySQL connection string                               |
-| `INTERNAL_API_KEY` | Yes      | API key for authenticating internal/scrapper requests |
-| `FRONTEND_URL`     | No       | Allowed CORS origin for the frontend                  |
+| Variable           | Required | Description                                                        |
+| ------------------ | -------- | ------------------------------------------------------------------ |
+| `PORT`             | No       | Server port (default: `5000`)                                      |
+| `DATABASE_URL`     | Yes      | MySQL connection string                                            |
+| `INTERNAL_API_KEY` | Yes      | API key for authenticating internal/scrapper requests              |
+| `FRONTEND_URL`     | No       | Allowed CORS origin for the frontend                               |
+| `LOG_LEVEL`        | No       | Pino log level: `debug`, `info`, `warn`, `error` (default: `debug` dev / `info` prod) |
+| `LOG_FILE`         | No       | Path to additional log file output; if unset, logs go to stdout only |
 
 ### Install & Run
 
