@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { MySql2Database } from 'drizzle-orm/mysql2';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
@@ -28,7 +28,7 @@ const MOVIE_RELATIONS = {
 export class MoviesRepository {
   constructor(
     @Inject(DRIZZLE)
-    private readonly db: MySql2Database<FullSchema>,
+    private readonly db: NodePgDatabase<FullSchema>,
   ) {}
 
   // === READ ===
@@ -103,7 +103,7 @@ export class MoviesRepository {
         schema.cities,
         eq(schema.cinemas.sourceCityId, schema.cities.sourceId),
       )
-      .where(gte(schema.screenings.date, sql`CURDATE()`))
+      .where(gte(schema.screenings.date, sql`CURRENT_DATE`))
       .groupBy(
         schema.movies.id,
         schema.movies.slug,
@@ -202,27 +202,28 @@ export class MoviesRepository {
           this.db
             .insert(schema.movies)
             .values(chunk)
-            .onDuplicateKeyUpdate({
+            .onConflictDoUpdate({
+              target: schema.movies.sourceId,
               set: {
-                url: sql`VALUES(${schema.movies.url})`,
-                title: sql`VALUES(${schema.movies.title})`,
-                titleOriginal: sql`VALUES(${schema.movies.titleOriginal})`,
-                description: sql`VALUES(${schema.movies.description})`,
-                productionYear: sql`VALUES(${schema.movies.productionYear})`,
-                worldPremiereDate: sql`VALUES(${schema.movies.worldPremiereDate})`,
-                polishPremiereDate: sql`VALUES(${schema.movies.polishPremiereDate})`,
-                usersRating: sql`VALUES(${schema.movies.usersRating})`,
-                usersRatingVotes: sql`VALUES(${schema.movies.usersRatingVotes})`,
-                criticsRating: sql`VALUES(${schema.movies.criticsRating})`,
-                criticsRatingVotes: sql`VALUES(${schema.movies.criticsRatingVotes})`,
-                language: sql`VALUES(${schema.movies.language})`,
-                duration: sql`VALUES(${schema.movies.duration})`,
-                posterUrl: sql`VALUES(${schema.movies.posterUrl})`,
-                backdropUrl: sql`VALUES(${schema.movies.backdropUrl})`,
-                videoUrl: sql`VALUES(${schema.movies.videoUrl})`,
-                boxoffice: sql`VALUES(${schema.movies.boxoffice})`,
-                budget: sql`VALUES(${schema.movies.budget})`,
-                distribution: sql`VALUES(${schema.movies.distribution})`,
+                url: sql`excluded."url"`,
+                title: sql`excluded."title"`,
+                titleOriginal: sql`excluded."titleOriginal"`,
+                description: sql`excluded."description"`,
+                productionYear: sql`excluded."productionYear"`,
+                worldPremiereDate: sql`excluded."worldPremiereDate"`,
+                polishPremiereDate: sql`excluded."polishPremiereDate"`,
+                usersRating: sql`excluded."usersRating"`,
+                usersRatingVotes: sql`excluded."usersRatingVotes"`,
+                criticsRating: sql`excluded."criticsRating"`,
+                criticsRatingVotes: sql`excluded."criticsRatingVotes"`,
+                language: sql`excluded."language"`,
+                duration: sql`excluded."duration"`,
+                posterUrl: sql`excluded."posterUrl"`,
+                backdropUrl: sql`excluded."backdropUrl"`,
+                videoUrl: sql`excluded."videoUrl"`,
+                boxoffice: sql`excluded."boxoffice"`,
+                budget: sql`excluded."budget"`,
+                distribution: sql`excluded."distribution"`,
               },
             }),
         { label: 'createBatch:movies' },
@@ -296,10 +297,11 @@ export class MoviesRepository {
           this.db
             .insert(entityTable)
             .values(chunk)
-            .onDuplicateKeyUpdate({
+            .onConflictDoUpdate({
+              target: entityTable.sourceId,
               set: {
-                name: sql`VALUES(${entityTable.name})`,
-                url: sql`VALUES(${entityTable.url})`,
+                name: sql`excluded."name"`,
+                url: sql`excluded."url"`,
               },
             }),
         { label: `createBatch:${personKey}` },
@@ -330,8 +332,9 @@ export class MoviesRepository {
             .insert(junctionTable)
             // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             .values(chunk as any)
-            .onDuplicateKeyUpdate({
-              set: { movieId: sql`VALUES(${junctionTable.movieId})` },
+            .onConflictDoUpdate({
+              target: [junctionTable.movieId, (junctionTable as any)[fkName]],
+              set: { movieId: sql`excluded."movieId"` },
             }),
         { label: `createBatch:${junctionKey}` },
       );
@@ -369,8 +372,9 @@ export class MoviesRepository {
           this.db
             .insert(schema.countries)
             .values(chunk)
-            .onDuplicateKeyUpdate({
-              set: { name: sql`VALUES(${schema.countries.name})` },
+            .onConflictDoUpdate({
+              target: schema.countries.countryCode,
+              set: { name: sql`excluded."name"` },
             }),
         { label: 'createBatch:countries' },
       );
@@ -401,9 +405,13 @@ export class MoviesRepository {
           this.db
             .insert(schema.movies_countries)
             .values(chunk)
-            .onDuplicateKeyUpdate({
+            .onConflictDoUpdate({
+              target: [
+                schema.movies_countries.movieId,
+                schema.movies_countries.countryId,
+              ],
               set: {
-                movieId: sql`VALUES(${schema.movies_countries.movieId})`,
+                movieId: sql`excluded."movieId"`,
               },
             }),
         { label: 'createBatch:movies_countries' },
@@ -450,10 +458,11 @@ export class MoviesRepository {
           this.db
             .insert(schema.genres)
             .values(chunk)
-            .onDuplicateKeyUpdate({
+            .onConflictDoUpdate({
+              target: schema.genres.sourceId,
               set: {
-                name: sql`VALUES(${schema.genres.name})`,
-                slug: sql`VALUES(${schema.genres.slug})`,
+                name: sql`excluded."name"`,
+                slug: sql`excluded."slug"`,
               },
             }),
         { label: 'createBatch:genres' },
@@ -482,9 +491,13 @@ export class MoviesRepository {
           this.db
             .insert(schema.movies_genres)
             .values(chunk)
-            .onDuplicateKeyUpdate({
+            .onConflictDoUpdate({
+              target: [
+                schema.movies_genres.movieId,
+                schema.movies_genres.genreId,
+              ],
               set: {
-                movieId: sql`VALUES(${schema.movies_genres.movieId})`,
+                movieId: sql`excluded."movieId"`,
               },
             }),
         { label: 'createBatch:movies_genres' },

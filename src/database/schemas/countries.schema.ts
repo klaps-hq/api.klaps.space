@@ -1,7 +1,7 @@
-import { int, mysqlTable, timestamp, varchar } from 'drizzle-orm/mysql-core';
+import { pgTable, serial, timestamp, varchar } from 'drizzle-orm/pg-core';
 
-export const countriesTable = mysqlTable('countries', {
-  id: int().primaryKey().autoincrement(),
+export const countriesTable = pgTable('countries', {
+  id: serial().primaryKey(),
   name: varchar({ length: 255 }).notNull(),
   countryCode: varchar({ length: 255 }).notNull().unique(),
   createdAt: timestamp().notNull().defaultNow(),

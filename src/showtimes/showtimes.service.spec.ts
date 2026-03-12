@@ -72,13 +72,13 @@ describe('ShowtimesService', () => {
           id: 1,
           url: 'https://kino.pl/1',
           cityId: 3,
-          date: '2025-01-15' as any,
+          date: new Date('2025-01-15'),
         },
         {
           id: 2,
           url: 'https://kino.pl/2',
           cityId: 3,
-          date: '2025-01-16' as any,
+          date: new Date('2025-01-16'),
         },
       ]);
       const { startDay, endDay } = getDateRangeUpToMonthFromNow(

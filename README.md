@@ -24,8 +24,8 @@ Klaps Backend is the NestJS REST API that serves the [Klaps](https://klaps.space
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Framework       | [NestJS 11](https://nestjs.com) (Express)                                                                                                     |
 | Language        | [TypeScript 5](https://www.typescriptlang.org)                                                                                                |
-| ORM             | [Drizzle ORM](https://orm.drizzle.team) (MySQL dialect)                                                                                       |
-| Database        | [MySQL 8](https://www.mysql.com) via `mysql2`                                                                                                 |
+| ORM             | [Drizzle ORM](https://orm.drizzle.team) (PostgreSQL dialect)                                                                                  |
+| Database        | [PostgreSQL](https://www.postgresql.org) via `pg`                                                                                             |
 | Validation      | [class-validator](https://github.com/typestack/class-validator) + class-transformer                                                           |
 | Auth            | API key guard (`x-internal-api-key` header)                                                                                                   |
 | Rate Limiting   | [@nestjs/throttler](https://docs.nestjs.com/security/rate-limiting) (30/10s, 100/60s)                                                         |
@@ -41,7 +41,7 @@ Klaps Backend is the NestJS REST API that serves the [Klaps](https://klaps.space
 ## Architecture
 
 ```
-Request ──► Helmet ──► CORS ──► ThrottlerGuard ──► Controller ──► Service ──► Drizzle ──► MySQL
+Request ──► Helmet ──► CORS ──► ThrottlerGuard ──► Controller ──► Service ──► Drizzle ──► PostgreSQL
                                      │
                         InternalBypassThrottlerGuard
                      (skips limit for internal key)
@@ -155,7 +155,7 @@ All routes are prefixed with `/api/v2`. All endpoints require the `x-internal-ap
 
 - [Node.js 22+](https://nodejs.org)
 - [Bun](https://bun.sh)
-- [MySQL 8](https://www.mysql.com) (or a compatible server)
+- [PostgreSQL](https://www.postgresql.org)
 
 ### Environment Variables
 
@@ -163,7 +163,7 @@ Create a `.env` file in the project root:
 
 ```env
 PORT=5000
-DATABASE_URL=mysql://user:password@localhost:3306/klaps_dev
+DATABASE_URL=postgresql://user:password@localhost:5432/klaps_dev
 INTERNAL_API_KEY=your-secret-api-key
 FRONTEND_URL=http://localhost:3000
 ```
@@ -171,7 +171,7 @@ FRONTEND_URL=http://localhost:3000
 | Variable           | Required | Description                                                        |
 | ------------------ | -------- | ------------------------------------------------------------------ |
 | `PORT`             | No       | Server port (default: `5000`)                                      |
-| `DATABASE_URL`     | Yes      | MySQL connection string                                            |
+| `DATABASE_URL`     | Yes      | PostgreSQL connection string                                            |
 | `INTERNAL_API_KEY` | Yes      | API key for authenticating internal/scrapper requests              |
 | `FRONTEND_URL`     | No       | Allowed CORS origin for the frontend                               |
 | `LOG_LEVEL`        | No       | Pino log level: `debug`, `info`, `warn`, `error` (default: `debug` dev / `info` prod) |
@@ -225,7 +225,7 @@ docker build -t klaps-backend .
 
 ```bash
 docker run -p 5000:5000 \
-  -e DATABASE_URL=mysql://user:pass@host:3306/klaps \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/klaps \
   -e INTERNAL_API_KEY=your-key \
   -e FRONTEND_URL=https://klaps.space \
   klaps-backend
@@ -254,7 +254,7 @@ The project uses **GitHub Actions** for CI/CD (`.github/workflows/deploy.yml`):
 
 1. **Lint & Test** — ESLint + Jest unit tests (gates the build)
 2. **Build & Push** — Docker image to GitHub Container Registry
-3. **DB Backup** — `mysqldump` via SSH before migration
+3. **DB Backup** — `pg_dump` via SSH before migration
 4. **DB Migrate** — Drizzle baseline + migrations
 5. **Deploy** — SCP compose file, pull image, recreate container
 
@@ -263,7 +263,7 @@ The project uses **GitHub Actions** for CI/CD (`.github/workflows/deploy.yml`):
 | Secret             | Description                                    |
 | ------------------ | ---------------------------------------------- |
 | `IMAGE_NAME`       | GHCR image (e.g. `ghcr.io/user/klaps-backend`) |
-| `DATABASE_URL`     | MySQL connection string                        |
+| `DATABASE_URL`     | PostgreSQL connection string                        |
 | `INTERNAL_API_KEY` | API authentication key                         |
 | `SERVER_IP`        | Deployment server IP                           |
 | `SERVER_USER`      | SSH user                                       |

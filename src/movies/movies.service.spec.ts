@@ -19,12 +19,17 @@ const mockDbMovie = {
   backdropUrl: 'https://example.com/backdrop.jpg',
   videoUrl: 'https://example.com/trailer.mp4',
   url: 'https://filmweb.pl/inception',
-  worldPremiereDate: '2010-07-16',
-  polishPremiereDate: '2010-07-30',
+  worldPremiereDate: new Date('2010-07-16'),
+  polishPremiereDate: new Date('2010-07-30'),
   usersRating: 8.2,
   usersRatingVotes: 50000,
   criticsRating: 8.8,
   criticsRatingVotes: 300,
+  boxoffice: null,
+  budget: null,
+  distribution: null,
+  createdAt: new Date('2025-01-01'),
+  updatedAt: new Date('2025-01-01'),
   movies_genres: [{ genre: { id: 1, slug: 'action', name: 'Action' } }],
   movies_actors: [{ actor: { id: 1, name: 'Leonardo DiCaprio' } }],
   movies_directors: [{ director: { id: 1, name: 'Christopher Nolan' } }],
@@ -80,7 +85,7 @@ describe('MoviesService', () => {
 
   describe('getMovies', () => {
     it('should return paginated movies', async () => {
-      repo.findAll.mockResolvedValue([mockDbMovie]);
+      repo.findAll.mockResolvedValue([mockDbMovie] as any);
       repo.count.mockResolvedValue(1);
 
       const result = await service.getMovies({ page: 1, limit: 10 });

@@ -1,1 +1,0 @@
-ALTER TABLE `cities` ADD `last_scraped_at` datetime;

@@ -19,7 +19,7 @@ jest.mock('../lib/slug', () => ({
 const mockOnDuplicateKeyUpdate = jest.fn();
 const mockValues = jest
   .fn()
-  .mockReturnValue({ onDuplicateKeyUpdate: mockOnDuplicateKeyUpdate });
+  .mockReturnValue({ onConflictDoUpdate: mockOnDuplicateKeyUpdate });
 
 const createSelectChain = (resolvedValue: any[] = []) => {
   const chain: any = {};
@@ -73,7 +73,7 @@ describe('CitiesRepository', () => {
     // Re-apply default return values after clearAllMocks
     selectChain = createSelectChain();
     mockValues.mockReturnValue({
-      onDuplicateKeyUpdate: mockOnDuplicateKeyUpdate,
+      onConflictDoUpdate: mockOnDuplicateKeyUpdate,
     });
     mockSelect.mockReturnValue(selectChain);
     mockUpdate.mockReturnValue({ set: mockSetUpdate });
@@ -235,6 +235,7 @@ describe('CitiesRepository', () => {
         ]),
       );
       expect(mockOnDuplicateKeyUpdate).toHaveBeenCalledWith({
+        target: expect.anything(),
         set: expect.objectContaining({
           name: expect.anything(),
           nameDeclinated: expect.anything(),

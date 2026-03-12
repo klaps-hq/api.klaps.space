@@ -22,7 +22,7 @@ describe('CinemasRepository', () => {
   const mockOnDuplicateKeyUpdate = jest.fn();
   const mockValues = jest
     .fn()
-    .mockReturnValue({ onDuplicateKeyUpdate: mockOnDuplicateKeyUpdate });
+    .mockReturnValue({ onConflictDoUpdate: mockOnDuplicateKeyUpdate });
   const mockWhere = jest.fn();
   const mockSet = jest.fn().mockReturnValue({ where: mockWhere });
 
@@ -113,7 +113,7 @@ describe('CinemasRepository', () => {
       expect(mockDb.insert).not.toHaveBeenCalled();
     });
 
-    it('should generate slugs and call insert with onDuplicateKeyUpdate', async () => {
+    it('should generate slugs and call insert with onConflictDoUpdate', async () => {
       const cinemas = [
         {
           sourceId: 101,
@@ -139,6 +139,7 @@ describe('CinemasRepository', () => {
         { ...cinemas[0], slug: 'kino-muranow' },
       ]);
       expect(mockOnDuplicateKeyUpdate).toHaveBeenCalledWith({
+        target: expect.anything(),
         set: expect.objectContaining({
           name: expect.anything(),
           url: expect.anything(),

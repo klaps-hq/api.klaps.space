@@ -40,10 +40,9 @@ describe('CinemasService', () => {
     slug: 'warszawa',
     name: 'Warszawa',
     nameDeclinated: 'Warszawie',
+    areacode: null,
     description: null,
     lastScrapedAt: null,
-    createdAt: new Date('2025-01-01'),
-    updatedAt: new Date('2025-01-01'),
   };
 
   beforeEach(async () => {
@@ -147,7 +146,7 @@ describe('CinemasService', () => {
     });
 
     it('should return null when cinema not found', async () => {
-      repo.findBySlug.mockResolvedValue(null);
+      repo.findBySlug.mockResolvedValue(undefined);
 
       const result = await service.getCinemaBySlug('nieistniejace');
 

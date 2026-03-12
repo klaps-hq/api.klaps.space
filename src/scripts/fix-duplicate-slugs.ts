@@ -12,24 +12,8 @@
  * Usage: bunx ts-node -r dotenv/config src/scripts/fix-duplicate-slugs.ts
  */
 import 'dotenv/config';
-import { createConnection } from 'mysql2/promise';
-import type { RowDataPacket } from 'mysql2';
+import { Client, type QueryResultRow } from 'pg';
 import { toSlug, movieSlug } from '../lib/slug';
-
-interface NamedRow extends RowDataPacket {
-  id: number;
-  slug: string;
-  name: string;
-}
-
-interface MovieRow extends RowDataPacket {
-  id: number;
-  slug: string;
-  title: string;
-  productionYear: number;
-}
-
-type DbConnection = Awaited<ReturnType<typeof createConnection>>;
 
 const assignUniqueSlugs = (
   rows: { id: number; slug: string; baseSlug: string }[],
@@ -51,9 +35,9 @@ const assignUniqueSlugs = (
   return result;
 };
 
-const fixNamedTable = async (connection: DbConnection, table: string) => {
-  const [rows] = await connection.execute<NamedRow[]>(
-    `SELECT id, slug, name FROM \`${table}\` ORDER BY id ASC`,
+const fixNamedTable = async (client: Client, table: string) => {
+  const { rows } = await client.query<QueryResultRow>(
+    `SELECT id, slug, name FROM "${table}" ORDER BY id ASC`,
   );
 
   if (rows.length === 0) {
@@ -62,9 +46,9 @@ const fixNamedTable = async (connection: DbConnection, table: string) => {
   }
 
   const withBase = rows.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    baseSlug: toSlug(r.name),
+    id: r.id as number,
+    slug: r.slug as string,
+    baseSlug: toSlug(r.name as string),
   }));
 
   const assigned = assignUniqueSlugs(withBase);
@@ -73,7 +57,7 @@ const fixNamedTable = async (connection: DbConnection, table: string) => {
   for (const row of withBase) {
     const newSlug = assigned.get(row.id)!;
     if (newSlug === row.slug) continue;
-    await connection.execute(`UPDATE \`${table}\` SET slug = ? WHERE id = ?`, [
+    await client.query(`UPDATE "${table}" SET slug = $1 WHERE id = $2`, [
       newSlug,
       row.id,
     ]);
@@ -84,9 +68,9 @@ const fixNamedTable = async (connection: DbConnection, table: string) => {
   console.log(`  ${table}: ${updated} row(s) fixed`);
 };
 
-const fixMovies = async (connection: DbConnection) => {
-  const [rows] = await connection.execute<MovieRow[]>(
-    `SELECT id, slug, title, productionYear FROM movies ORDER BY id ASC`,
+const fixMovies = async (client: Client) => {
+  const { rows } = await client.query<QueryResultRow>(
+    `SELECT id, slug, title, "productionYear" FROM movies ORDER BY id ASC`,
   );
 
   if (rows.length === 0) {
@@ -95,9 +79,9 @@ const fixMovies = async (connection: DbConnection) => {
   }
 
   const withBase = rows.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    baseSlug: movieSlug(r.title, r.productionYear),
+    id: r.id as number,
+    slug: r.slug as string,
+    baseSlug: movieSlug(r.title as string, r.productionYear as number),
   }));
 
   const assigned = assignUniqueSlugs(withBase);
@@ -106,7 +90,7 @@ const fixMovies = async (connection: DbConnection) => {
   for (const row of withBase) {
     const newSlug = assigned.get(row.id)!;
     if (newSlug === row.slug) continue;
-    await connection.execute(`UPDATE movies SET slug = ? WHERE id = ?`, [
+    await client.query(`UPDATE movies SET slug = $1 WHERE id = $2`, [
       newSlug,
       row.id,
     ]);
@@ -118,16 +102,17 @@ const fixMovies = async (connection: DbConnection) => {
 };
 
 const run = async () => {
-  const connection = await createConnection(process.env.DATABASE_URL!);
+  const client = new Client(process.env.DATABASE_URL!);
+  await client.connect();
   try {
     console.log('Fixing duplicate slugs...\n');
-    await fixNamedTable(connection, 'cities');
-    await fixNamedTable(connection, 'genres');
-    await fixNamedTable(connection, 'cinemas');
-    await fixMovies(connection);
+    await fixNamedTable(client, 'cities');
+    await fixNamedTable(client, 'genres');
+    await fixNamedTable(client, 'cinemas');
+    await fixMovies(client);
     console.log('\nDone.');
   } finally {
-    await connection.end();
+    await client.end();
   }
 };
 

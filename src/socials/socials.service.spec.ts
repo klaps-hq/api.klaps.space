@@ -37,6 +37,9 @@ const makeMovie = (
   usersRatingVotes: null,
   criticsRating: null,
   criticsRatingVotes: null,
+  boxoffice: null,
+  budget: null,
+  distribution: null,
   createdAt: new Date('2025-01-01'),
   updatedAt: new Date('2025-01-01'),
   movies_genres: overrides.movies_genres ?? [],
@@ -56,6 +59,7 @@ const makeScreening = (
   showtimeId: 100,
   date: new Date('2025-03-15'),
   url: 'https://example.com/screening',
+  type: 'regular',
   isDubbing: false,
   isSubtitled: true,
   createdAt: new Date('2025-01-01'),
@@ -144,8 +148,8 @@ describe('SocialsService', () => {
       });
 
       repo.findPostsByDateAndPlatform.mockResolvedValue([]);
-      repo.findScreeningsInRange.mockResolvedValue([screening]);
-      repo.findScreeningsByIds.mockResolvedValue([screening]);
+      repo.findScreeningsInRange.mockResolvedValue([screening] as any);
+      repo.findScreeningsByIds.mockResolvedValue([screening] as any);
 
       const result = await service.getCandidate({
         dateFrom: '2025-03-10',
@@ -171,8 +175,8 @@ describe('SocialsService', () => {
       });
 
       repo.findPostsByDateAndPlatform.mockResolvedValue([]);
-      repo.findScreeningsInRange.mockResolvedValue([screening]);
-      repo.findScreeningsByIds.mockResolvedValue([screening]);
+      repo.findScreeningsInRange.mockResolvedValue([screening] as any);
+      repo.findScreeningsByIds.mockResolvedValue([screening] as any);
 
       // normal year = 10 points, minScore = 50
       const result = await service.getCandidate({
@@ -218,8 +222,8 @@ describe('SocialsService', () => {
       );
 
       repo.findPostsByDateAndPlatform.mockResolvedValue([]);
-      repo.findScreeningsInRange.mockResolvedValue(screenings);
-      repo.findScreeningsByIds.mockResolvedValue(screenings.slice(0, 10));
+      repo.findScreeningsInRange.mockResolvedValue(screenings as any);
+      repo.findScreeningsByIds.mockResolvedValue(screenings.slice(0, 10) as any);
 
       const result = await service.getCandidate({
         dateFrom: '2025-03-10',
@@ -253,8 +257,8 @@ describe('SocialsService', () => {
       repo.findScreeningsInRange.mockResolvedValue([
         screeningLow,
         screeningHigh,
-      ]);
-      repo.findScreeningsByIds.mockResolvedValue([screeningHigh, screeningLow]);
+      ] as any);
+      repo.findScreeningsByIds.mockResolvedValue([screeningHigh, screeningLow] as any);
 
       const result = await service.getCandidate({
         dateFrom: '2025-03-10',
@@ -271,8 +275,8 @@ describe('SocialsService', () => {
   describe('scoring logic', () => {
     const runScoring = async (screenings: ScreeningWithCinemaCity[]) => {
       repo.findPostsByDateAndPlatform.mockResolvedValue([]);
-      repo.findScreeningsInRange.mockResolvedValue(screenings);
-      repo.findScreeningsByIds.mockResolvedValue(screenings);
+      repo.findScreeningsInRange.mockResolvedValue(screenings as any);
+      repo.findScreeningsByIds.mockResolvedValue(screenings as any);
 
       const result = await service.getCandidate({
         dateFrom: '2025-03-10',
@@ -472,7 +476,7 @@ describe('SocialsService', () => {
 
   describe('reserveCandidate', () => {
     it('should throw NotFoundException when screening does not exist', async () => {
-      repo.findScreeningById.mockResolvedValue(null);
+      repo.findScreeningById.mockResolvedValue(undefined);
 
       await expect(
         service.reserveCandidate({ platform: 'instagram', screeningId: 999 }),
@@ -497,7 +501,7 @@ describe('SocialsService', () => {
         cinema: { city: { id: 1 } },
       });
       repo.findScreeningById.mockResolvedValue(screening);
-      repo.findPostByPlatformAndScreening.mockResolvedValue(null);
+      repo.findPostByPlatformAndScreening.mockResolvedValue(undefined);
       repo.upsertPost.mockResolvedValue(undefined);
 
       await service.reserveCandidate({ platform: 'instagram', screeningId: 5 });
@@ -517,7 +521,7 @@ describe('SocialsService', () => {
 
   describe('publishCandidate', () => {
     it('should throw NotFoundException when screening does not exist', async () => {
-      repo.findScreeningById.mockResolvedValue(null);
+      repo.findScreeningById.mockResolvedValue(undefined);
 
       await expect(
         service.publishCandidate({ platform: 'instagram', screeningId: 999 }),
@@ -527,7 +531,7 @@ describe('SocialsService', () => {
     it('should throw NotFoundException when socials post does not exist', async () => {
       const screening = makeScreening({ id: 5, movieId: 1 });
       repo.findScreeningById.mockResolvedValue(screening);
-      repo.findPostByPlatformAndScreening.mockResolvedValue(null);
+      repo.findPostByPlatformAndScreening.mockResolvedValue(undefined);
 
       await expect(
         service.publishCandidate({ platform: 'instagram', screeningId: 5 }),

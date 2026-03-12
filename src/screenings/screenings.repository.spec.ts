@@ -32,11 +32,11 @@ let selectChain = createChain();
 const mockSelectDistinct = jest.fn().mockReturnValue(selectDistinctChain);
 
 const mockOnDuplicateKeyUpdate = jest.fn().mockReturnValue({
-  $returningId: jest.fn().mockResolvedValue([{ id: 1 }]),
+  returning: jest.fn().mockResolvedValue([{ id: 1 }]),
 });
 const mockValues = jest
   .fn()
-  .mockReturnValue({ onDuplicateKeyUpdate: mockOnDuplicateKeyUpdate });
+  .mockReturnValue({ onConflictDoUpdate: mockOnDuplicateKeyUpdate });
 const mockInsert = jest.fn().mockReturnValue({ values: mockValues });
 
 const mockSelect = jest.fn().mockReturnValue(selectChain);
@@ -412,6 +412,7 @@ describe('ScreeningsRepository', () => {
         date: new Date(dto.date),
       });
       expect(mockOnDuplicateKeyUpdate).toHaveBeenCalledWith({
+        target: expect.anything(),
         set: {
           url: dto.url,
           movieId: dto.movieId,
