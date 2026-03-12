@@ -42,7 +42,11 @@ export class ShowtimesRepository {
 
     for (const chunk of chunks) {
       await withDeadlockRetry(
-        () => this.db.insert(schema.showtimes).values(chunk),
+        () =>
+          this.db
+            .insert(schema.showtimes)
+            .values(chunk)
+            .onConflictDoNothing({ target: schema.showtimes.url }),
         { label: 'createShowtimesBatch' },
       );
     }

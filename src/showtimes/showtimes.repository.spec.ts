@@ -9,7 +9,10 @@ jest.mock('../lib/with-deadlock-retry', () => ({
   withDeadlockRetry: jest.fn((fn) => fn()),
 }));
 
-const mockValues = jest.fn();
+const mockOnConflictDoNothing = jest.fn();
+const mockValues = jest
+  .fn()
+  .mockReturnValue({ onConflictDoNothing: mockOnConflictDoNothing });
 const mockInsert = jest.fn().mockReturnValue({ values: mockValues });
 
 const mockWhere = jest.fn();

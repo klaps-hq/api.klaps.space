@@ -30,12 +30,18 @@ export class ShowtimesService {
 
   async createShowtimesBatch(dto: CreateShowtimesBatchDto): Promise<void> {
     const { showtimes, scrapedCityIds } = dto;
-    if (showtimes.length === 0) return;
 
-    await this.repo.upsertBatch(showtimes);
+    if (showtimes.length > 0) {
+      await this.repo.upsertBatch(showtimes);
+    }
 
-    if (scrapedCityIds && scrapedCityIds.length > 0) {
-      await this.repo.updateCitiesLastScrapedAt(scrapedCityIds);
+    const cityIds =
+      scrapedCityIds && scrapedCityIds.length > 0
+        ? scrapedCityIds
+        : [...new Set(showtimes.map((s) => s.cityId))];
+
+    if (cityIds.length > 0) {
+      await this.repo.updateCitiesLastScrapedAt(cityIds);
     }
   }
 
