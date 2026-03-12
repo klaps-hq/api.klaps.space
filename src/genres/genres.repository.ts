@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { MySql2Database } from 'drizzle-orm/mysql2';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
 import { eq } from 'drizzle-orm';
@@ -10,7 +10,7 @@ import type { UpdateGenreDto } from './dto/update-genre.dto';
 export class GenresRepository {
   constructor(
     @Inject(DRIZZLE)
-    private readonly db: MySql2Database<typeof schema>,
+    private readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
   // === READ ===

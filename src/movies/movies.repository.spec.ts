@@ -29,7 +29,7 @@ const createChainableMock = () => {
   chain.set = jest.fn().mockReturnValue(chain);
   chain.where = jest.fn().mockReturnValue(chain);
   chain.from = jest.fn().mockReturnValue(chain);
-  chain.onDuplicateKeyUpdate = jest.fn().mockResolvedValue(undefined);
+  chain.onConflictDoUpdate = jest.fn().mockResolvedValue(undefined);
   chain.innerJoin = jest.fn().mockReturnValue(chain);
   chain.groupBy = jest.fn().mockReturnValue(chain);
   chain.having = jest.fn().mockReturnValue(chain);
@@ -292,7 +292,7 @@ describe('MoviesRepository', () => {
       // findExistingSlugs
       selectChain._enqueue([{ slug: 'existing-slug' }]);
       // insert movies
-      insertChain.onDuplicateKeyUpdate.mockResolvedValueOnce(undefined);
+      insertChain.onConflictDoUpdate.mockResolvedValueOnce(undefined);
       // findIdsBySourceIds
       selectChain._enqueue([{ id: 1, sourceId: 100 }]);
 
@@ -307,7 +307,7 @@ describe('MoviesRepository', () => {
 
     it('should generate slugs using movieSlug and uniqueSlug', async () => {
       selectChain._enqueue([]);
-      insertChain.onDuplicateKeyUpdate.mockResolvedValueOnce(undefined);
+      insertChain.onConflictDoUpdate.mockResolvedValueOnce(undefined);
       selectChain._enqueue([{ id: 1, sourceId: 100 }]);
 
       await repository.upsertBatch([baseMovie]);
@@ -325,7 +325,7 @@ describe('MoviesRepository', () => {
       // findExistingSlugs
       selectChain._enqueue([]);
       // insert movies
-      insertChain.onDuplicateKeyUpdate.mockResolvedValue(undefined);
+      insertChain.onConflictDoUpdate.mockResolvedValue(undefined);
       // findIdsBySourceIds (movies)
       selectChain._enqueue([{ id: 1, sourceId: 100 }]);
       // person select (actors)
@@ -349,7 +349,7 @@ describe('MoviesRepository', () => {
       // findExistingSlugs (movies)
       selectChain._enqueue([]);
       // insert movies
-      insertChain.onDuplicateKeyUpdate.mockResolvedValue(undefined);
+      insertChain.onConflictDoUpdate.mockResolvedValue(undefined);
       // findIdsBySourceIds (movies)
       selectChain._enqueue([{ id: 1, sourceId: 100 }]);
       // findExistingSlugs (genres) - via select().from()
@@ -372,7 +372,7 @@ describe('MoviesRepository', () => {
       // findExistingSlugs (movies)
       selectChain._enqueue([]);
       // insert movies
-      insertChain.onDuplicateKeyUpdate.mockResolvedValue(undefined);
+      insertChain.onConflictDoUpdate.mockResolvedValue(undefined);
       // findIdsBySourceIds (movies)
       selectChain._enqueue([{ id: 1, sourceId: 100 }]);
       // country rows after insert
@@ -405,7 +405,7 @@ describe('MoviesRepository', () => {
       // findExistingSlugs (movies)
       selectChain._enqueue([]);
       // insert movies
-      insertChain.onDuplicateKeyUpdate.mockResolvedValue(undefined);
+      insertChain.onConflictDoUpdate.mockResolvedValue(undefined);
       // findIdsBySourceIds (movies)
       selectChain._enqueue([{ id: 1, sourceId: 100 }]);
       // actors - no persons (empty)
@@ -433,7 +433,7 @@ describe('MoviesRepository', () => {
       // findExistingSlugs (movies)
       selectChain._enqueue([]);
       // insert movies
-      insertChain.onDuplicateKeyUpdate.mockResolvedValue(undefined);
+      insertChain.onConflictDoUpdate.mockResolvedValue(undefined);
       // findIdsBySourceIds
       selectChain._enqueue([
         { id: 1, sourceId: 100 },
@@ -450,7 +450,7 @@ describe('MoviesRepository', () => {
       // findExistingSlugs (movies)
       selectChain._enqueue([]);
       // insert movies
-      insertChain.onDuplicateKeyUpdate.mockResolvedValue(undefined);
+      insertChain.onConflictDoUpdate.mockResolvedValue(undefined);
       // findIdsBySourceIds
       selectChain._enqueue([{ id: 1, sourceId: 100 }]);
 
@@ -471,7 +471,7 @@ describe('MoviesRepository', () => {
       // findExistingSlugs (movies)
       selectChain._enqueue([]);
       // insert movies
-      insertChain.onDuplicateKeyUpdate.mockResolvedValue(undefined);
+      insertChain.onConflictDoUpdate.mockResolvedValue(undefined);
       // findIdsBySourceIds returns empty map (movie not found -> movieId will be undefined)
       selectChain._enqueue([]);
       // actor person rows
@@ -492,7 +492,7 @@ describe('MoviesRepository', () => {
       };
 
       selectChain._enqueue([]);
-      insertChain.onDuplicateKeyUpdate.mockResolvedValue(undefined);
+      insertChain.onConflictDoUpdate.mockResolvedValue(undefined);
       selectChain._enqueue([{ id: 1, sourceId: 100 }]);
 
       await repository.upsertBatch([movieWithDates]);
@@ -508,7 +508,7 @@ describe('MoviesRepository', () => {
 
     it('should leave premiere dates undefined when not provided', async () => {
       selectChain._enqueue([]);
-      insertChain.onDuplicateKeyUpdate.mockResolvedValue(undefined);
+      insertChain.onConflictDoUpdate.mockResolvedValue(undefined);
       selectChain._enqueue([{ id: 1, sourceId: 100 }]);
 
       await repository.upsertBatch([baseMovie]);

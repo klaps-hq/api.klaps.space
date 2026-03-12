@@ -84,7 +84,7 @@ describe('SocialsRepository', () => {
 
     mockDb.insert.mockReturnValue({ values: mockValues });
     mockValues.mockReturnValue({
-      onDuplicateKeyUpdate: mockOnDuplicateKeyUpdate,
+      onConflictDoUpdate: mockOnDuplicateKeyUpdate,
     });
     mockOnDuplicateKeyUpdate.mockResolvedValue(undefined);
 
@@ -274,12 +274,13 @@ describe('SocialsRepository', () => {
       reason: 'HIGH_SCORE',
     };
 
-    it('should insert a post with onDuplicateKeyUpdate', async () => {
+    it('should insert a post with onConflictDoUpdate', async () => {
       await repository.upsertPost(postValues);
 
       expect(mockDb.insert).toHaveBeenCalled();
       expect(mockValues).toHaveBeenCalledWith(postValues);
       expect(mockOnDuplicateKeyUpdate).toHaveBeenCalledWith({
+        target: expect.anything(),
         set: {
           published: postValues.published,
           reason: postValues.reason,

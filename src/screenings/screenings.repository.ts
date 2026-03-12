@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { MySql2Database } from 'drizzle-orm/mysql2';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
@@ -25,7 +25,7 @@ export type FindScreeningsParams = {
 export class ScreeningsRepository {
   constructor(
     @Inject(DRIZZLE)
-    private readonly db: MySql2Database<FullSchema>,
+    private readonly db: NodePgDatabase<FullSchema>,
   ) {}
 
   // === READ ===
@@ -163,7 +163,15 @@ export class ScreeningsRepository {
     const [result] = await this.db
       .insert(schema.screenings)
       .values(values)
-      .onDuplicateKeyUpdate({
+      .onConflictDoUpdate({
+        target: [
+          schema.screenings.movieId,
+          schema.screenings.cinemaId,
+          schema.screenings.date,
+          schema.screenings.type,
+          schema.screenings.isDubbing,
+          schema.screenings.isSubtitled,
+        ],
         set: {
           url: dto.url,
           movieId: dto.movieId,
@@ -175,7 +183,7 @@ export class ScreeningsRepository {
           isSubtitled: dto.isSubtitled,
         },
       })
-      .$returningId();
+      .returning({ id: schema.screenings.id });
 
     const screening = await this.db.query.screenings.findFirst({
       where: eq(schema.screenings.id, result.id),

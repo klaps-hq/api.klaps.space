@@ -1,12 +1,12 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { drizzle } from 'drizzle-orm/mysql2';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { DRIZZLE } from './constants';
 import * as schema from './schemas';
 import * as relations from './schemas/relations';
 
 /**
- * Global module that provides a Drizzle ORM instance (MySQL).
+ * Global module that provides a Drizzle ORM instance (PostgreSQL).
  * Inject with @Inject(DRIZZLE) in your services.
  */
 @Global()
@@ -20,7 +20,6 @@ import * as relations from './schemas/relations';
           configService.getOrThrow<string>('DATABASE_URL');
         return drizzle(connectionString, {
           schema: { ...schema, ...relations },
-          mode: 'default',
         });
       },
     },

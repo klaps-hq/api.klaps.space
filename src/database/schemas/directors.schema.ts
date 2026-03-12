@@ -1,8 +1,8 @@
-import { int, mysqlTable, timestamp, varchar } from 'drizzle-orm/mysql-core';
+import { integer, pgTable, serial, timestamp, varchar } from 'drizzle-orm/pg-core';
 
-export const directorsTable = mysqlTable('directors', {
-  id: int().primaryKey().autoincrement(),
-  sourceId: int().notNull().unique(),
+export const directorsTable = pgTable('directors', {
+  id: serial().primaryKey(),
+  sourceId: integer().notNull().unique(),
   name: varchar({ length: 255 }).notNull(),
   url: varchar({ length: 255 }).notNull(),
   createdAt: timestamp().notNull().defaultNow(),

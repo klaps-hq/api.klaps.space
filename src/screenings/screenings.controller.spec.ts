@@ -46,7 +46,7 @@ describe('ScreeningsController', () => {
           },
         },
       ];
-      service.getScreenings.mockResolvedValue(expected);
+      service.getScreenings.mockResolvedValue(expected as any);
 
       const result = await controller.getScreenings(query);
 
@@ -95,6 +95,7 @@ describe('ScreeningsController', () => {
         showtimeId: 99,
         date: new Date('2025-01-20'),
         url: 'https://kino.pl/tickets/99',
+        type: 'regular',
         isDubbing: false,
         isSubtitled: true,
         createdAt: new Date(),

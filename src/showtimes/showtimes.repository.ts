@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { MySql2Database } from 'drizzle-orm/mysql2';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
@@ -15,7 +15,7 @@ type FullSchema = typeof schema & typeof relations;
 export class ShowtimesRepository {
   constructor(
     @Inject(DRIZZLE)
-    private readonly db: MySql2Database<FullSchema>,
+    private readonly db: NodePgDatabase<FullSchema>,
   ) {}
 
   // === READ ===

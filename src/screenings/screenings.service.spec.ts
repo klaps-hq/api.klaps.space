@@ -5,14 +5,14 @@ jest.mock('../lib/date', () => ({
     .mockReturnValue({ startDay: '2025-01-01', endDay: '2025-02-01' }),
 }));
 jest.mock('./screenings.mapper', () => ({
-  mapScreening: jest.fn((s) => ({ id: s.id, mapped: true })),
-  mapScreeningGroup: jest.fn((movie, screenings) => ({
+  mapScreening: jest.fn((s: any) => ({ id: s.id, mapped: true })),
+  mapScreeningGroup: jest.fn((movie: any, screenings: any[]) => ({
     movie: { id: movie.id },
-    screenings: screenings.map((s) => ({ id: s.id })),
+    screenings: screenings.map((s: any) => ({ id: s.id })),
   })),
 }));
 jest.mock('../movies/movies.mapper', () => ({
-  mapMovieHero: jest.fn((m) => ({ id: m.id, title: m.title })),
+  mapMovieHero: jest.fn((m: any) => ({ id: m.id, title: m.title })),
 }));
 
 import { Test } from '@nestjs/testing';
@@ -22,7 +22,7 @@ import { ScreeningsRepository } from './screenings.repository';
 import { mapScreening, mapScreeningGroup } from './screenings.mapper';
 import { mapMovieHero } from '../movies/movies.mapper';
 
-const mockRandomInt = randomInt as jest.MockedFunction<typeof randomInt>;
+const mockRandomInt = randomInt as jest.Mock;
 
 describe('ScreeningsService', () => {
   let service: ScreeningsService;
@@ -73,7 +73,7 @@ describe('ScreeningsService', () => {
             { id: 2, date: new Date('2025-01-11'), cinemaId: 6 },
           ],
         },
-      ]);
+      ] as any);
 
       const result = await service.getScreenings({ movieId: 42 });
 
@@ -95,7 +95,7 @@ describe('ScreeningsService', () => {
           title: 'Fight Club',
           screenings: [{ id: 2, date: new Date('2025-01-12') }],
         },
-      ]);
+      ] as any);
 
       const result = await service.getScreenings({});
 
@@ -113,7 +113,7 @@ describe('ScreeningsService', () => {
           screenings: [{ id: 1, date: new Date('2025-01-10') }],
         },
         { id: 20, title: 'Ghost Movie', screenings: [] },
-      ]);
+      ] as any);
 
       const result = await service.getScreenings({});
 
@@ -145,7 +145,7 @@ describe('ScreeningsService', () => {
       repo.findRetroMovieIds.mockResolvedValue([100]);
       repo.findCandidateRetroMovieIds.mockResolvedValue([100]);
       mockRandomInt.mockReturnValueOnce(0);
-      repo.findMovieWithScreeningsById.mockResolvedValue(null);
+      repo.findMovieWithScreeningsById.mockResolvedValue(undefined);
 
       const result = await service.getRandomRetroScreening();
 
@@ -166,7 +166,7 @@ describe('ScreeningsService', () => {
       repo.findRetroMovieIds.mockResolvedValue([100, 200, 300]);
       repo.findCandidateRetroMovieIds.mockResolvedValue([100, 300]);
       mockRandomInt.mockReturnValueOnce(0); // pick movie index 0 -> movieId 100
-      repo.findMovieWithScreeningsById.mockResolvedValue(movieData);
+      repo.findMovieWithScreeningsById.mockResolvedValue(movieData as any);
       mockRandomInt.mockReturnValueOnce(1); // pick screening index 1 -> id 502
 
       const result = await service.getRandomRetroScreening();
@@ -199,6 +199,7 @@ describe('ScreeningsService', () => {
         showtimeId: 99,
         date: '2025-01-20',
         url: 'https://kino.pl/tickets/99',
+        type: 'regular',
         isDubbing: false,
         isSubtitled: true,
       };

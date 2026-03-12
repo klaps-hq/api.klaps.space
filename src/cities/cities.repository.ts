@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { MySql2Database } from 'drizzle-orm/mysql2';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
 import { and, eq, getTableColumns, gte, lte, sql } from 'drizzle-orm';
@@ -14,7 +14,7 @@ import type { UpdateCityDto } from './dto/update-city.dto';
 export class CitiesRepository {
   constructor(
     @Inject(DRIZZLE)
-    private readonly db: MySql2Database<typeof schema>,
+    private readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
   // === READ ===
@@ -93,11 +93,12 @@ export class CitiesRepository {
           this.db
             .insert(schema.cities)
             .values(chunk)
-            .onDuplicateKeyUpdate({
+            .onConflictDoUpdate({
+              target: schema.cities.sourceId,
               set: {
-                name: sql`VALUES(${schema.cities.name})`,
-                nameDeclinated: sql`VALUES(${schema.cities.nameDeclinated})`,
-                areacode: sql`VALUES(${schema.cities.areacode})`,
+                name: sql`excluded."name"`,
+                nameDeclinated: sql`excluded."nameDeclinated"`,
+                areacode: sql`excluded."areacode"`,
               },
             }),
         { label: 'createCitiesBatch' },

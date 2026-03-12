@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { MySql2Database } from 'drizzle-orm/mysql2';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
@@ -17,7 +17,7 @@ type FullSchema = typeof schema & typeof relations;
 export class CinemasRepository {
   constructor(
     @Inject(DRIZZLE)
-    private readonly db: MySql2Database<FullSchema>,
+    private readonly db: NodePgDatabase<FullSchema>,
   ) {}
 
   // === READ ===
@@ -58,14 +58,15 @@ export class CinemasRepository {
           this.db
             .insert(schema.cinemas)
             .values(chunk)
-            .onDuplicateKeyUpdate({
+            .onConflictDoUpdate({
+              target: schema.cinemas.sourceId,
               set: {
-                name: sql`VALUES(${schema.cinemas.name})`,
-                url: sql`VALUES(${schema.cinemas.url})`,
-                sourceCityId: sql`VALUES(${schema.cinemas.sourceCityId})`,
-                longitude: sql`VALUES(${schema.cinemas.longitude})`,
-                latitude: sql`VALUES(${schema.cinemas.latitude})`,
-                street: sql`VALUES(${schema.cinemas.street})`,
+                name: sql`excluded."name"`,
+                url: sql`excluded."url"`,
+                sourceCityId: sql`excluded."sourceCityId"`,
+                longitude: sql`excluded."longitude"`,
+                latitude: sql`excluded."latitude"`,
+                street: sql`excluded."street"`,
               },
             }),
         { label: 'createCinemasBatch' },

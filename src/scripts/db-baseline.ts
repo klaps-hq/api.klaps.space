@@ -2,7 +2,7 @@
 import 'dotenv/config';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { createConnection } from 'mysql2/promise';
+import { Client } from 'pg';
 
 interface JournalEntry {
   idx: number;
@@ -38,19 +38,20 @@ const run = async () => {
     process.exit(0);
   }
 
-  const connection = await createConnection(process.env.DATABASE_URL!);
+  const client = new Client(process.env.DATABASE_URL!);
+  await client.connect();
 
   try {
-    await connection.execute(`
-      CREATE TABLE IF NOT EXISTS \`__drizzle_migrations\` (
-        \`id\`         SERIAL PRIMARY KEY,
-        \`hash\`       TEXT    NOT NULL,
-        \`created_at\` BIGINT
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
+        "id"         SERIAL PRIMARY KEY,
+        "hash"       TEXT    NOT NULL,
+        "created_at" BIGINT
       )
     `);
 
-    const [existingRows] = await connection.execute<any[]>(
-      'SELECT `hash` FROM `__drizzle_migrations`',
+    const { rows: existingRows } = await client.query(
+      'SELECT "hash" FROM "__drizzle_migrations"',
     );
     const appliedHashes = new Set(existingRows.map((r: any) => r.hash));
 
@@ -68,8 +69,8 @@ const run = async () => {
         continue;
       }
 
-      await connection.execute(
-        'INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES (?, ?)',
+      await client.query(
+        'INSERT INTO "__drizzle_migrations" ("hash", "created_at") VALUES ($1, $2)',
         [hash, entry.when],
       );
       console.log(`  mark  ${entry.tag}`);
@@ -80,7 +81,7 @@ const run = async () => {
       `\nDone — ${baselined} migration(s) marked as already applied.`,
     );
   } finally {
-    await connection.end();
+    await client.end();
   }
 };
 

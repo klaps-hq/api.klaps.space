@@ -12,15 +12,15 @@ const DEFAULT_BASE_DELAY_MS = 100;
 const logger = new Logger('DeadlockRetry');
 
 /**
- * Checks whether an error is a MySQL deadlock (ER_LOCK_DEADLOCK / errno 1213).
- * Drizzle wraps the mysql2 error inside `cause`, so we check both levels.
+ * Checks whether an error is a PostgreSQL deadlock (error code 40P01).
+ * Drizzle wraps the pg error inside `cause`, so we check both levels.
  */
 const isDeadlockError = (error: unknown): boolean => {
   if (!(error instanceof Error)) return false;
 
   if (
     'code' in error &&
-    (error as { code: string }).code === 'ER_LOCK_DEADLOCK'
+    (error as { code: string }).code === '40P01'
   ) {
     return true;
   }
@@ -29,7 +29,7 @@ const isDeadlockError = (error: unknown): boolean => {
     'cause' in error &&
     error.cause instanceof Error &&
     'code' in error.cause &&
-    (error.cause as { code: string }).code === 'ER_LOCK_DEADLOCK'
+    (error.cause as { code: string }).code === '40P01'
   ) {
     return true;
   }
@@ -38,13 +38,13 @@ const isDeadlockError = (error: unknown): boolean => {
 };
 
 /**
- * Wraps an async operation with automatic retry on MySQL deadlock errors.
+ * Wraps an async operation with automatic retry on PostgreSQL deadlock errors.
  * Uses exponential backoff between attempts.
  *
  * @example
  * ```ts
  * const result = await withDeadlockRetry(
- *   () => this.db.insert(schema.cinemas).values(cinemas).onDuplicateKeyUpdate({ ... }),
+ *   () => this.db.insert(schema.cinemas).values(cinemas).onConflictDoUpdate({ ... }),
  *   { label: 'batchCreateCinemas', maxRetries: 3 },
  * );
  * ```
