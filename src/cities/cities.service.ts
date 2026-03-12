@@ -6,6 +6,7 @@ import type { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dt
 import { mapCity } from './cities.mapper';
 import { ScreeningsService } from '../screenings/screenings.service';
 import { CitiesRepository } from './cities.repository';
+import { getDateRangeUpToMonthFromNow } from '../lib/date';
 
 @Injectable()
 export class CitiesService {
@@ -48,8 +49,7 @@ export class CitiesService {
 
   async getScrapedCities(query: GetScrapedCitiesQueryDto): Promise<number[]> {
     const { dateFrom, dateTo, cityId, citySlug } = query;
-    const startDay = dateFrom ? new Date(dateFrom) : new Date();
-    const endDay = dateTo ? new Date(dateTo) : new Date();
+    const { startDay, endDay } = getDateRangeUpToMonthFromNow(dateFrom, dateTo);
 
     return this.repo.findScrapedCityIds(startDay, endDay, cityId, citySlug);
   }

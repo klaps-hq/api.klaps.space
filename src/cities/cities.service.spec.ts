@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { CitiesService } from './cities.service';
 import { CitiesRepository } from './cities.repository';
 import { ScreeningsService } from '../screenings/screenings.service';
+import { getDateRangeUpToMonthFromNow } from '../lib/date';
 
 describe('CitiesService', () => {
   let service: CitiesService;
@@ -169,9 +170,10 @@ describe('CitiesService', () => {
       } as any;
       const result = await service.getScrapedCities(query);
 
+      const { startDay, endDay } = getDateRangeUpToMonthFromNow('2025-06-01', '2025-06-30');
       expect(repo.findScrapedCityIds).toHaveBeenCalledWith(
-        new Date('2025-06-01'),
-        new Date('2025-06-30'),
+        startDay,
+        endDay,
         undefined,
         undefined,
       );

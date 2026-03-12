@@ -454,8 +454,6 @@ describe('MoviesRepository', () => {
       // findIdsBySourceIds
       selectChain._enqueue([{ id: 1, sourceId: 100 }]);
 
-      const insertCallsBefore = (mockDb.insert as jest.Mock).mock.calls.length;
-
       await repository.upsertBatch([baseMovie]);
 
       // Only the movies insert should have been called (no person/genre/country inserts)

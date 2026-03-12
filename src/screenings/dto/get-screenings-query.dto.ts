@@ -7,21 +7,20 @@ import {
   MinLength,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import { getTodayInPoland } from '../../lib/date';
 
 export class GetScreeningsQueryDto {
   @IsOptional()
   @IsDateString({})
   @Transform(
-    ({ value }: { value: unknown }) =>
-      (value as string) ?? new Date().toISOString().slice(0, 10),
+    ({ value }: { value: unknown }) => (value as string) ?? getTodayInPoland(),
   )
   dateFrom?: string;
 
   @IsOptional()
   @IsDateString({})
   @Transform(
-    ({ value }: { value: unknown }) =>
-      (value as string) ?? new Date().toISOString().slice(0, 10),
+    ({ value }: { value: unknown }) => (value as string) ?? getTodayInPoland(),
   )
   dateTo?: string;
 

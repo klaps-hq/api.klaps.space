@@ -5,6 +5,7 @@ import type { CreateShowtimesBatchDto } from './dto/create-showtimes-batch.dto';
 import { mapShowtime } from './showtimes.mapper';
 import { ShowtimesRepository } from './showtimes.repository';
 import { CitiesService } from '../cities/cities.service';
+import { getDateRangeUpToMonthFromNow } from '../lib/date';
 
 @Injectable()
 export class ShowtimesService {
@@ -17,8 +18,7 @@ export class ShowtimesService {
 
   async getShowtimes(query: GetShowtimesQueryDto): Promise<ShowtimeResponse[]> {
     const { dateFrom, dateTo, cityId, citySlug } = query;
-    const startDay = dateFrom ? new Date(dateFrom) : new Date();
-    const endDay = dateTo ? new Date(dateTo) : new Date();
+    const { startDay, endDay } = getDateRangeUpToMonthFromNow(dateFrom, dateTo);
 
     const resolvedCityId = cityId ?? (await this.resolveCityId(citySlug));
     const showtimes = await this.repo.findAll(startDay, endDay, resolvedCityId);
