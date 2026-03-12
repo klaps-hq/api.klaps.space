@@ -11,6 +11,7 @@ export type CityResponse = {
   slug: string;
   name: string;
   nameDeclinated: string;
+  population: number | null;
   description: string | null;
   numberOfCinemas?: number;
 };

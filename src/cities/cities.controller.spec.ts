@@ -13,6 +13,7 @@ describe('CitiesController', () => {
     slug: 'warszawa',
     name: 'Warszawa',
     nameDeclinated: 'Warszawie',
+    population: null,
     description: 'Stolica Polski',
     numberOfCinemas: 12,
   };

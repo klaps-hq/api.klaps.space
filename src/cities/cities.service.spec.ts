@@ -15,6 +15,8 @@ describe('CitiesService', () => {
     slug: 'warszawa',
     name: 'Warszawa',
     nameDeclinated: 'Warszawie',
+    areacode: null,
+    population: null,
     description: 'Stolica Polski',
     lastScrapedAt: new Date('2025-06-01'),
     createdAt: new Date('2025-01-01'),
@@ -70,6 +72,7 @@ describe('CitiesService', () => {
     slug: 'warszawa',
     name: 'Warszawa',
     nameDeclinated: 'Warszawie',
+    population: null,
     description: 'Stolica Polski',
   };
 
@@ -116,6 +119,7 @@ describe('CitiesService', () => {
           slug: 'warszawa',
           name: 'Warszawa',
           nameDeclinated: 'Warszawie',
+          population: null,
           description: 'Stolica Polski',
           numberOfCinemas: 12,
         },
@@ -142,6 +146,7 @@ describe('CitiesService', () => {
           slug: 'warszawa',
           name: 'Warszawa',
           nameDeclinated: 'Warszawie',
+          population: null,
           description: 'Stolica Polski',
           numberOfCinemas: 12,
         },

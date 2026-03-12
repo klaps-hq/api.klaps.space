@@ -99,6 +99,7 @@ export class CitiesRepository {
                 name: sql`excluded."name"`,
                 nameDeclinated: sql`excluded."nameDeclinated"`,
                 areacode: sql`excluded."areacode"`,
+                population: sql`excluded."population"`,
               },
             }),
         { label: 'createCitiesBatch' },

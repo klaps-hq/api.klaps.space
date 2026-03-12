@@ -14,6 +14,7 @@ export const citiesTable = pgTable('cities', {
   name: varchar({ length: 255 }).notNull(),
   nameDeclinated: varchar({ length: 255 }).notNull(),
   areacode: integer(),
+  population: integer(),
   description: text(),
   lastScrapedAt: timestamp(),
 });

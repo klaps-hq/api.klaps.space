@@ -6,6 +6,7 @@ export const mapCity = (
     slug: string;
     name: string;
     nameDeclinated: string;
+    population?: number | null;
     description?: string | null;
   },
   numberOfCinemas?: number,
@@ -14,6 +15,7 @@ export const mapCity = (
   slug: city.slug,
   name: city.name,
   nameDeclinated: city.nameDeclinated,
+  population: city.population ?? null,
   description: city.description ?? null,
   ...(numberOfCinemas !== undefined && { numberOfCinemas }),
 });

@@ -35,6 +35,11 @@ export class CreateCitiesBatchItemDto {
   areacode?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  population?: number;
+
+  @IsOptional()
   @IsString()
   description?: string | null;
 }
