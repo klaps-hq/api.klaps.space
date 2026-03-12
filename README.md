@@ -47,7 +47,7 @@ Request ──► Helmet ──► CORS ──► ThrottlerGuard ──► Contr
                      (skips limit for internal key)
 ```
 
-- **Global prefix:** `/api/v1`
+- **Global prefix:** `/api/v2`
 - **Global guard:** `InternalBypassThrottlerGuard` — rate limits public traffic, skips for requests with valid `x-internal-api-key`
 - **Per-route guard:** `InternalApiKeyGuard` — restricts write endpoints (POST) and some reads to the internal scrapper
 - **Validation pipe:** `whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`
@@ -81,7 +81,7 @@ test/
 
 ## API Endpoints
 
-All routes are prefixed with `/api/v1`. All endpoints require the `x-internal-api-key` header (except `/health`).
+All routes are prefixed with `/api/v2`. All endpoints require the `x-internal-api-key` header (except `/health`).
 
 ### Health
 
@@ -211,7 +211,7 @@ bun run test:e2e
 bun run test:cov
 ```
 
-The API will be available at [http://localhost:5000/api/v1](http://localhost:5000/api/v1).
+The API will be available at [http://localhost:5000/api/v2](http://localhost:5000/api/v2).
 
 ## Docker
 
