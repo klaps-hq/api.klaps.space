@@ -13,6 +13,7 @@ const EMPTY_CITY: CityResponse = {
 
 type DbCinemaWithCity = {
   id: number;
+  sourceId: number;
   slug: string;
   name: string;
   street: string | null;
@@ -33,6 +34,7 @@ export const mapCinemaSummary = (
   cinema: DbCinemaWithCity,
 ): CinemaSummaryResponse => ({
   id: cinema.id,
+  sourceId: cinema.sourceId,
   slug: cinema.slug,
   name: cinema.name,
   street: cinema.street,
@@ -41,6 +43,7 @@ export const mapCinemaSummary = (
 
 export const mapCinemaDetail = (cinema: DbCinemaWithCity): CinemaResponse => ({
   id: cinema.id,
+  sourceId: cinema.sourceId,
   slug: cinema.slug,
   name: cinema.name,
   street: cinema.street,

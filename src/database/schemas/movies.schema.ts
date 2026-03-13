@@ -26,7 +26,7 @@ export const moviesTable = pgTable('movies', {
   criticsRating: real(),
   criticsRatingVotes: integer(),
   language: varchar({ length: 255 }),
-  duration: integer().notNull(),
+  duration: integer(),
   posterUrl: varchar({ length: 255 }),
   backdropUrl: varchar({ length: 512 }),
   videoUrl: varchar({ length: 255 }),

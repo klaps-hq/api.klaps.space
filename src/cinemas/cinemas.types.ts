@@ -2,6 +2,7 @@ import type { CityResponse } from '../cities/cities.types';
 
 export type CinemaSummaryResponse = {
   id: number;
+  sourceId: number;
   slug: string;
   name: string;
   street: string | null;
@@ -10,6 +11,7 @@ export type CinemaSummaryResponse = {
 
 export type CinemaResponse = {
   id: number;
+  sourceId: number;
   slug: string;
   name: string;
   street: string | null;

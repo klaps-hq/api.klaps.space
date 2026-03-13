@@ -27,8 +27,8 @@ export class ShowtimesRepository {
   ): Promise<Showtime[]> {
     return this.db.query.showtimes.findMany({
       where: and(
-        gte(schema.showtimes.createdAt, startDay),
-        lte(schema.showtimes.createdAt, endDay),
+        gte(schema.showtimes.date, startDay),
+        lte(schema.showtimes.date, endDay),
         cityId ? eq(schema.showtimes.cityId, cityId) : undefined,
       ),
     });
