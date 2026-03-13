@@ -122,10 +122,11 @@ export class CreateMoviesBatchItemDto {
   @IsOptional()
   language?: string;
 
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  duration: number;
+  duration?: number | null;
 
   @IsOptional()
   @IsString()

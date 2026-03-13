@@ -76,6 +76,7 @@ describe('CinemasService', () => {
 
   const mockCinemaSummaryResponse = {
     id: 1,
+    sourceId: 101,
     slug: 'kino-muranow',
     name: 'Kino Muranow',
     street: 'ul. Andersa 1',
@@ -131,6 +132,7 @@ describe('CinemasService', () => {
       expect(repo.findBySlug).toHaveBeenCalledWith('kino-muranow');
       expect(result).toEqual({
         id: 1,
+        sourceId: 101,
         slug: 'kino-muranow',
         name: 'Kino Muranow',
         street: 'ul. Andersa 1',
@@ -190,6 +192,7 @@ describe('CinemasService', () => {
       });
       expect(result).toEqual({
         id: 1,
+        sourceId: 101,
         slug: 'kino-muranow',
         name: 'Kino Muranow',
         street: 'ul. Andersa 1',

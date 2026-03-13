@@ -42,8 +42,11 @@ const run = async () => {
   await client.connect();
 
   try {
+    await client.query(
+      `CREATE SCHEMA IF NOT EXISTS "drizzle"`,
+    );
     await client.query(`
-      CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
+      CREATE TABLE IF NOT EXISTS "drizzle"."__drizzle_migrations" (
         "id"         SERIAL PRIMARY KEY,
         "hash"       TEXT    NOT NULL,
         "created_at" BIGINT
@@ -51,7 +54,7 @@ const run = async () => {
     `);
 
     const { rows: existingRows } = await client.query(
-      'SELECT "hash" FROM "__drizzle_migrations"',
+      'SELECT "hash" FROM "drizzle"."__drizzle_migrations"',
     );
     const appliedHashes = new Set(existingRows.map((r: any) => r.hash));
 
@@ -70,7 +73,7 @@ const run = async () => {
       }
 
       await client.query(
-        'INSERT INTO "__drizzle_migrations" ("hash", "created_at") VALUES ($1, $2)',
+        'INSERT INTO "drizzle"."__drizzle_migrations" ("hash", "created_at") VALUES ($1, $2)',
         [hash, entry.when],
       );
       console.log(`  mark  ${entry.tag}`);

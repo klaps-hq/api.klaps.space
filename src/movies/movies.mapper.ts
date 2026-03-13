@@ -13,7 +13,7 @@ type DbMovieWithGenres = {
   titleOriginal: string;
   description: string;
   productionYear: number;
-  duration: number;
+  duration: number | null;
   language: string | null;
   posterUrl: string | null;
   backdropUrl?: string | null;
@@ -46,7 +46,7 @@ export const mapMovieSummary = (
   titleOriginal: movie.titleOriginal || null,
   description: movie.description || null,
   productionYear: movie.productionYear,
-  duration: movie.duration > 0 ? movie.duration : null,
+  duration: movie.duration && movie.duration > 0 ? movie.duration : null,
   posterUrl: movie.posterUrl,
   videoUrl: movie.videoUrl ?? null,
   genres: movie.movies_genres.map((mg) => mapGenre(mg.genre)),
@@ -72,7 +72,7 @@ export const mapMovieDetail = (movie: DbMovieWithRelations): MovieResponse => ({
   titleOriginal: movie.titleOriginal || null,
   description: movie.description || null,
   productionYear: movie.productionYear,
-  duration: movie.duration > 0 ? movie.duration : null,
+  duration: movie.duration && movie.duration > 0 ? movie.duration : null,
   language: movie.language || null,
   posterUrl: movie.posterUrl,
   backdropUrl: movie.backdropUrl ?? null,
