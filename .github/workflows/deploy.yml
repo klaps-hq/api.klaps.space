@@ -66,13 +66,13 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Lint
-        run: npx eslint "src/**/*.ts" --fix
+        run: node node_modules/eslint/bin/eslint.js "src/**/*.ts" --fix
 
       - name: Unit tests
-        run: npx jest --ci --coverage
+        run: node node_modules/jest/bin/jest.js --ci --coverage
 
       - name: E2E tests
-        run: npx jest --config ./test/jest-e2e.json --ci
+        run: node node_modules/jest/bin/jest.js --config ./test/jest-e2e.json --ci
 
   # ───────────────────────────────────────────────
   # Job 3: Build Docker image and push to GHCR
