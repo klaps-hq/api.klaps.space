@@ -1,4 +1,5 @@
 import { Transform } from 'class-transformer';
+import { getTodayInPoland } from '../../lib/date';
 import {
   IsDateString,
   IsIn,
@@ -12,8 +13,7 @@ import {
 export class GetSocialCandidateQueryDto {
   @IsDateString({})
   @Transform(
-    ({ value }: { value: unknown }) =>
-      (value as string) ?? new Date().toISOString().slice(0, 10),
+    ({ value }: { value: unknown }) => (value as string) ?? getTodayInPoland(),
   )
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
     message: 'date must be in YYYY-MM-DD format',
@@ -22,8 +22,7 @@ export class GetSocialCandidateQueryDto {
 
   @IsDateString({})
   @Transform(
-    ({ value }: { value: unknown }) =>
-      (value as string) ?? new Date().toISOString().slice(0, 10),
+    ({ value }: { value: unknown }) => (value as string) ?? getTodayInPoland(),
   )
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
     message: 'date must be in YYYY-MM-DD format',

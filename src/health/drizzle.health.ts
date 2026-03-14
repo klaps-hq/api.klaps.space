@@ -4,7 +4,7 @@ import {
   HealthIndicator,
   type HealthIndicatorResult,
 } from '@nestjs/terminus';
-import type { MySql2Database } from 'drizzle-orm/mysql2';
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE } from '../database/constants';
 
@@ -12,7 +12,7 @@ import { DRIZZLE } from '../database/constants';
 export class DrizzleHealthIndicator extends HealthIndicator {
   constructor(
     @Inject(DRIZZLE)
-    private readonly db: MySql2Database,
+    private readonly db: NodePgDatabase,
   ) {
     super();
   }

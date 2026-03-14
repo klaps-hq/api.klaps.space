@@ -1,41 +1,100 @@
 import { Test } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { GenresController } from './genres.controller';
 import { GenresService } from './genres.service';
-import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
+
+const mockGenreResponse = {
+  id: 1,
+  slug: 'action',
+  name: 'Action',
+  description: 'Action movies',
+};
 
 describe('GenresController', () => {
   let controller: GenresController;
   let service: jest.Mocked<GenresService>;
 
   beforeEach(async () => {
-    const mockService = {
-      getGenres: jest.fn(),
-      getGenreByIdOrSlug: jest.fn(),
-    };
-
     const module = await Test.createTestingModule({
       controllers: [GenresController],
-      providers: [{ provide: GenresService, useValue: mockService }],
-    })
-      .overrideGuard(InternalApiKeyGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
+      providers: [
+        {
+          provide: GenresService,
+          useValue: {
+            getGenres: jest.fn(),
+            getGenreBySlug: jest.fn(),
+            updateGenreBySlug: jest.fn(),
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('test-api-key') },
+        },
+      ],
+    }).compile();
 
     controller = module.get(GenresController);
     service = module.get(GenresService);
   });
 
   describe('getGenres', () => {
-    it('returns genres from service', async () => {
-      const genres = [
-        { id: 1, slug: 'drama', name: 'Drama' },
-        { id: 2, slug: 'comedy', name: 'Comedy' },
-      ];
-      service.getGenres.mockResolvedValue(genres);
+    it('should return all genres from service', async () => {
+      service.getGenres.mockResolvedValue([mockGenreResponse]);
 
       const result = await controller.getGenres();
 
-      expect(result).toEqual(genres);
+      expect(result).toEqual([mockGenreResponse]);
+      expect(service.getGenres).toHaveBeenCalled();
+    });
+  });
+
+  describe('getGenreBySlug', () => {
+    it('should return genre when found', async () => {
+      service.getGenreBySlug.mockResolvedValue(mockGenreResponse);
+
+      const result = await controller.getGenreBySlug('action');
+
+      expect(result).toEqual(mockGenreResponse);
+      expect(service.getGenreBySlug).toHaveBeenCalledWith('action');
+    });
+
+    it('should throw NotFoundException when genre not found', async () => {
+      service.getGenreBySlug.mockResolvedValue(null);
+
+      await expect(controller.getGenreBySlug('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(controller.getGenreBySlug('nonexistent')).rejects.toThrow(
+        'Genre "nonexistent" not found',
+      );
+    });
+  });
+
+  describe('updateGenreBySlug', () => {
+    it('should return updated genre', async () => {
+      const updated = { ...mockGenreResponse, description: 'Updated' };
+      service.updateGenreBySlug.mockResolvedValue(updated);
+
+      const result = await controller.updateGenreBySlug('action', {
+        description: 'Updated',
+      });
+
+      expect(result).toEqual(updated);
+      expect(service.updateGenreBySlug).toHaveBeenCalledWith('action', {
+        description: 'Updated',
+      });
+    });
+
+    it('should throw NotFoundException when genre to update not found', async () => {
+      service.updateGenreBySlug.mockResolvedValue(null);
+
+      await expect(
+        controller.updateGenreBySlug('nonexistent', { name: 'New' }),
+      ).rejects.toThrow(NotFoundException);
+      await expect(
+        controller.updateGenreBySlug('nonexistent', { name: 'New' }),
+      ).rejects.toThrow('Genre "nonexistent" not found');
     });
   });
 });

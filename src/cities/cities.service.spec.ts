@@ -1,214 +1,245 @@
 import { Test } from '@nestjs/testing';
 import { CitiesService } from './cities.service';
+import { CitiesRepository } from './cities.repository';
 import { ScreeningsService } from '../screenings/screenings.service';
-import { DRIZZLE } from '../database/constants';
+import { getDateRangeUpToMonthFromNow } from '../lib/date';
 
 describe('CitiesService', () => {
   let service: CitiesService;
-  let mockDb: any;
-  let mockScreeningsService: any;
+  let repo: jest.Mocked<CitiesRepository>;
+  let screeningsService: jest.Mocked<ScreeningsService>;
+
+  const mockCity = {
+    id: 5,
+    sourceId: 10,
+    slug: 'warszawa',
+    name: 'Warszawa',
+    nameDeclinated: 'Warszawie',
+    areacode: null,
+    population: null,
+    description: 'Stolica Polski',
+    lastScrapedAt: new Date('2025-06-01'),
+    createdAt: new Date('2025-01-01'),
+    updatedAt: new Date('2025-06-01'),
+  };
+
+  const mockCityWithCount = {
+    ...mockCity,
+    numberOfCinemas: 12,
+  };
+
+  const mockScreening = {
+    id: 1,
+    movieTitle: 'Zimna wojna',
+    movieSlug: 'zimna-wojna',
+    cinemaName: 'Kino Muranow',
+    date: '2025-06-15',
+    time: '20:00',
+  };
 
   beforeEach(async () => {
-    const mockInsertChain = {
-      values: jest.fn().mockReturnThis(),
-      onDuplicateKeyUpdate: jest.fn().mockResolvedValue(undefined),
-    };
-
-    const countRows: Array<{ count: number }> = [];
-    const cityRows: Array<{
-      id: number;
-      slug: string;
-      name: string;
-      nameDeclinated: string;
-      numberOfCinemas: number;
-    }> = [];
-
-    mockDb = {
-      query: {
-        cities: {
-          findMany: jest.fn(),
-          findFirst: jest.fn(),
-        },
-      },
-      insert: jest.fn().mockReturnValue(mockInsertChain),
-      select: jest.fn().mockImplementation(() => ({
-        from: jest.fn().mockImplementation((table: unknown) => {
-          if (table === 'cinemas') {
-            return {
-              where: jest.fn().mockResolvedValue(countRows),
-            };
-          }
-
-          const rows: Array<{ slug: string }> = [];
-          return {
-            where: jest.fn().mockResolvedValue(rows),
-            innerJoin: jest.fn().mockReturnValue({
-              groupBy: jest.fn().mockResolvedValue(cityRows),
-            }),
-            then: (resolve: (value: Array<{ slug: string }>) => unknown) =>
-              Promise.resolve(rows).then(resolve),
-          };
-        }),
-      })),
-    };
-
-    mockScreeningsService = {
-      getScreenings: jest.fn(),
-    };
-
     const module = await Test.createTestingModule({
       providers: [
         CitiesService,
-        { provide: DRIZZLE, useValue: mockDb },
-        { provide: ScreeningsService, useValue: mockScreeningsService },
+        {
+          provide: CitiesRepository,
+          useValue: {
+            findAll: jest.fn(),
+            findBySlug: jest.fn(),
+            findWithCinemaCount: jest.fn(),
+            countCinemasBySourceId: jest.fn(),
+            findScrapedCityIds: jest.fn(),
+            upsertBatch: jest.fn(),
+            updateBySlug: jest.fn(),
+          },
+        },
+        {
+          provide: ScreeningsService,
+          useValue: {
+            getScreenings: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get(CitiesService);
+    repo = module.get(CitiesRepository);
+    screeningsService = module.get(ScreeningsService);
   });
 
+  const mockCityResponse = {
+    id: 5,
+    slug: 'warszawa',
+    name: 'Warszawa',
+    nameDeclinated: 'Warszawie',
+    population: null,
+    description: 'Stolica Polski',
+  };
+
   describe('getCities', () => {
-    it('returns mapped cities', async () => {
-      mockDb.select.mockImplementation(() => ({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            groupBy: jest.fn().mockResolvedValue([
-              {
-                id: 1,
-                slug: 'warszawa',
-                name: 'Warszawa',
-                nameDeclinated: 'Warszawie',
-                numberOfCinemas: 4,
-              },
-              {
-                id: 2,
-                slug: 'krakow',
-                name: 'Kraków',
-                nameDeclinated: 'Krakowie',
-                numberOfCinemas: 2,
-              },
-            ]),
-          }),
-        }),
-      }));
+    it('should return mapped city responses', async () => {
+      repo.findAll.mockResolvedValue([mockCity as any]);
 
       const result = await service.getCities();
 
+      expect(repo.findAll).toHaveBeenCalled();
+      expect(result).toEqual([mockCityResponse]);
+    });
+  });
+
+  describe('findBySlug', () => {
+    it('should return city when found', async () => {
+      repo.findBySlug.mockResolvedValue(mockCity as any);
+
+      const result = await service.findBySlug('warszawa');
+
+      expect(repo.findBySlug).toHaveBeenCalledWith('warszawa');
+      expect(result).toEqual(mockCity);
+    });
+
+    it('should return null when city not found', async () => {
+      repo.findBySlug.mockResolvedValue(undefined);
+
+      const result = await service.findBySlug('nieistniejace');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('getCitiesWithCinemas', () => {
+    it('should return mapped cities with numberOfCinemas', async () => {
+      repo.findWithCinemaCount.mockResolvedValue([mockCityWithCount as any]);
+
+      const result = await service.getCitiesWithCinemas();
+
+      expect(repo.findWithCinemaCount).toHaveBeenCalled();
       expect(result).toEqual([
         {
-          id: 1,
+          id: 5,
           slug: 'warszawa',
           name: 'Warszawa',
           nameDeclinated: 'Warszawie',
-          numberOfCinemas: 4,
-        },
-        {
-          id: 2,
-          slug: 'krakow',
-          name: 'Kraków',
-          nameDeclinated: 'Krakowie',
-          numberOfCinemas: 2,
+          population: null,
+          description: 'Stolica Polski',
+          numberOfCinemas: 12,
         },
       ]);
     });
-
-    it('returns empty array when no cities exist', async () => {
-      mockDb.select.mockImplementation(() => ({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            groupBy: jest.fn().mockResolvedValue([]),
-          }),
-        }),
-      }));
-
-      expect(await service.getCities()).toEqual([]);
-    });
   });
 
-  describe('getCityByIdOrSlug', () => {
-    it('returns city with screenings when found by id', async () => {
-      mockDb.query.cities.findFirst.mockResolvedValue({
-        id: 1,
-        slug: 'warszawa',
-        name: 'Warszawa',
-        nameDeclinated: 'Warszawie',
-        sourceId: 10,
-      });
-      mockDb.select.mockImplementation(() => ({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue([{ count: 2 }]),
-        }),
-      }));
-      mockScreeningsService.getScreenings.mockResolvedValue({
-        data: [],
-        meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
-      });
+  describe('getCityBySlug', () => {
+    it('should return mapped city with screenings when found', async () => {
+      repo.findBySlug.mockResolvedValue(mockCity as any);
+      repo.countCinemasBySourceId.mockResolvedValue(12);
+      screeningsService.getScreenings.mockResolvedValue([mockScreening as any]);
 
-      const result = await service.getCityByIdOrSlug('1');
+      const result = await service.getCityBySlug('warszawa');
 
+      expect(repo.findBySlug).toHaveBeenCalledWith('warszawa');
+      expect(screeningsService.getScreenings).toHaveBeenCalledWith({
+        cityId: 5,
+      });
+      expect(repo.countCinemasBySourceId).toHaveBeenCalledWith(10);
       expect(result).toEqual({
         city: {
-          id: 1,
+          id: 5,
           slug: 'warszawa',
           name: 'Warszawa',
           nameDeclinated: 'Warszawie',
-          numberOfCinemas: 2,
+          population: null,
+          description: 'Stolica Polski',
+          numberOfCinemas: 12,
         },
-        screenings: {
-          data: [],
-          meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
-        },
-      });
-      expect(mockScreeningsService.getScreenings).toHaveBeenCalledWith({
-        cityId: 1,
+        screenings: [mockScreening],
       });
     });
 
-    it('returns null when city not found', async () => {
-      mockDb.query.cities.findFirst.mockResolvedValue(undefined);
+    it('should return null when city not found', async () => {
+      repo.findBySlug.mockResolvedValue(undefined);
 
-      const result = await service.getCityByIdOrSlug('999');
+      const result = await service.getCityBySlug('nieistniejace');
 
       expect(result).toBeNull();
-      expect(mockScreeningsService.getScreenings).not.toHaveBeenCalled();
     });
   });
 
-  describe('createCity', () => {
-    it('upserts and returns the city', async () => {
-      const dto = {
-        sourceId: 10,
-        name: 'Gdańsk',
-        nameDeclinated: 'Gdańsku',
-        areacode: 58,
-      };
-      const cityRow = { id: 3, ...dto };
-      mockDb.query.cities.findFirst.mockResolvedValue(cityRow);
+  describe('getScrapedCities', () => {
+    it('should delegate to repo with parsed dates', async () => {
+      repo.findScrapedCityIds.mockResolvedValue([10, 20, 30]);
 
-      const result = await service.createCity(dto);
+      const query = {
+        dateFrom: '2025-06-01',
+        dateTo: '2025-06-30',
+        cityId: undefined,
+        citySlug: undefined,
+      } as any;
+      const result = await service.getScrapedCities(query);
 
-      expect(mockDb.insert).toHaveBeenCalled();
-      expect(result).toEqual(cityRow);
+      const { startDay, endDay } = getDateRangeUpToMonthFromNow(
+        '2025-06-01',
+        '2025-06-30',
+      );
+      expect(repo.findScrapedCityIds).toHaveBeenCalledWith(
+        startDay,
+        endDay,
+        undefined,
+        undefined,
+      );
+      expect(result).toEqual([10, 20, 30]);
+    });
+
+    it('should default to current date when dateFrom/dateTo not provided', async () => {
+      repo.findScrapedCityIds.mockResolvedValue([]);
+
+      const query = {} as any;
+      await service.getScrapedCities(query);
+
+      const [startDay, endDay] = repo.findScrapedCityIds.mock.calls[0];
+      expect(startDay).toBeInstanceOf(Date);
+      expect(endDay).toBeInstanceOf(Date);
     });
   });
 
-  describe('batchCreateCities', () => {
-    it('returns count 0 for empty array', async () => {
-      const result = await service.batchCreateCities([]);
-
-      expect(result).toEqual({ count: 0 });
-      expect(mockDb.insert).not.toHaveBeenCalled();
-    });
-
-    it('returns count matching input length', async () => {
+  describe('createCitiesBatch', () => {
+    it('should delegate to repo.upsertBatch', async () => {
       const cities = [
-        { sourceId: 1, name: 'A', nameDeclinated: 'A', areacode: 1 },
-        { sourceId: 2, name: 'B', nameDeclinated: 'B', areacode: 2 },
+        {
+          sourceId: 50,
+          name: 'Gdansk',
+          slug: 'gdansk',
+          nameDeclinated: 'Gdansku',
+        },
       ];
+      repo.upsertBatch.mockResolvedValue(undefined);
 
-      const result = await service.batchCreateCities(cities);
+      await service.createCitiesBatch(cities as any);
 
-      expect(result).toEqual({ count: 2 });
+      expect(repo.upsertBatch).toHaveBeenCalledWith(cities);
+    });
+  });
+
+  describe('updateCityBySlug', () => {
+    it('should return mapped city response after update', async () => {
+      repo.updateBySlug.mockResolvedValue(mockCity as any);
+
+      const result = await service.updateCityBySlug('warszawa', {
+        description: 'Nowy opis',
+      } as any);
+
+      expect(repo.updateBySlug).toHaveBeenCalledWith('warszawa', {
+        description: 'Nowy opis',
+      });
+      expect(result).toEqual(mockCityResponse);
+    });
+
+    it('should return null when city not found', async () => {
+      repo.updateBySlug.mockResolvedValue(null);
+
+      const result = await service.updateCityBySlug('nieistniejace', {
+        description: 'test',
+      } as any);
+
+      expect(result).toBeNull();
     });
   });
 });

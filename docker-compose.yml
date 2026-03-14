@@ -15,7 +15,7 @@ services:
           "--no-verbose",
           "--tries=1",
           "--spider",
-          "http://localhost:${PORT}/api/v1/health",
+          "http://localhost:${PORT}/api/v2/health",
         ]
       interval: 30s
       timeout: 5s

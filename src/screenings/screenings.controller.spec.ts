@@ -1,100 +1,112 @@
 import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ScreeningsController } from './screenings.controller';
 import { ScreeningsService } from './screenings.service';
-import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 
 describe('ScreeningsController', () => {
   let controller: ScreeningsController;
   let service: jest.Mocked<ScreeningsService>;
 
   beforeEach(async () => {
-    const mockService = {
-      getScreenings: jest.fn(),
-      createScreening: jest.fn(),
-      getRandomRetroScreening: jest.fn(),
-    };
-
     const module = await Test.createTestingModule({
       controllers: [ScreeningsController],
-      providers: [{ provide: ScreeningsService, useValue: mockService }],
-    })
-      .overrideGuard(InternalApiKeyGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
+      providers: [
+        {
+          provide: ScreeningsService,
+          useValue: {
+            getScreenings: jest.fn(),
+            getRandomRetroScreening: jest.fn(),
+            createScreening: jest.fn(),
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('test-api-key') },
+        },
+      ],
+    }).compile();
 
     controller = module.get(ScreeningsController);
     service = module.get(ScreeningsService);
   });
 
   describe('getScreenings', () => {
-    it('delegates all query params to service', async () => {
-      const expected = {
-        data: [],
-        meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
-      };
-      service.getScreenings.mockResolvedValue(expected);
+    it('should delegate to service with query params', async () => {
+      const query = { citySlug: 'krakow', dateFrom: '2025-01-01' } as any;
+      const expected = [
+        {
+          movie: { id: 10, title: 'Inception' },
+          screenings: [{ id: 1 }],
+          summary: {
+            screeningsCount: 1,
+            cinemasCount: 1,
+            citiesCount: 1,
+            cities: ['Krakow'],
+          },
+        },
+      ];
+      service.getScreenings.mockResolvedValue(expected as any);
 
-      const query = {
-        dateFrom: '2024-01-01',
-        dateTo: '2024-12-31',
-        movieId: 1,
-        cityId: 2,
-        genreId: 3,
-        search: 'test',
-        page: 1,
-        limit: 10,
-      };
       const result = await controller.getScreenings(query);
 
       expect(result).toEqual(expected);
-      expect(service.getScreenings).toHaveBeenCalledWith({
-        dateFrom: '2024-01-01',
-        dateTo: '2024-12-31',
-        movieId: 1,
-        cityId: 2,
-        citySlug: undefined,
-        genreId: 3,
-        genreSlug: undefined,
-        cinemaSlug: undefined,
-        search: 'test',
-        page: 1,
-        limit: 10,
-      });
-    });
-  });
-
-  describe('createScreening', () => {
-    it('delegates to service', async () => {
-      const dto = { url: 'http://a', movieId: 1, cinemaId: 1 } as any;
-      const screening = { id: 1, ...dto };
-      service.createScreening.mockResolvedValue(screening);
-
-      const result = await controller.createScreening(dto);
-
-      expect(result).toEqual(screening);
+      expect(service.getScreenings).toHaveBeenCalledWith(query);
     });
   });
 
   describe('getRandomRetroScreening', () => {
-    it('returns screening when found', async () => {
-      const expected = {
-        movie: { id: 1, title: 'Retro' },
-        screening: { id: 10 },
-      } as any;
-      service.getRandomRetroScreening.mockResolvedValue(expected);
+    it('should return screening when found', async () => {
+      const screening = {
+        movie: { id: 42, title: 'Vertigo' },
+        screening: { id: 7, date: '2025-01-15', time: '20:00' },
+      };
+      service.getRandomRetroScreening.mockResolvedValue(screening as any);
 
       const result = await controller.getRandomRetroScreening();
 
-      expect(result).toEqual(expected);
+      expect(result).toEqual(screening);
     });
 
-    it('throws NotFoundException when no screening', async () => {
+    it('should throw NotFoundException when no retro screening found', async () => {
       service.getRandomRetroScreening.mockResolvedValue(null);
 
       await expect(controller.getRandomRetroScreening()).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('createScreening', () => {
+    it('should delegate to service', async () => {
+      const dto = {
+        movieId: 42,
+        cinemaId: 5,
+        showtimeId: 99,
+        date: '2025-01-20',
+        url: 'https://kino.pl/tickets/99',
+        isDubbing: false,
+        isSubtitled: true,
+      };
+      const created = {
+        id: 1,
+        movieId: 42,
+        cinemaId: 5,
+        showtimeId: 99,
+        date: new Date('2025-01-20'),
+        url: 'https://kino.pl/tickets/99',
+        type: 'regular',
+        isDubbing: false,
+        isSubtitled: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      service.createScreening.mockResolvedValue(created);
+
+      const result = await controller.createScreening(dto as any);
+
+      expect(result).toEqual(created);
+      expect(service.createScreening).toHaveBeenCalledWith(dto);
     });
   });
 });

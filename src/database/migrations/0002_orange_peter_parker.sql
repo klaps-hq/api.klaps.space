@@ -1,0 +1,1 @@
+ALTER TABLE "movies" ALTER COLUMN "duration" DROP NOT NULL;

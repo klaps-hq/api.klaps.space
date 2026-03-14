@@ -1,9 +1,9 @@
 import { ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InternalBypassThrottlerGuard } from './internal-bypass-throttler.guard';
 import { INTERNAL_API_KEY_HEADER } from './internal-api-key.guard';
+import { InternalBypassThrottlerGuard } from './internal-bypass-throttler.guard';
 
-const buildContext = (
+const createMockContext = (
   headers: Record<string, string | undefined> = {},
 ): ExecutionContext =>
   ({
@@ -14,45 +14,45 @@ const buildContext = (
 
 describe('InternalBypassThrottlerGuard', () => {
   let guard: InternalBypassThrottlerGuard;
-  let configGet: jest.Mock;
+  let configService: jest.Mocked<ConfigService>;
 
   beforeEach(() => {
-    configGet = jest.fn();
     guard = Object.create(InternalBypassThrottlerGuard.prototype);
-    (guard as any).configService = {
-      get: configGet,
-    } as unknown as ConfigService;
+    configService = { get: jest.fn() } as unknown as jest.Mocked<ConfigService>;
+    (guard as any).configService = configService;
   });
 
-  it('skips throttle when internal key matches', async () => {
-    configGet.mockReturnValue('secret-123');
-    const ctx = buildContext({ [INTERNAL_API_KEY_HEADER]: 'secret-123' });
+  it('should skip throttling when valid internal key is provided', async () => {
+    configService.get.mockReturnValue('secret-key');
+    const ctx = createMockContext({
+      [INTERNAL_API_KEY_HEADER]: 'secret-key',
+    });
 
-    const result = await guard['shouldSkip'](ctx);
-    expect(result).toBe(true);
+    await expect(guard['shouldSkip'](ctx)).resolves.toBe(true);
   });
 
-  it('does not skip when key is wrong', async () => {
-    configGet.mockReturnValue('secret-123');
-    const ctx = buildContext({ [INTERNAL_API_KEY_HEADER]: 'wrong' });
+  it('should not skip throttling when key is missing', async () => {
+    configService.get.mockReturnValue('secret-key');
+    const ctx = createMockContext({});
 
-    const result = await guard['shouldSkip'](ctx);
-    expect(result).toBe(false);
+    await expect(guard['shouldSkip'](ctx)).resolves.toBe(false);
   });
 
-  it('does not skip when header is missing', async () => {
-    configGet.mockReturnValue('secret-123');
-    const ctx = buildContext({});
+  it('should not skip throttling when key is wrong', async () => {
+    configService.get.mockReturnValue('secret-key');
+    const ctx = createMockContext({
+      [INTERNAL_API_KEY_HEADER]: 'wrong-key',
+    });
 
-    const result = await guard['shouldSkip'](ctx);
-    expect(result).toBe(false);
+    await expect(guard['shouldSkip'](ctx)).resolves.toBe(false);
   });
 
-  it('does not skip when INTERNAL_API_KEY is not configured', async () => {
-    configGet.mockReturnValue(undefined);
-    const ctx = buildContext({ [INTERNAL_API_KEY_HEADER]: 'anything' });
+  it('should not skip throttling when env var is not configured', async () => {
+    configService.get.mockReturnValue(undefined);
+    const ctx = createMockContext({
+      [INTERNAL_API_KEY_HEADER]: 'any-key',
+    });
 
-    const result = await guard['shouldSkip'](ctx);
-    expect(result).toBe(false);
+    await expect(guard['shouldSkip'](ctx)).resolves.toBe(false);
   });
 });

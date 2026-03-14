@@ -12,71 +12,49 @@ import {
 } from '@nestjs/common';
 import { CinemasService } from './cinemas.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
-import type { Cinema } from '../database/schemas/cinemas.schema';
-import type {
-  CinemaGroupResponse,
-  CinemaResponse,
-} from '../lib/response-types';
+import type { CinemaResponse, CinemaSummaryResponse } from './cinemas.types';
 import { GetCinemasQueryDto } from './dto/get-cinemas-query.dto';
-import { CreateCinemaDto } from './dto/create-cinema.dto';
-import { BatchCreateCinemasDto } from './dto/batch-create-cinemas.dto';
+import { CreateCinemasBatchDto } from './dto/create-cinemas-batch.dto';
+import { UpdateCinemaDto } from './dto/update-cinema.dto';
 
 @Controller('cinemas')
 export class CinemasController {
   constructor(private readonly cinemasService: CinemasService) {}
 
-  /**
-   * URL: /api/v1/cinemas
-   * Returns cinemas pre-grouped by city.
-   */
   @Get()
   @UseGuards(InternalApiKeyGuard)
   getCinemas(
     @Query() query: GetCinemasQueryDto,
-  ): Promise<{ data: CinemaGroupResponse[] }> {
-    return this.cinemasService.getCinemas({
-      cityId: query.cityId,
-      citySlug: query.citySlug,
-      limit: query.limit,
-    });
+  ): Promise<CinemaSummaryResponse[]> {
+    return this.cinemasService.getCinemas(query);
   }
 
-  /**
-   * URL: /api/v1/cinemas
-   * Creates or updates a cinema (upserts on duplicate sourceId).
-   */
-  @Post()
+  @Get(':slug')
   @UseGuards(InternalApiKeyGuard)
-  createCinema(@Body() dto: CreateCinemaDto): Promise<Cinema> {
-    return this.cinemasService.createCinema(dto);
+  async getCinemaBySlug(@Param('slug') slug: string): Promise<CinemaResponse> {
+    const cinema = await this.cinemasService.getCinemaBySlug(slug);
+    if (!cinema) throw new NotFoundException(`Cinema "${slug}" not found`);
+
+    return cinema;
   }
 
-  /**
-   * URL: /api/v1/cinemas/batch
-   * Bulk upserts cinemas in a single transaction.
-   */
   @Post('batch')
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
-  batchCreateCinemas(
-    @Body() dto: BatchCreateCinemasDto,
-  ): Promise<{ count: number }> {
-    return this.cinemasService.batchCreateCinemas(dto.cinemas);
+  createCinemasBatch(@Body() dto: CreateCinemasBatchDto): Promise<void> {
+    return this.cinemasService.createCinemasBatch(dto.cinemas);
   }
 
-  /**
-   * URL: /api/v1/cinemas/:idOrSlug
-   * Returns a single cinema by numeric id or slug.
-   */
-  @Get(':idOrSlug')
+  @Post(':slug')
   @UseGuards(InternalApiKeyGuard)
-  async getCinemaByIdOrSlug(
-    @Param('idOrSlug') idOrSlug: string,
+  @HttpCode(HttpStatus.OK)
+  async updateCinemaBySlug(
+    @Param('slug') slug: string,
+    @Body() body: UpdateCinemaDto,
   ): Promise<CinemaResponse> {
-    const cinema = await this.cinemasService.getCinemaByIdOrSlug(idOrSlug);
-    if (!cinema) {
-      throw new NotFoundException(`Cinema "${idOrSlug}" not found`);
-    }
+    const cinema = await this.cinemasService.updateCinemaBySlug(slug, body);
+
+    if (!cinema) throw new NotFoundException(`Cinema "${slug}" not found`);
     return cinema;
   }
 }

@@ -11,8 +11,6 @@ export { moviesCountriesTable as movies_countries } from './movies_countries.sch
 export { moviesDirectorsTable as movies_directors } from './movies_directors.schema';
 export { moviesGenresTable as movies_genres } from './movies_genres.schema';
 export { moviesScriptwritersTable as movies_scriptwriters } from './movies_scriptwriters.schema';
-export { processedCitiesTable as processed_cities } from './processed_cities.schema';
-export { processedShowtimesTable as processed_showtimes } from './processed_showtimes.schema';
 export { screeningsTable as screenings } from './screenings.schema';
 export { scriptwritersTable as scriptwriters } from './scriptwriters.schema';
 export { showtimesTable as showtimes } from './showtimes.schema';

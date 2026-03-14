@@ -24,8 +24,8 @@ Klaps Backend is the NestJS REST API that serves the [Klaps](https://klaps.space
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Framework       | [NestJS 11](https://nestjs.com) (Express)                                                                                                     |
 | Language        | [TypeScript 5](https://www.typescriptlang.org)                                                                                                |
-| ORM             | [Drizzle ORM](https://orm.drizzle.team) (MySQL dialect)                                                                                       |
-| Database        | [MySQL 8](https://www.mysql.com) via `mysql2`                                                                                                 |
+| ORM             | [Drizzle ORM](https://orm.drizzle.team) (PostgreSQL dialect)                                                                                  |
+| Database        | [PostgreSQL](https://www.postgresql.org) via `pg`                                                                                             |
 | Validation      | [class-validator](https://github.com/typestack/class-validator) + class-transformer                                                           |
 | Auth            | API key guard (`x-internal-api-key` header)                                                                                                   |
 | Rate Limiting   | [@nestjs/throttler](https://docs.nestjs.com/security/rate-limiting) (30/10s, 100/60s)                                                         |
@@ -34,20 +34,20 @@ Klaps Backend is the NestJS REST API that serves the [Klaps](https://klaps.space
 | Health Checks   | [@nestjs/terminus](https://docs.nestjs.com/recipes/terminus)                                                                                  |
 | Security        | [Helmet](https://helmetjs.github.io)                                                                                                          |
 | Testing         | [Jest](https://jestjs.io) + [@nestjs/testing](https://docs.nestjs.com/fundamentals/testing) + [Supertest](https://github.com/ladjs/supertest) |
-| Package Manager | [Yarn](https://yarnpkg.com)                                                                                                                   |
+| Package Manager | [Bun](https://bun.sh)                                                                                                                         |
 | Runtime         | [Node.js 22](https://nodejs.org) (LTS)                                                                                                        |
 | Deployment      | Docker (multi-stage Alpine) via GitHub Actions to GHCR                                                                                        |
 
 ## Architecture
 
 ```
-Request ──► Helmet ──► CORS ──► ThrottlerGuard ──► Controller ──► Service ──► Drizzle ──► MySQL
+Request ──► Helmet ──► CORS ──► ThrottlerGuard ──► Controller ──► Service ──► Drizzle ──► PostgreSQL
                                      │
                         InternalBypassThrottlerGuard
                      (skips limit for internal key)
 ```
 
-- **Global prefix:** `/api/v1`
+- **Global prefix:** `/api/v2`
 - **Global guard:** `InternalBypassThrottlerGuard` — rate limits public traffic, skips for requests with valid `x-internal-api-key`
 - **Per-route guard:** `InternalApiKeyGuard` — restricts write endpoints (POST) and some reads to the internal scrapper
 - **Validation pipe:** `whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`
@@ -56,7 +56,7 @@ Request ──► Helmet ──► CORS ──► ThrottlerGuard ──► Contr
 
 ```
 src/
-├── cinemas/                # Cinemas module (controller, service, DTOs)
+├── cinemas/                # Cinemas module (controller, service, repository, DTOs)
 ├── cities/                 # Cities module
 ├── database/               # Drizzle setup, schemas, migrations
 │   ├── schemas/            # Table definitions & relations
@@ -65,13 +65,13 @@ src/
 ├── genres/                 # Genres module
 ├── guards/                 # InternalApiKeyGuard, InternalBypassThrottlerGuard
 ├── health/                 # Health check (Terminus + Drizzle indicator)
-├── lib/                    # Response types, mappers, utilities
+├── lib/                    # Utilities (pagination, slugs, dates, batch helpers, deadlock retry)
 ├── logger/                 # Pino logger module
 ├── movies/                 # Movies module
 ├── screenings/             # Screenings module
-├── scripts/                # DB baseline & wipe scripts
 ├── showtimes/              # Showtimes module (ingestion pipeline)
-├── wrappers/               # withDeadlockRetry utility
+├── socials/                # Socials module (candidate scoring & post tracking)
+├── scripts/                # DB scripts (baseline, wipe, slug backfill)
 ├── app.module.ts           # Root module
 └── main.ts                 # Bootstrap (port, CORS, Helmet, pipes)
 test/
@@ -81,7 +81,7 @@ test/
 
 ## API Endpoints
 
-All routes are prefixed with `/api/v1`. Endpoints marked with a lock require the `x-internal-api-key` header.
+All routes are prefixed with `/api/v2`. All endpoints require the `x-internal-api-key` header (except `/health`).
 
 ### Health
 
@@ -91,65 +91,71 @@ All routes are prefixed with `/api/v1`. Endpoints marked with a lock require the
 
 ### Cities
 
-| Method | Route           | Params / Body                                     | Description              |
-| ------ | --------------- | ------------------------------------------------- | ------------------------ |
-| GET    | `/cities`       | —                                                 | List all cities          |
-| GET    | `/cities/:id`   | `:id` (number)                                    | City detail + screenings |
-| POST   | `/cities`       | `sourceId`, `name`, `nameDeclinated`, `areacode?` | Create/update city       |
-| POST   | `/cities/batch` | `cities: CreateCityDto[]`                         | Batch upsert cities      |
+| Method | Route                 | Params / Body              | Description                    |
+| ------ | --------------------- | -------------------------- | ------------------------------ |
+| GET    | `/cities`             | —                          | List all cities                |
+| GET    | `/cities/scraped`     | `?dateFrom`, `?dateTo`, `?cityId`, `?citySlug` | Scraped city IDs in date range |
+| GET    | `/cities/with-cinemas`| —                          | Cities with cinema count       |
+| GET    | `/cities/:slug`       | `:slug`                    | City detail + screenings       |
+| POST   | `/cities/batch`       | `CreateCitiesBatchDto`     | Batch upsert cities            |
+| POST   | `/cities/:slug`       | `UpdateCityDto`            | Update city by slug            |
 
 ### Cinemas
 
-| Method | Route            | Params / Body                                                                   | Description                  |
-| ------ | ---------------- | ------------------------------------------------------------------------------- | ---------------------------- |
-| GET    | `/cinemas`       | `?cityId`, `?limit`                                                             | List cinemas grouped by city |
-| GET    | `/cinemas/:id`   | `:id` (number)                                                                  | Cinema detail with city      |
-| POST   | `/cinemas`       | `sourceId`, `name`, `url`, `sourceCityId`, `longitude?`, `latitude?`, `street?` | Create/update cinema         |
-| POST   | `/cinemas/batch` | `cinemas: CreateCinemaDto[]`                                                    | Batch upsert cinemas         |
+| Method | Route             | Params / Body           | Description             |
+| ------ | ----------------- | ----------------------- | ----------------------- |
+| GET    | `/cinemas`        | `?cityId`, `?citySlug`  | List cinemas            |
+| GET    | `/cinemas/:slug`  | `:slug`                 | Cinema detail with city |
+| POST   | `/cinemas/batch`  | `CreateCinemasBatchDto` | Batch upsert cinemas    |
+| POST   | `/cinemas/:slug`  | `UpdateCinemaDto`       | Update cinema by slug   |
 
 ### Genres
 
-| Method | Route     | Description     |
-| ------ | --------- | --------------- |
-| GET    | `/genres` | List all genres |
+| Method | Route            | Params / Body    | Description         |
+| ------ | ---------------- | ---------------- | ------------------- |
+| GET    | `/genres`        | —                | List all genres     |
+| GET    | `/genres/:slug`  | `:slug`          | Genre detail        |
+| POST   | `/genres/:slug`  | `UpdateGenreDto` | Update genre by slug|
 
 ### Movies
 
-| Method | Route                | Params / Body                                      | Description                                       |
-| ------ | -------------------- | -------------------------------------------------- | ------------------------------------------------- |
-| GET    | `/movies`            | `?search`, `?genreId`, `?page`, `?limit`           | Paginated movie list                              |
-| GET    | `/movies/multi-city` | `?limit` (1–50)                                    | Movies screened in the most cities (cached 15min) |
-| GET    | `/movies/:id`        | `:id` (number)                                     | Full movie detail with relations                  |
-| POST   | `/movies`            | `CreateMovieDto` (actors, directors, genres, etc.) | Create/update movie with relations                |
+| Method | Route                | Params / Body                              | Description                                       |
+| ------ | -------------------- | ------------------------------------------ | ------------------------------------------------- |
+| GET    | `/movies`            | `?search`, `?genreId`, `?genreSlug`, `?page`, `?limit` | Paginated movie list                 |
+| GET    | `/movies/multi-city` | `?limit` (1-50)                            | Movies screened in the most cities (cached 15min)  |
+| GET    | `/movies/:slug`      | `:slug`                                    | Full movie detail with relations                   |
+| POST   | `/movies/batch`      | `CreateMoviesBatchDto`                     | Batch upsert movies with relations                 |
 
 ### Screenings
 
-| Method | Route                          | Params / Body                                                                           | Description                                     |
-| ------ | ------------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| GET    | `/screenings`                  | `?dateFrom`, `?dateTo`, `?movieId`, `?cityId`, `?genreId`, `?search`, `?page`, `?limit` | Paginated screenings (grouped by movie or flat) |
-| GET    | `/screenings/random-screening` | —                                                                                       | Random retro screening for hero                 |
-| POST   | `/screenings`                  | `CreateScreeningDto`                                                                    | Create/update screening                         |
+| Method | Route                          | Params / Body                                                                                    | Description                    |
+| ------ | ------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------ |
+| GET    | `/screenings`                  | `?dateFrom`, `?dateTo`, `?movieId`, `?cityId`, `?citySlug`, `?genreId`, `?genreSlug`, `?cinemaSlug`, `?search` | Screenings (grouped by movie) |
+| GET    | `/screenings/random-screening` | —                                                                                                | Random retro screening         |
+| POST   | `/screenings`                  | `CreateScreeningDto`                                                                             | Create screening               |
 
 ### Showtimes
 
-| Method | Route                            | Params / Body                    | Description                      |
-| ------ | -------------------------------- | -------------------------------- | -------------------------------- |
-| GET    | `/showtimes`                     | —                                | List all showtimes               |
-| GET    | `/showtimes/unprocessed`         | `?from`, `?to` (YYYY-MM-DD)      | Unprocessed showtimes in range   |
-| GET    | `/showtimes/processed-city-ids`  | `?from`, `?to` (YYYY-MM-DD)      | City IDs already processed       |
-| POST   | `/showtimes`                     | `CreateShowtimeDto`              | Create/update showtime           |
-| POST   | `/showtimes/batch`               | `showtimes: CreateShowtimeDto[]` | Batch upsert showtimes           |
-| POST   | `/showtimes/mark-city-processed` | `cityId`, `processedAt?`         | Mark city as processed           |
-| POST   | `/showtimes/mark-processed`      | `showtimeId`                     | Mark showtime as processed       |
-| POST   | `/showtimes/:id/process`         | `movieId?`, `screenings[]`       | Process showtime into screenings |
+| Method | Route              | Params / Body                              | Description        |
+| ------ | ------------------ | ------------------------------------------ | ------------------ |
+| GET    | `/showtimes`       | `?dateFrom`, `?dateTo`, `?cityId`, `?citySlug` | List showtimes |
+| POST   | `/showtimes/batch` | `CreateShowtimesBatchDto`                  | Batch upsert       |
+
+### Socials
+
+| Method | Route               | Params / Body                                                  | Description              |
+| ------ | ------------------- | -------------------------------------------------------------- | ------------------------ |
+| GET    | `/socials/candidate` | `?dateFrom`, `?dateTo`, `?minScore`, `?numberOfCandidates`, `?platform` | Get scored candidate |
+| POST   | `/socials/reserve`   | `SocialsActionDto` (`platform`, `screeningId`)                | Reserve candidate        |
+| POST   | `/socials/publish`   | `SocialsActionDto` (`platform`, `screeningId`)                | Publish candidate        |
 
 ## Getting Started
 
 ### Prerequisites
 
 - [Node.js 22+](https://nodejs.org)
-- [Yarn](https://yarnpkg.com)
-- [MySQL 8](https://www.mysql.com) (or a compatible server)
+- [Bun](https://bun.sh)
+- [PostgreSQL](https://www.postgresql.org)
 
 ### Environment Variables
 
@@ -157,53 +163,55 @@ Create a `.env` file in the project root:
 
 ```env
 PORT=5000
-DATABASE_URL=mysql://user:password@localhost:3306/klaps_dev
+DATABASE_URL=postgresql://user:password@localhost:5432/klaps_dev
 INTERNAL_API_KEY=your-secret-api-key
 FRONTEND_URL=http://localhost:3000
 ```
 
-| Variable           | Required | Description                                           |
-| ------------------ | -------- | ----------------------------------------------------- |
-| `PORT`             | No       | Server port (default: `5000`)                         |
-| `DATABASE_URL`     | Yes      | MySQL connection string                               |
-| `INTERNAL_API_KEY` | Yes      | API key for authenticating internal/scrapper requests |
-| `FRONTEND_URL`     | No       | Allowed CORS origin for the frontend                  |
+| Variable           | Required | Description                                                        |
+| ------------------ | -------- | ------------------------------------------------------------------ |
+| `PORT`             | No       | Server port (default: `5000`)                                      |
+| `DATABASE_URL`     | Yes      | PostgreSQL connection string                                            |
+| `INTERNAL_API_KEY` | Yes      | API key for authenticating internal/scrapper requests              |
+| `FRONTEND_URL`     | No       | Allowed CORS origin for the frontend                               |
+| `LOG_LEVEL`        | No       | Pino log level: `debug`, `info`, `warn`, `error` (default: `debug` dev / `info` prod) |
+| `LOG_FILE`         | No       | Path to additional log file output; if unset, logs go to stdout only |
 
 ### Install & Run
 
 ```bash
 # Install dependencies
-yarn install
+bun install
 
 # Generate Drizzle migrations (if schema changed)
-yarn db:generate
+bun run db:generate
 
 # Run migrations
-yarn db:migrate
+bun run db:migrate
 
 # Start in development (watch mode)
-yarn start:dev
+bun run start:dev
 
 # Build for production
-yarn build
+bun run build
 
 # Start production
-yarn start:prod
+bun run start:prod
 
 # Lint
-yarn lint
+bun run lint
 
 # Unit tests
-yarn test
+bun run test
 
 # E2E tests
-yarn test:e2e
+bun run test:e2e
 
 # Test coverage
-yarn test:cov
+bun run test:cov
 ```
 
-The API will be available at [http://localhost:5000/api/v1](http://localhost:5000/api/v1).
+The API will be available at [http://localhost:5000/api/v2](http://localhost:5000/api/v2).
 
 ## Docker
 
@@ -217,7 +225,7 @@ docker build -t klaps-backend .
 
 ```bash
 docker run -p 5000:5000 \
-  -e DATABASE_URL=mysql://user:pass@host:3306/klaps \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/klaps \
   -e INTERNAL_API_KEY=your-key \
   -e FRONTEND_URL=https://klaps.space \
   klaps-backend
@@ -246,7 +254,7 @@ The project uses **GitHub Actions** for CI/CD (`.github/workflows/deploy.yml`):
 
 1. **Lint & Test** — ESLint + Jest unit tests (gates the build)
 2. **Build & Push** — Docker image to GitHub Container Registry
-3. **DB Backup** — `mysqldump` via SSH before migration
+3. **DB Backup** — `pg_dump` via SSH before migration
 4. **DB Migrate** — Drizzle baseline + migrations
 5. **Deploy** — SCP compose file, pull image, recreate container
 
@@ -255,7 +263,7 @@ The project uses **GitHub Actions** for CI/CD (`.github/workflows/deploy.yml`):
 | Secret             | Description                                    |
 | ------------------ | ---------------------------------------------- |
 | `IMAGE_NAME`       | GHCR image (e.g. `ghcr.io/user/klaps-backend`) |
-| `DATABASE_URL`     | MySQL connection string                        |
+| `DATABASE_URL`     | PostgreSQL connection string                        |
 | `INTERNAL_API_KEY` | API authentication key                         |
 | `SERVER_IP`        | Deployment server IP                           |
 | `SERVER_USER`      | SSH user                                       |

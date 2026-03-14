@@ -7,63 +7,66 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CitiesService } from './cities.service';
 import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
-import type { City } from './cities.types';
-import type { CityDetailResponse, CityResponse } from '../lib/response-types';
-import { CreateCityDto } from './dto/create-city.dto';
-import { BatchCreateCitiesDto } from './dto/batch-create-cities.dto';
+import type { CityDetailResponse, CityResponse } from './cities.types';
+import { CreateCitiesBatchDto } from './dto/create-cities-batch.dto';
+import { UpdateCityDto } from './dto/update-city.dto';
+import { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dto';
 
 @Controller('cities')
 export class CitiesController {
   constructor(private readonly citiesService: CitiesService) {}
 
-  /**
-   * URL: /api/v1/cities
-   * Returns all cities (clean, no DB internals).
-   */
   @Get()
   @UseGuards(InternalApiKeyGuard)
   getCities(): Promise<CityResponse[]> {
     return this.citiesService.getCities();
   }
 
-  @Get(':idOrSlug')
+  @Get('scraped')
   @UseGuards(InternalApiKeyGuard)
-  async getCityByIdOrSlug(
-    @Param('idOrSlug') idOrSlug: string,
+  getScrapedCities(
+    @Query() query: GetScrapedCitiesQueryDto,
+  ): Promise<number[]> {
+    return this.citiesService.getScrapedCities(query);
+  }
+
+  @Get('with-cinemas')
+  @UseGuards(InternalApiKeyGuard)
+  getCitiesWithCinemas(): Promise<CityResponse[]> {
+    return this.citiesService.getCitiesWithCinemas();
+  }
+
+  @Get(':slug')
+  @UseGuards(InternalApiKeyGuard)
+  async getCityBySlug(
+    @Param('slug') slug: string,
   ): Promise<CityDetailResponse> {
-    const city = await this.citiesService.getCityByIdOrSlug(idOrSlug);
-
-    if (!city) {
-      throw new NotFoundException(`City "${idOrSlug}" not found`);
-    }
-
+    const city = await this.citiesService.getCityBySlug(slug);
+    if (!city) throw new NotFoundException(`City "${slug}" not found`);
     return city;
   }
 
-  /**
-   * URL: /api/v1/cities/batch
-   * Bulk upserts cities in a single transaction.
-   */
   @Post('batch')
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
-  batchCreateCities(
-    @Body() dto: BatchCreateCitiesDto,
-  ): Promise<{ count: number }> {
-    return this.citiesService.batchCreateCities(dto.cities);
+  createCitiesBatch(@Body() dto: CreateCitiesBatchDto): Promise<void> {
+    return this.citiesService.createCitiesBatch(dto.cities);
   }
 
-  /**
-   * URL: /api/v1/cities
-   * Creates a new city.
-   */
-  @Post()
+  @Post(':slug')
   @UseGuards(InternalApiKeyGuard)
-  createCity(@Body() dto: CreateCityDto): Promise<City> {
-    return this.citiesService.createCity(dto);
+  @HttpCode(HttpStatus.OK)
+  async updateCityBySlug(
+    @Param('slug') slug: string,
+    @Body() body: UpdateCityDto,
+  ): Promise<CityResponse> {
+    const city = await this.citiesService.updateCityBySlug(slug, body);
+    if (!city) throw new NotFoundException(`City "${slug}" not found`);
+    return city;
   }
 }
