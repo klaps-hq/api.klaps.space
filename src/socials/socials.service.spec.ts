@@ -223,7 +223,9 @@ describe('SocialsService', () => {
 
       repo.findPostsByDateAndPlatform.mockResolvedValue([]);
       repo.findScreeningsInRange.mockResolvedValue(screenings as any);
-      repo.findScreeningsByIds.mockResolvedValue(screenings.slice(0, 10) as any);
+      repo.findScreeningsByIds.mockResolvedValue(
+        screenings.slice(0, 10) as any,
+      );
 
       const result = await service.getCandidate({
         dateFrom: '2025-03-10',
@@ -258,7 +260,10 @@ describe('SocialsService', () => {
         screeningLow,
         screeningHigh,
       ] as any);
-      repo.findScreeningsByIds.mockResolvedValue([screeningHigh, screeningLow] as any);
+      repo.findScreeningsByIds.mockResolvedValue([
+        screeningHigh,
+        screeningLow,
+      ] as any);
 
       const result = await service.getCandidate({
         dateFrom: '2025-03-10',

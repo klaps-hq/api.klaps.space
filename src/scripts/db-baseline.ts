@@ -38,13 +38,11 @@ const run = async () => {
     process.exit(0);
   }
 
-  const client = new Client(process.env.DATABASE_URL!);
+  const client = new Client(process.env.DATABASE_URL);
   await client.connect();
 
   try {
-    await client.query(
-      `CREATE SCHEMA IF NOT EXISTS "drizzle"`,
-    );
+    await client.query(`CREATE SCHEMA IF NOT EXISTS "drizzle"`);
     await client.query(`
       CREATE TABLE IF NOT EXISTS "drizzle"."__drizzle_migrations" (
         "id"         SERIAL PRIMARY KEY,
