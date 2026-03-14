@@ -80,6 +80,7 @@ describe('CinemasService', () => {
     slug: 'kino-muranow',
     name: 'Kino Muranow',
     street: 'ul. Andersa 1',
+    description: 'Kino artystyczne w centrum Warszawy',
     city: {
       id: 5,
       slug: 'warszawa',
@@ -96,7 +97,7 @@ describe('CinemasService', () => {
 
       const result = await service.getCinemas({});
 
-      expect(repo.findAll).toHaveBeenCalledWith(undefined);
+      expect(repo.findAll).toHaveBeenCalledWith(undefined, undefined);
       expect(result).toEqual([mockCinemaSummaryResponse]);
     });
 
@@ -107,7 +108,7 @@ describe('CinemasService', () => {
       const result = await service.getCinemas({ citySlug: 'warszawa' });
 
       expect(citiesService.findBySlug).toHaveBeenCalledWith('warszawa');
-      expect(repo.findAll).toHaveBeenCalledWith(10);
+      expect(repo.findAll).toHaveBeenCalledWith(10, undefined);
       expect(result).toEqual([mockCinemaSummaryResponse]);
     });
 
@@ -118,7 +119,7 @@ describe('CinemasService', () => {
       const result = await service.getCinemas({ citySlug: 'nieistniejace' });
 
       expect(citiesService.findBySlug).toHaveBeenCalledWith('nieistniejace');
-      expect(repo.findAll).toHaveBeenCalledWith(undefined);
+      expect(repo.findAll).toHaveBeenCalledWith(undefined, undefined);
       expect(result).toEqual([]);
     });
   });

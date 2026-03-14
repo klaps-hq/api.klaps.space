@@ -36,8 +36,8 @@ export class MoviesRepository {
   async findAll(params?: {
     search?: string;
     genreId?: number;
-    limit: number;
-    offset: number;
+    limit?: number;
+    offset?: number;
   }) {
     const where = and(
       params?.search

@@ -32,12 +32,17 @@ export class MoviesService {
       genreId = genre?.id;
     }
 
-    const { page, limit, offset } = parsePagination(
-      { page: params?.page, limit: params?.limit },
-      { limit: PAGINATION.DEFAULT_LIMIT, maxLimit: PAGINATION.MAX_LIMIT },
-    );
-
     const filter = { search: params?.search, genreId };
+
+    if (!params?.limit) {
+      const data = await this.repo.findAll(filter);
+      return paginate(data.map(mapMovieSummary), data.length, 1, data.length || 1);
+    }
+
+    const { page, limit, offset } = parsePagination(
+      { page: params?.page, limit: params.limit },
+      { limit: PAGINATION.DEFAULT_LIMIT },
+    );
 
     const [data, total] = await Promise.all([
       this.repo.findAll({ ...filter, limit, offset }),

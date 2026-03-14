@@ -22,12 +22,13 @@ export class CinemasRepository {
 
   // === READ ===
 
-  async findAll(sourceCityId?: number) {
+  async findAll(sourceCityId?: number, limit?: number) {
     return this.db.query.cinemas.findMany({
       where: sourceCityId
         ? eq(schema.cinemas.sourceCityId, sourceCityId)
         : undefined,
       with: { city: true },
+      limit: limit || undefined,
     });
   }
 

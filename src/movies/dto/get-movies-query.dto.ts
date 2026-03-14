@@ -2,7 +2,6 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  Max,
   Min,
   MinLength,
 } from 'class-validator';
@@ -18,8 +17,7 @@ export class GetMoviesQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt({ message: 'limit must be an integer' })
-  @Min(1, { message: 'limit must be at least 1' })
-  @Max(100, { message: 'limit must be at most 100' })
+  @Min(0, { message: 'limit must be at least 0' })
   limit?: number;
   @IsOptional()
   @IsString({ message: 'search must be a string' })
