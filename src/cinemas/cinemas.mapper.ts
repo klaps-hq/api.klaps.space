@@ -38,6 +38,7 @@ export const mapCinemaSummary = (
   slug: cinema.slug,
   name: cinema.name,
   street: cinema.street,
+  description: cinema.description ?? null,
   city: cinema.city ? mapCity(cinema.city) : EMPTY_CITY,
 });
 

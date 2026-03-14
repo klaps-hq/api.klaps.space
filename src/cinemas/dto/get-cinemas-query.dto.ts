@@ -11,4 +11,10 @@ export class GetCinemasQueryDto {
   @IsOptional()
   @IsString()
   citySlug?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number;
 }

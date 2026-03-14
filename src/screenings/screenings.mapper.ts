@@ -16,9 +16,11 @@ type ScreeningInput = {
 
 const EMPTY_CINEMA = {
   id: 0,
+  sourceId: 0,
   slug: '',
   name: '',
   street: null,
+  description: null,
   city: { id: 0, slug: '', name: '', nameDeclinated: '', population: null, description: null },
 } as const;
 

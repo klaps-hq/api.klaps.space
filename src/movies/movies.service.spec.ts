@@ -101,15 +101,17 @@ describe('MoviesService', () => {
       expect(repo.count).toHaveBeenCalled();
     });
 
-    it('should use default pagination when no params', async () => {
+    it('should return all movies when no limit provided', async () => {
       repo.findAll.mockResolvedValue([]);
-      repo.count.mockResolvedValue(0);
 
-      await service.getMovies();
+      const result = await service.getMovies();
 
-      expect(repo.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({ limit: 20, offset: 0 }),
-      );
+      expect(repo.findAll).toHaveBeenCalledWith({
+        search: undefined,
+        genreId: undefined,
+      });
+      expect(repo.count).not.toHaveBeenCalled();
+      expect(result.data).toEqual([]);
     });
 
     it('should resolve genreSlug via genresService', async () => {

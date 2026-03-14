@@ -20,7 +20,7 @@ export class CinemasService {
     query: GetCinemasQueryDto,
   ): Promise<CinemaSummaryResponse[]> {
     const sourceCityId = await this.resolveSourceCityId(query.citySlug);
-    const cinemas = await this.repo.findAll(sourceCityId);
+    const cinemas = await this.repo.findAll(sourceCityId, query.limit);
     return cinemas.map(mapCinemaSummary);
   }
 

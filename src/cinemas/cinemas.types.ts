@@ -6,6 +6,7 @@ export type CinemaSummaryResponse = {
   slug: string;
   name: string;
   street: string | null;
+  description: string | null;
   city: CityResponse;
 };
 
