@@ -10,6 +10,7 @@ describe('CinemasController', () => {
 
   const mockCinemaResponse = {
     id: 1,
+    sourceId: 101,
     slug: 'kino-muranow',
     name: 'Kino Muranow',
     street: 'ul. Andersa 1',
