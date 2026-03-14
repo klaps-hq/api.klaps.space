@@ -8,10 +8,9 @@ RUN bun install --frozen-lockfile
 FROM oven/bun:1-alpine AS builder
 RUN apk add --no-cache nodejs
 WORKDIR /app
-ENV PATH="/app/node_modules/.bin:$PATH"
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN nest build
+RUN node node_modules/@nestjs/cli/bin/nest.js build
 
 # Stage 3: Production dependencies only
 FROM oven/bun:1-alpine AS prod-deps
