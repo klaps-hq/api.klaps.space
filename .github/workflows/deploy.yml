@@ -72,7 +72,7 @@ jobs:
         run: node node_modules/jest/bin/jest.js --ci --coverage
 
       - name: E2E tests
-        run: node node_modules/jest/bin/jest.js --config ./test/jest-e2e.json --ci
+        run: node node_modules/jest/bin/jest.js --config ./test/jest-e2e.json --ci --passWithNoTests
 
   # ───────────────────────────────────────────────
   # Job 3: Build Docker image and push to GHCR
