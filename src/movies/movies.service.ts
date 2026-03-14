@@ -36,7 +36,12 @@ export class MoviesService {
 
     if (!params?.limit) {
       const data = await this.repo.findAll(filter);
-      return paginate(data.map(mapMovieSummary), data.length, 1, data.length || 1);
+      return paginate(
+        data.map(mapMovieSummary),
+        data.length,
+        1,
+        data.length || 1,
+      );
     }
 
     const { page, limit, offset } = parsePagination(
