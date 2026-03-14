@@ -1,32 +1,32 @@
 import {
   boolean,
-  datetime,
-  int,
-  mysqlTable,
+  integer,
+  pgTable,
+  serial,
   timestamp,
   unique,
   varchar,
-} from 'drizzle-orm/mysql-core';
+} from 'drizzle-orm/pg-core';
 import { moviesTable } from './movies.schema';
 import { showtimesTable } from './showtimes.schema';
 import { cinemasTable } from './cinemas.schema';
 
-export const screeningsTable = mysqlTable(
+export const screeningsTable = pgTable(
   'screenings',
   {
-    id: int().primaryKey().autoincrement(),
+    id: serial().primaryKey(),
     url: varchar({ length: 255 }),
-    movieId: int()
+    movieId: integer()
       .references(() => moviesTable.id)
       .notNull(),
-    showtimeId: int()
+    showtimeId: integer()
       .references(() => showtimesTable.id)
       .notNull(),
-    cinemaId: int()
+    cinemaId: integer()
       .references(() => cinemasTable.sourceId)
       .notNull(),
     type: varchar({ length: 255 }).notNull(),
-    date: datetime('date').notNull(),
+    date: timestamp('date').notNull(),
     isDubbing: boolean().notNull(),
     isSubtitled: boolean().notNull(),
     createdAt: timestamp().notNull().defaultNow(),

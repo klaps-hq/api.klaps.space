@@ -22,6 +22,7 @@ export class InternalApiKeyGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const providedKey = request.headers[INTERNAL_API_KEY_HEADER];
     const expectedKey = this.configService.get<string>('INTERNAL_API_KEY');
+
     if (!expectedKey) {
       throw new UnauthorizedException('Internal API key is not configured');
     }
@@ -31,6 +32,7 @@ export class InternalApiKeyGuard implements CanActivate {
     if (providedKey !== expectedKey) {
       throw new UnauthorizedException('Invalid internal API key');
     }
+
     return true;
   }
 }

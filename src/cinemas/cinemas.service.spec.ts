@@ -1,154 +1,225 @@
 import { Test } from '@nestjs/testing';
 import { CinemasService } from './cinemas.service';
-import { DRIZZLE } from '../database/constants';
+import { CinemasRepository } from './cinemas.repository';
+import { CitiesService } from '../cities/cities.service';
 
 describe('CinemasService', () => {
   let service: CinemasService;
-  let mockDb: any;
+  let repo: jest.Mocked<CinemasRepository>;
+  let citiesService: jest.Mocked<CitiesService>;
+
+  const mockCinema = {
+    id: 1,
+    sourceId: 101,
+    slug: 'kino-muranow',
+    name: 'Kino Muranow',
+    street: 'ul. Andersa 1',
+    description: 'Kino artystyczne w centrum Warszawy',
+    sourceCityId: 10,
+    url: 'https://www.filmweb.pl/cinema/kino-muranow',
+    latitude: 52.2463,
+    longitude: 21.0027,
+    createdAt: new Date('2025-01-01'),
+    updatedAt: new Date('2025-01-01'),
+  };
+
+  const mockCinemaWithCity = {
+    ...mockCinema,
+    city: {
+      id: 5,
+      slug: 'warszawa',
+      name: 'Warszawa',
+      nameDeclinated: 'Warszawie',
+      population: null,
+      description: null,
+    },
+  };
+
+  const mockCity = {
+    id: 5,
+    sourceId: 10,
+    slug: 'warszawa',
+    name: 'Warszawa',
+    nameDeclinated: 'Warszawie',
+    areacode: null,
+    population: null,
+    description: null,
+    lastScrapedAt: null,
+  };
 
   beforeEach(async () => {
-    const mockInsertChain = {
-      values: jest.fn().mockReturnThis(),
-      onDuplicateKeyUpdate: jest.fn().mockResolvedValue(undefined),
-    };
-
-    mockDb = {
-      query: {
-        cinemas: {
-          findMany: jest.fn(),
-          findFirst: jest.fn(),
-        },
-      },
-      insert: jest.fn().mockReturnValue(mockInsertChain),
-      select: jest.fn().mockImplementation(() => ({
-        from: jest.fn().mockImplementation(() => {
-          const rows: Array<{ slug: string }> = [];
-          return {
-            where: jest.fn().mockResolvedValue(rows),
-            then: (resolve: (value: Array<{ slug: string }>) => unknown) =>
-              Promise.resolve(rows).then(resolve),
-          };
-        }),
-      })),
-    };
-
     const module = await Test.createTestingModule({
-      providers: [CinemasService, { provide: DRIZZLE, useValue: mockDb }],
+      providers: [
+        CinemasService,
+        {
+          provide: CinemasRepository,
+          useValue: {
+            findAll: jest.fn(),
+            findBySlug: jest.fn(),
+            upsertBatch: jest.fn(),
+            updateBySlug: jest.fn(),
+          },
+        },
+        {
+          provide: CitiesService,
+          useValue: {
+            findBySlug: jest.fn(),
+          },
+        },
+      ],
     }).compile();
 
     service = module.get(CinemasService);
+    repo = module.get(CinemasRepository);
+    citiesService = module.get(CitiesService);
   });
+
+  const mockCinemaSummaryResponse = {
+    id: 1,
+    sourceId: 101,
+    slug: 'kino-muranow',
+    name: 'Kino Muranow',
+    street: 'ul. Andersa 1',
+    description: 'Kino artystyczne w centrum Warszawy',
+    city: {
+      id: 5,
+      slug: 'warszawa',
+      name: 'Warszawa',
+      nameDeclinated: 'Warszawie',
+      population: null,
+      description: null,
+    },
+  };
 
   describe('getCinemas', () => {
-    it('groups cinemas by city sorted by count descending', async () => {
-      mockDb.query.cinemas.findMany.mockResolvedValue([
-        {
-          id: 1,
-          slug: 'kino-a',
-          name: 'Kino A',
-          street: 'ul. A',
-          city: {
-            id: 10,
-            slug: 'warszawa',
-            name: 'Warszawa',
-            nameDeclinated: 'Warszawie',
-          },
-        },
-        {
-          id: 2,
-          slug: 'kino-b',
-          name: 'Kino B',
-          street: 'ul. B',
-          city: {
-            id: 10,
-            slug: 'warszawa',
-            name: 'Warszawa',
-            nameDeclinated: 'Warszawie',
-          },
-        },
-        {
-          id: 3,
-          slug: 'kino-c',
-          name: 'Kino C',
-          street: null,
-          city: {
-            id: 11,
-            slug: 'krakow',
-            name: 'Kraków',
-            nameDeclinated: 'Krakowie',
-          },
-        },
-      ]);
+    it('should return mapped cinema summaries', async () => {
+      repo.findAll.mockResolvedValue([mockCinemaWithCity as any]);
 
-      const result = await service.getCinemas();
+      const result = await service.getCinemas({});
 
-      expect(result.data).toHaveLength(2);
-      expect(result.data[0].city.name).toBe('Warszawa');
-      expect(result.data[0].cinemas).toHaveLength(2);
-      expect(result.data[1].city.name).toBe('Kraków');
-      expect(result.data[1].cinemas).toHaveLength(1);
+      expect(repo.findAll).toHaveBeenCalledWith(undefined, undefined);
+      expect(result).toEqual([mockCinemaSummaryResponse]);
     });
 
-    it('returns empty data when no cinemas', async () => {
-      mockDb.query.cinemas.findMany.mockResolvedValue([]);
+    it('should resolve sourceCityId via citiesService when citySlug provided', async () => {
+      citiesService.findBySlug.mockResolvedValue(mockCity);
+      repo.findAll.mockResolvedValue([mockCinemaWithCity as any]);
 
-      const result = await service.getCinemas();
+      const result = await service.getCinemas({ citySlug: 'warszawa' });
 
-      expect(result.data).toEqual([]);
+      expect(citiesService.findBySlug).toHaveBeenCalledWith('warszawa');
+      expect(repo.findAll).toHaveBeenCalledWith(10, undefined);
+      expect(result).toEqual([mockCinemaSummaryResponse]);
+    });
+
+    it('should pass undefined sourceCityId when city not found by slug', async () => {
+      citiesService.findBySlug.mockResolvedValue(null);
+      repo.findAll.mockResolvedValue([]);
+
+      const result = await service.getCinemas({ citySlug: 'nieistniejace' });
+
+      expect(citiesService.findBySlug).toHaveBeenCalledWith('nieistniejace');
+      expect(repo.findAll).toHaveBeenCalledWith(undefined, undefined);
+      expect(result).toEqual([]);
     });
   });
 
-  describe('getCinemaByIdOrSlug', () => {
-    it('returns mapped cinema when found by id', async () => {
-      mockDb.query.cinemas.findFirst.mockResolvedValue({
+  describe('getCinemaBySlug', () => {
+    it('should return mapped cinema when found', async () => {
+      repo.findBySlug.mockResolvedValue(mockCinemaWithCity as any);
+
+      const result = await service.getCinemaBySlug('kino-muranow');
+
+      expect(repo.findBySlug).toHaveBeenCalledWith('kino-muranow');
+      expect(result).toEqual({
         id: 1,
-        slug: 'kino-luna',
-        name: 'Kino Luna',
-        street: 'ul. Test',
-        url: 'https://filmweb.pl/cinema/1',
-        latitude: 52.2,
-        longitude: 21.0,
+        sourceId: 101,
+        slug: 'kino-muranow',
+        name: 'Kino Muranow',
+        street: 'ul. Andersa 1',
+        description: 'Kino artystyczne w centrum Warszawy',
         city: {
-          id: 10,
+          id: 5,
           slug: 'warszawa',
           name: 'Warszawa',
           nameDeclinated: 'Warszawie',
+          population: null,
+          description: null,
         },
+        latitude: 52.2463,
+        longitude: 21.0027,
+        filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
       });
-
-      const result = await service.getCinemaByIdOrSlug('1');
-
-      expect(result).not.toBeNull();
-      expect(result!.filmwebUrl).toBe('https://filmweb.pl/cinema/1');
-      expect(result!.latitude).toBe(52.2);
     });
 
-    it('returns null when cinema not found', async () => {
-      mockDb.query.cinemas.findFirst.mockResolvedValue(undefined);
+    it('should return null when cinema not found', async () => {
+      repo.findBySlug.mockResolvedValue(undefined);
 
-      const result = await service.getCinemaByIdOrSlug('999');
+      const result = await service.getCinemaBySlug('nieistniejace');
 
       expect(result).toBeNull();
     });
   });
 
-  describe('batchCreateCinemas', () => {
-    it('returns count 0 for empty array', async () => {
-      const result = await service.batchCreateCinemas([]);
+  describe('createCinemasBatch', () => {
+    it('should delegate to repo.upsertBatch', async () => {
+      const cinemas = [
+        {
+          sourceId: 201,
+          name: 'Nowe Kino',
+          slug: 'nowe-kino',
+          sourceCityId: 10,
+          url: 'https://filmweb.pl/cinema/nowe',
+        },
+      ];
+      repo.upsertBatch.mockResolvedValue(undefined);
 
-      expect(result).toEqual({ count: 0 });
-      expect(mockDb.insert).not.toHaveBeenCalled();
+      await service.createCinemasBatch(cinemas as any);
+
+      expect(repo.upsertBatch).toHaveBeenCalledWith(cinemas);
+    });
+  });
+
+  describe('updateCinemaBySlug', () => {
+    it('should return mapped cinema response after update', async () => {
+      repo.updateBySlug.mockResolvedValue(mockCinemaWithCity as any);
+
+      const result = await service.updateCinemaBySlug('kino-muranow', {
+        description: 'Updated',
+      } as any);
+
+      expect(repo.updateBySlug).toHaveBeenCalledWith('kino-muranow', {
+        description: 'Updated',
+      });
+      expect(result).toEqual({
+        id: 1,
+        sourceId: 101,
+        slug: 'kino-muranow',
+        name: 'Kino Muranow',
+        street: 'ul. Andersa 1',
+        description: 'Kino artystyczne w centrum Warszawy',
+        city: {
+          id: 5,
+          slug: 'warszawa',
+          name: 'Warszawa',
+          nameDeclinated: 'Warszawie',
+          population: null,
+          description: null,
+        },
+        latitude: 52.2463,
+        longitude: 21.0027,
+        filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
+      });
     });
 
-    it('returns count matching input length', async () => {
-      const cinemas = [
-        { sourceId: 1, name: 'A', url: 'http://a', sourceCityId: 1 },
-        { sourceId: 2, name: 'B', url: 'http://b', sourceCityId: 1 },
-      ];
+    it('should return null when cinema not found', async () => {
+      repo.updateBySlug.mockResolvedValue(null);
 
-      const result = await service.batchCreateCinemas(cinemas as any);
+      const result = await service.updateCinemaBySlug('nieistniejace', {
+        description: 'Updated',
+      } as any);
 
-      expect(result).toEqual({ count: 2 });
+      expect(result).toBeNull();
     });
   });
 });

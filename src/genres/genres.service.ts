@@ -1,33 +1,38 @@
-import { Inject, Injectable } from '@nestjs/common';
-import type { MySql2Database } from 'drizzle-orm/mysql2';
-import * as schema from '../database/schemas';
-import { DRIZZLE } from '../database/constants';
-import type { GenreResponse } from '../lib/response-types';
-import { mapGenre } from '../lib/response-mappers';
-import { eq } from 'drizzle-orm';
+import { Injectable } from '@nestjs/common';
+import type { GenreResponse } from './genres.types';
+import { mapGenre } from './genres.mapper';
+import type { UpdateGenreDto } from './dto/update-genre.dto';
+import { GenresRepository } from './genres.repository';
 
 @Injectable()
 export class GenresService {
-  constructor(
-    @Inject(DRIZZLE)
-    private readonly db: MySql2Database<typeof schema>,
-  ) {}
+  constructor(private readonly repo: GenresRepository) {}
+
+  // === READ ===
 
   async getGenres(): Promise<GenreResponse[]> {
-    const genres = await this.db.query.genres.findMany();
+    const genres = await this.repo.findAll();
     return genres.map(mapGenre);
   }
 
-  async getGenreByIdOrSlug(idOrSlug: string): Promise<GenreResponse | null> {
-    const numericId = Number(idOrSlug);
-    const condition =
-      Number.isInteger(numericId) && numericId > 0
-        ? eq(schema.genres.id, numericId)
-        : eq(schema.genres.slug, idOrSlug);
+  async findBySlug(slug: string) {
+    const genre = await this.repo.findBySlug(slug);
+    return genre ?? null;
+  }
 
-    const genre = await this.db.query.genres.findFirst({
-      where: condition,
-    });
+  async getGenreBySlug(slug: string): Promise<GenreResponse | null> {
+    const genre = await this.repo.findBySlug(slug);
+    if (!genre) return null;
+    return mapGenre(genre);
+  }
+
+  // === WRITE ===
+
+  async updateGenreBySlug(
+    slug: string,
+    data: UpdateGenreDto,
+  ): Promise<GenreResponse | null> {
+    const genre = await this.repo.updateBySlug(slug, data);
     if (!genre) return null;
     return mapGenre(genre);
   }

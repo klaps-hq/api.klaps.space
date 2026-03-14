@@ -1,0 +1,81 @@
+import { Logger } from '@nestjs/common';
+
+type DeadlockRetryOptions = {
+  maxRetries?: number;
+  baseDelayMs?: number;
+  label?: string;
+};
+
+const DEFAULT_MAX_RETRIES = 3;
+const DEFAULT_BASE_DELAY_MS = 100;
+
+const logger = new Logger('DeadlockRetry');
+
+/**
+ * Checks whether an error is a PostgreSQL deadlock (error code 40P01).
+ * Drizzle wraps the pg error inside `cause`, so we check both levels.
+ */
+const isDeadlockError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) return false;
+
+  if (
+    'code' in error &&
+    (error as { code: string }).code === '40P01'
+  ) {
+    return true;
+  }
+
+  if (
+    'cause' in error &&
+    error.cause instanceof Error &&
+    'code' in error.cause &&
+    (error.cause as { code: string }).code === '40P01'
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Wraps an async operation with automatic retry on PostgreSQL deadlock errors.
+ * Uses exponential backoff between attempts.
+ *
+ * @example
+ * ```ts
+ * const result = await withDeadlockRetry(
+ *   () => this.db.insert(schema.cinemas).values(cinemas).onConflictDoUpdate({ ... }),
+ *   { label: 'batchCreateCinemas', maxRetries: 3 },
+ * );
+ * ```
+ */
+export const withDeadlockRetry = async <T>(
+  operation: () => Promise<T>,
+  options?: DeadlockRetryOptions,
+): Promise<T> => {
+  const maxRetries = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
+  const baseDelayMs = options?.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
+  const label = options?.label ?? 'unknown';
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error: unknown) {
+      if (!isDeadlockError(error) || attempt === maxRetries) {
+        throw error;
+      }
+
+      const jitter = 0.5 + Math.random();
+      const delayMs = Math.round(
+        baseDelayMs * Math.pow(2, attempt - 1) * jitter,
+      );
+      logger.warn(
+        `[${label}] Deadlock on attempt ${attempt}/${maxRetries}, retrying in ${delayMs}ms…`,
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw new Error(`[${label}] Exhausted all ${maxRetries} retries`);
+};

@@ -1,10 +1,6 @@
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
-/**
- * Query DTO for GET /movies/multi-city.
- * limit: optional, max number of movies to return (default 5).
- */
 export class GetMultiCityMoviesQueryDto {
   @IsOptional()
   @Transform(({ value }) =>

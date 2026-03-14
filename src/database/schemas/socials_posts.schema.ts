@@ -1,25 +1,26 @@
 import {
   boolean,
   date,
-  int,
-  mysqlTable,
+  integer,
+  pgTable,
+  serial,
   timestamp,
   unique,
   varchar,
-} from 'drizzle-orm/mysql-core';
+} from 'drizzle-orm/pg-core';
 import { moviesTable } from './movies.schema';
 import { screeningsTable } from './screenings.schema';
 
-export const socialsPostsTable = mysqlTable(
+export const socialsPostsTable = pgTable(
   'socials_posts',
   {
-    id: int().primaryKey().autoincrement(),
+    id: serial().primaryKey(),
     postDate: date({ mode: 'string' }).notNull(),
     platform: varchar({ length: 30 }).notNull().default('instagram_post'),
     contentType: varchar({ length: 30 }).notNull().default('feed_candidate'),
-    movieId: int().references(() => moviesTable.id),
-    screeningId: int().references(() => screeningsTable.id),
-    score: int().notNull(),
+    movieId: integer().references(() => moviesTable.id),
+    screeningId: integer().references(() => screeningsTable.id),
+    score: integer().notNull(),
     published: boolean().notNull(),
     reason: varchar({ length: 100 }).notNull(),
     createdAt: timestamp().notNull().defaultNow(),

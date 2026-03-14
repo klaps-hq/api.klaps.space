@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { drizzle } from 'drizzle-orm/mysql2';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { getTableName, sql } from 'drizzle-orm';
 import * as schema from '../database/schemas';
 
@@ -15,7 +15,7 @@ const run = async () => {
     process.exit(1);
   }
 
-  const db = drizzle(process.env.DATABASE_URL!, { schema, mode: 'default' });
+  const db = drizzle(process.env.DATABASE_URL!, { schema });
 
   // Order matters: delete from child/junction tables before parent tables.
   const tables = [
@@ -38,14 +38,14 @@ const run = async () => {
 
   console.log('Wiping all tables...\n');
 
-  await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0`);
+  await db.execute(sql`SET session_replication_role = 'replica'`);
 
   for (const table of tables) {
     await db.delete(table);
     console.log(`✓ ${getTableName(table)}`);
   }
 
-  await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1`);
+  await db.execute(sql`SET session_replication_role = 'origin'`);
 
   console.log('\nDone — all tables wiped.');
   process.exit(0);

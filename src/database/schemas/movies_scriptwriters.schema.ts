@@ -1,15 +1,15 @@
-import { int, mysqlTable, timestamp, unique } from 'drizzle-orm/mysql-core';
+import { integer, pgTable, serial, timestamp, unique } from 'drizzle-orm/pg-core';
 import { moviesTable } from './movies.schema';
 import { scriptwritersTable } from './scriptwriters.schema';
 
-export const moviesScriptwritersTable = mysqlTable(
+export const moviesScriptwritersTable = pgTable(
   'movies_scriptwriters',
   {
-    id: int().primaryKey().autoincrement(),
-    movieId: int()
+    id: serial().primaryKey(),
+    movieId: integer()
       .references(() => moviesTable.id)
       .notNull(),
-    scriptwriterId: int()
+    scriptwriterId: integer()
       .references(() => scriptwritersTable.id)
       .notNull(),
     createdAt: timestamp().notNull().defaultNow(),
