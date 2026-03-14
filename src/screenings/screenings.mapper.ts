@@ -21,7 +21,14 @@ const EMPTY_CINEMA = {
   name: '',
   street: null,
   description: null,
-  city: { id: 0, slug: '', name: '', nameDeclinated: '', population: null, description: null },
+  city: {
+    id: 0,
+    slug: '',
+    name: '',
+    nameDeclinated: '',
+    population: null,
+    description: null,
+  },
 } as const;
 
 const extractDateTimeParts = (

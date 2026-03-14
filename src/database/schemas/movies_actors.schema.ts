@@ -1,4 +1,10 @@
-import { integer, pgTable, serial, timestamp, unique } from 'drizzle-orm/pg-core';
+import {
+  integer,
+  pgTable,
+  serial,
+  timestamp,
+  unique,
+} from 'drizzle-orm/pg-core';
 import { moviesTable } from './movies.schema';
 import { actorsTable } from './actors.schema';
 

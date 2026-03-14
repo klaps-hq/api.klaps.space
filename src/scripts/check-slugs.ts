@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { Client, type QueryResultRow } from 'pg';
 
 const run = async () => {
-  const client = new Client(process.env.DATABASE_URL!);
+  const client = new Client(process.env.DATABASE_URL);
   await client.connect();
   try {
     for (const table of ['movies', 'cinemas', 'cities', 'genres']) {

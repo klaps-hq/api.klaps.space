@@ -1,4 +1,10 @@
-import { integer, pgTable, serial, timestamp, varchar } from 'drizzle-orm/pg-core';
+import {
+  integer,
+  pgTable,
+  serial,
+  timestamp,
+  varchar,
+} from 'drizzle-orm/pg-core';
 
 export const scriptwritersTable = pgTable('scriptwriters', {
   id: serial().primaryKey(),

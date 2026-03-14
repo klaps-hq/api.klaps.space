@@ -18,10 +18,7 @@ const logger = new Logger('DeadlockRetry');
 const isDeadlockError = (error: unknown): boolean => {
   if (!(error instanceof Error)) return false;
 
-  if (
-    'code' in error &&
-    (error as { code: string }).code === '40P01'
-  ) {
+  if ('code' in error && (error as { code: string }).code === '40P01') {
     return true;
   }
 
