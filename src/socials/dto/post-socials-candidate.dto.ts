@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsString, IsIn, Matches, Max, Min, IsInt } from 'class-validator';
+import { IsString, IsIn, Matches, Min, IsInt } from 'class-validator';
 
 export class SocialsReserveRequestDto {
   @IsString()
