@@ -7,7 +7,7 @@ import { apiReference } from '@scalar/nestjs-api-reference';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import compression from 'compression';
-import { json, Request, Response } from 'express';
+import { json, Request, Response, NextFunction } from 'express';
 
 const DEFAULT_PORT = 5000;
 
@@ -24,11 +24,11 @@ async function bootstrap() {
   const helmetMiddleware = helmet({
     hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
   });
-  app.use((req: Request, res: Response, next: Function) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path === '/reference' || req.path === '/openapi.json') {
       return next();
     }
-    return helmetMiddleware(req, res, next as any);
+    helmetMiddleware(req, res, next);
   });
   app.use(compression());
 
@@ -55,9 +55,14 @@ async function bootstrap() {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Klaps API')
-    .setDescription('API for Klaps — Polish nationwide guide to special screenings, classic cinema, and retrospectives')
+    .setDescription(
+      'API for Klaps — Polish nationwide guide to special screenings, classic cinema, and retrospectives',
+    )
     .setVersion('2.0')
-    .addApiKey({ type: 'apiKey', name: 'x-internal-api-key', in: 'header' }, 'internal-api-key')
+    .addApiKey(
+      { type: 'apiKey', name: 'x-internal-api-key', in: 'header' },
+      'internal-api-key',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);

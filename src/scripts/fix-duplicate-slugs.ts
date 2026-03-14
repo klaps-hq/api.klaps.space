@@ -102,7 +102,7 @@ const fixMovies = async (client: Client) => {
 };
 
 const run = async () => {
-  const client = new Client(process.env.DATABASE_URL!);
+  const client = new Client(process.env.DATABASE_URL);
   await client.connect();
   try {
     console.log('Fixing duplicate slugs...\n');

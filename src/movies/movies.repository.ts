@@ -333,6 +333,7 @@ export class MoviesRepository {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             .values(chunk as any)
             .onConflictDoUpdate({
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
               target: [junctionTable.movieId, (junctionTable as any)[fkName]],
               set: { movieId: sql`excluded."movieId"` },
             }),
