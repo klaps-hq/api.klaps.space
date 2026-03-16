@@ -183,11 +183,11 @@ jobs:
           set -eo pipefail
 
           # First pass: run pending migrations.
-          if ! bunx drizzle-kit migrate 2>migrate.err; then
+          if ! bun run db:migrate 2>migrate.err; then
             if grep -q "Invalid use of NULL value" migrate.err; then
               echo "Detected slug backfill-required migration state. Running backfill and retrying..."
               bun run db:backfill-slugs
-              bunx drizzle-kit migrate
+              bun run db:migrate
             else
               cat migrate.err
               exit 1
@@ -197,7 +197,7 @@ jobs:
           # Safety pass: backfill slugs and run migrate again.
           # Both operations are idempotent and ensure NOT NULL/UNIQUE follow-up migrations can apply.
           bun run db:backfill-slugs
-          bunx drizzle-kit migrate
+          bun run db:migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
