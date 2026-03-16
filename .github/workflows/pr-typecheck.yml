@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PORT: "5000"
-      DATABASE_URL: "mysql://root:password@localhost:3306/db_name"
+      DATABASE_URL: "postgresql://root:password@localhost:5432/db_name"
       NODE_ENV: "test"
       INTERNAL_API_KEY: "ci-internal-api-key"
       FRONTEND_URL: "http://localhost:3000"

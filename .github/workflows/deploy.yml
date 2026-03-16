@@ -125,20 +125,20 @@ jobs:
             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
             mkdir -p "$BACKUP_DIR"
 
-            DB_USER=$(echo "$DATABASE_URL" | sed -E 's|mysql://([^:]+):.*|\1|')
-            DB_PASS=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^:]+:([^@]+)@.*|\1|')
-            DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^@]+@([^:]+):.*|\1|')
-            DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^@]+@[^:]+:([0-9]+)/.*|\1|')
-            DB_NAME=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^/]+/([^?]+).*|\1|')
+            DB_USER=$(echo "$DATABASE_URL" | sed -E 's|postgresql://([^:]+):.*|\1|')
+            DB_PASS=$(echo "$DATABASE_URL" | sed -E 's|postgresql://[^:]+:([^@]+)@.*|\1|')
+            DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|postgresql://[^@]+@([^:]+):.*|\1|')
+            DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|postgresql://[^@]+@[^:]+:([0-9]+)/.*|\1|')
+            DB_NAME=$(echo "$DATABASE_URL" | sed -E 's|postgresql://[^/]+/([^?]+).*|\1|')
 
             echo "Backing up database '$DB_NAME' to $BACKUP_DIR..."
 
-            docker run --rm --network traefik_public mysql:8 \
-              mysqldump -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" \
-              --single-transaction \
-              --no-tablespaces \
-              --routines \
-              --triggers \
+            docker run --rm --network traefik_public \
+              -e PGPASSWORD="$DB_PASS" \
+              postgres:16 \
+              pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" \
+              --no-owner \
+              --no-privileges \
               "$DB_NAME" | gzip > "$BACKUP_DIR/pre-deploy_${TIMESTAMP}.sql.gz"
 
             # Keep only the last 10 pre-deploy backups
