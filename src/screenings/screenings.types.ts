@@ -15,7 +15,9 @@ export type GetScreeningsParams = {
   citySlug?: string;
   genreId?: number;
   genreSlug?: string;
+  cinemaId?: number;
   cinemaSlug?: string;
+  limit?: number;
   search?: string;
 };
 
