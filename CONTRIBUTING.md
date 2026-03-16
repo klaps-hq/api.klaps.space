@@ -6,7 +6,7 @@ Thanks for your interest in contributing! This document outlines the process for
 
 - [Node.js 22+](https://nodejs.org)
 - [Bun](https://bun.sh)
-- [MySQL 8](https://www.mysql.com)
+- [PostgreSQL 16](https://www.postgresql.org)
 
 ## Getting Started
 

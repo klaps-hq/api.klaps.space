@@ -6,7 +6,7 @@ const DATE_ONLY_OPTIONS: Intl.DateTimeFormatOptions = {
 export const getTodayInPoland = (): string =>
   new Date().toLocaleDateString('sv-SE', DATE_ONLY_OPTIONS);
 
-/** Converts a Date or ISO date string to YYYY-MM-DD (Europe/Warsaw). For MySQL DATE columns. */
+/** Converts a Date or ISO date string to YYYY-MM-DD (Europe/Warsaw). For PostgreSQL DATE columns. */
 export const toDateOnlyString = (value: Date | string): string =>
   value instanceof Date
     ? value.toLocaleDateString('sv-SE', DATE_ONLY_OPTIONS)

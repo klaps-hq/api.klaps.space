@@ -1,7 +1,7 @@
 -- Migration: Rename filmwebId -> sourceId, filmwebCityId -> sourceCityId
 -- Date: 2026-02-19
 --
--- NOTE: Run these statements in order. MySQL 8.0+ RENAME COLUMN
+-- NOTE: Run these statements in order. PostgreSQL RENAME COLUMN
 -- automatically propagates to foreign key constraints that reference
 -- the renamed column within the same table.
 
