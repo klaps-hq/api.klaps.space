@@ -41,5 +41,5 @@ The following are out of scope:
 
 - Never commit secrets (`.env`, API keys, credentials) to the repository
 - Use `class-validator` for all DTO input validation
-- Keep dependencies up to date (`yarn upgrade-interactive`)
+- Keep dependencies up to date (`bun update`)
 - All write endpoints must be guarded by `InternalApiKeyGuard`

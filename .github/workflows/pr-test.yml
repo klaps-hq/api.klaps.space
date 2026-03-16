@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PORT: "5000"
-      DATABASE_URL: "mysql://root:password@localhost:3306/db_name"
+      DATABASE_URL: "postgresql://root:password@localhost:5432/db_name"
       NODE_ENV: "test"
       INTERNAL_API_KEY: "ci-internal-api-key"
       FRONTEND_URL: "http://localhost:3000"
@@ -27,14 +27,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: yarn
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Run tests
-        run: yarn test --ci
+        run: node node_modules/jest/bin/jest.js --ci

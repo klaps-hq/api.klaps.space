@@ -54,23 +54,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Lint
-        run: yarn lint
+        run: node node_modules/eslint/bin/eslint.js "src/**/*.ts" --fix
 
       - name: Unit tests
-        run: yarn test --ci --coverage
+        run: node node_modules/jest/bin/jest.js --ci --coverage
 
       - name: E2E tests
-        run: yarn test:e2e --ci
+        run: node node_modules/jest/bin/jest.js --config ./test/jest-e2e.json --ci --passWithNoTests
 
   # ───────────────────────────────────────────────
   # Job 3: Build Docker image and push to GHCR
@@ -123,20 +125,20 @@ jobs:
             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
             mkdir -p "$BACKUP_DIR"
 
-            DB_USER=$(echo "$DATABASE_URL" | sed -E 's|mysql://([^:]+):.*|\1|')
-            DB_PASS=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^:]+:([^@]+)@.*|\1|')
-            DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^@]+@([^:]+):.*|\1|')
-            DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^@]+@[^:]+:([0-9]+)/.*|\1|')
-            DB_NAME=$(echo "$DATABASE_URL" | sed -E 's|mysql://[^/]+/([^?]+).*|\1|')
+            DB_USER=$(echo "$DATABASE_URL" | sed -E 's|postgresql://([^:]+):.*|\1|')
+            DB_PASS=$(echo "$DATABASE_URL" | sed -E 's|postgresql://[^:]+:([^@]+)@.*|\1|')
+            DB_HOST=$(echo "$DATABASE_URL" | sed -E 's|postgresql://[^@]+@([^:]+):.*|\1|')
+            DB_PORT=$(echo "$DATABASE_URL" | sed -E 's|postgresql://[^@]+@[^:]+:([0-9]+)/.*|\1|')
+            DB_NAME=$(echo "$DATABASE_URL" | sed -E 's|postgresql://[^/]+/([^?]+).*|\1|')
 
             echo "Backing up database '$DB_NAME' to $BACKUP_DIR..."
 
-            docker run --rm --network traefik_public mysql:8 \
-              mysqldump -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" \
-              --single-transaction \
-              --no-tablespaces \
-              --routines \
-              --triggers \
+            docker run --rm --network traefik_public \
+              -e PGPASSWORD="$DB_PASS" \
+              postgres:16 \
+              pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" \
+              --no-owner \
+              --no-privileges \
               "$DB_NAME" | gzip > "$BACKUP_DIR/pre-deploy_${TIMESTAMP}.sql.gz"
 
             # Keep only the last 10 pre-deploy backups
@@ -159,18 +161,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Baseline existing tables (bootstrap only)
         if: ${{ env.RUN_DB_BASELINE == 'true' }}
-        run: yarn db:baseline
+        run: bun run db:baseline
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
@@ -179,11 +183,11 @@ jobs:
           set -eo pipefail
 
           # First pass: run pending migrations.
-          if ! npx drizzle-kit migrate 2>migrate.err; then
+          if ! bun run db:migrate 2>migrate.err; then
             if grep -q "Invalid use of NULL value" migrate.err; then
               echo "Detected slug backfill-required migration state. Running backfill and retrying..."
-              yarn db:backfill-slugs
-              npx drizzle-kit migrate
+              bun run db:backfill-slugs
+              bun run db:migrate
             else
               cat migrate.err
               exit 1
@@ -192,8 +196,8 @@ jobs:
 
           # Safety pass: backfill slugs and run migrate again.
           # Both operations are idempotent and ensure NOT NULL/UNIQUE follow-up migrations can apply.
-          yarn db:backfill-slugs
-          npx drizzle-kit migrate
+          bun run db:backfill-slugs
+          bun run db:migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 

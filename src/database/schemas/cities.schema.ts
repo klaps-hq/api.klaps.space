@@ -1,12 +1,22 @@
-import { int, mysqlTable, varchar } from 'drizzle-orm/mysql-core';
+import {
+  integer,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  varchar,
+} from 'drizzle-orm/pg-core';
 
-export const citiesTable = mysqlTable('cities', {
-  id: int().primaryKey().autoincrement(),
-  sourceId: int().notNull().unique(),
+export const citiesTable = pgTable('cities', {
+  id: serial().primaryKey(),
+  sourceId: integer().notNull().unique(),
   slug: varchar({ length: 255 }).notNull().unique(),
   name: varchar({ length: 255 }).notNull(),
   nameDeclinated: varchar({ length: 255 }).notNull(),
-  areacode: int(),
+  areacode: integer(),
+  population: integer(),
+  description: text(),
+  lastScrapedAt: timestamp(),
 });
 
 export type City = typeof citiesTable.$inferSelect;

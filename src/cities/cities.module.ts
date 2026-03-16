@@ -1,15 +1,13 @@
 import { Module } from '@nestjs/common';
 import { CitiesController } from './cities.controller';
 import { CitiesService } from './cities.service';
+import { CitiesRepository } from './cities.repository';
 import { ScreeningsModule } from '../screenings/screenings.module';
 
-/**
- * Module for city-related API and business logic.
- */
 @Module({
   imports: [ScreeningsModule],
   controllers: [CitiesController],
-  providers: [CitiesService],
+  providers: [CitiesService, CitiesRepository],
   exports: [CitiesService],
 })
 export class CitiesModule {}

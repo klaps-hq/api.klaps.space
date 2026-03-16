@@ -1,33 +1,26 @@
 {
   "version": "7",
-  "dialect": "mysql",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "5",
-      "when": 1771610774823,
-      "tag": "0000_sticky_stardust",
+      "version": "7",
+      "when": 1773345008224,
+      "tag": "0000_far_kronos",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "5",
-      "when": 1771891200000,
-      "tag": "0001_add_slugs",
+      "version": "7",
+      "when": 1773349231218,
+      "tag": "0001_concerned_kat_farrell",
       "breakpoints": true
     },
     {
       "idx": 2,
-      "version": "5",
-      "when": 1771891200001,
-      "tag": "0002_slugs_not_null",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1772150812747,
-      "tag": "0003_uneven_sharon_carter",
+      "version": "7",
+      "when": 1773362486346,
+      "tag": "0002_orange_peter_parker",
       "breakpoints": true
     }
   ]

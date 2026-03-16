@@ -1,102 +1,139 @@
 import { Test } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CinemasController } from './cinemas.controller';
 import { CinemasService } from './cinemas.service';
-import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 
 describe('CinemasController', () => {
   let controller: CinemasController;
-  const mockService = {
-    getCinemas: jest.fn(),
-    createCinema: jest.fn(),
-    batchCreateCinemas: jest.fn(),
-    getCinemaByIdOrSlug: jest.fn(),
+  let service: jest.Mocked<CinemasService>;
+
+  const mockCinemaResponse = {
+    id: 1,
+    sourceId: 101,
+    slug: 'kino-muranow',
+    name: 'Kino Muranow',
+    street: 'ul. Andersa 1',
+    description: 'Kino artystyczne w centrum Warszawy',
+    city: {
+      id: 5,
+      slug: 'warszawa',
+      name: 'Warszawa',
+      nameDeclinated: 'Warszawie',
+      population: null,
+      description: null,
+    },
+    latitude: 52.2463,
+    longitude: 21.0027,
+    filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
   };
 
   beforeEach(async () => {
-    jest.clearAllMocks();
-
     const module = await Test.createTestingModule({
       controllers: [CinemasController],
-      providers: [{ provide: CinemasService, useValue: mockService }],
-    })
-      .overrideGuard(InternalApiKeyGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
+      providers: [
+        {
+          provide: CinemasService,
+          useValue: {
+            getCinemas: jest.fn(),
+            getCinemaBySlug: jest.fn(),
+            createCinemasBatch: jest.fn(),
+            updateCinemaBySlug: jest.fn(),
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('test-api-key') },
+        },
+      ],
+    }).compile();
 
     controller = module.get(CinemasController);
+    service = module.get(CinemasService);
   });
 
   describe('getCinemas', () => {
-    it('delegates to service with query params', async () => {
-      const expected = { data: [] };
-      mockService.getCinemas.mockResolvedValue(expected);
+    it('should pass query params to service', async () => {
+      service.getCinemas.mockResolvedValue([mockCinemaResponse as any]);
 
-      const result = await controller.getCinemas({ cityId: 1, limit: 10 });
+      const query = { cityId: 5, citySlug: 'warszawa' } as any;
+      const result = await controller.getCinemas(query);
 
-      expect(result).toEqual(expected);
-      expect(mockService.getCinemas).toHaveBeenCalledWith({
-        cityId: 1,
-        citySlug: undefined,
-        limit: 10,
-      });
+      expect(service.getCinemas).toHaveBeenCalledWith(query);
+      expect(result).toEqual([mockCinemaResponse]);
+    });
+
+    it('should pass empty object when no query params', async () => {
+      service.getCinemas.mockResolvedValue([]);
+
+      const query = {} as any;
+      const result = await controller.getCinemas(query);
+
+      expect(service.getCinemas).toHaveBeenCalledWith(query);
+      expect(result).toEqual([]);
     });
   });
 
-  describe('createCinema', () => {
-    it('delegates to service', async () => {
-      const dto = {
-        sourceId: 1,
-        name: 'Kino',
-        url: 'http://a',
-        sourceCityId: 1,
-      } as any;
-      const cinema = { id: 1, ...dto };
-      mockService.createCinema.mockResolvedValue(cinema);
+  describe('getCinemaBySlug', () => {
+    it('should return cinema when found', async () => {
+      service.getCinemaBySlug.mockResolvedValue(mockCinemaResponse);
 
-      const result = await controller.createCinema(dto);
+      const result = await controller.getCinemaBySlug('kino-muranow');
 
-      expect(result).toEqual(cinema);
-    });
-  });
-
-  describe('batchCreateCinemas', () => {
-    it('delegates to service and returns count', async () => {
-      mockService.batchCreateCinemas.mockResolvedValue({ count: 2 });
-
-      const result = await controller.batchCreateCinemas({
-        cinemas: [{} as any, {} as any],
-      });
-
-      expect(result).toEqual({ count: 2 });
-    });
-  });
-
-  describe('getCinemaByIdOrSlug', () => {
-    it('returns cinema when found by id', async () => {
-      const cinema = {
-        id: 1,
-        slug: 'kino',
-        name: 'Kino',
-        street: null,
-        city: { id: 1, slug: 'w', name: 'W', nameDeclinated: 'W' },
-        latitude: null,
-        longitude: null,
-        filmwebUrl: '',
-      };
-      mockService.getCinemaByIdOrSlug.mockResolvedValue(cinema);
-
-      const result = await controller.getCinemaByIdOrSlug('1');
-
-      expect(result).toEqual(cinema);
+      expect(service.getCinemaBySlug).toHaveBeenCalledWith('kino-muranow');
+      expect(result).toEqual(mockCinemaResponse);
     });
 
-    it('throws NotFoundException when not found', async () => {
-      mockService.getCinemaByIdOrSlug.mockResolvedValue(null);
+    it('should throw NotFoundException when cinema not found', async () => {
+      service.getCinemaBySlug.mockResolvedValue(null);
 
-      await expect(controller.getCinemaByIdOrSlug('999')).rejects.toThrow(
+      await expect(controller.getCinemaBySlug('nieistniejace')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('createCinemasBatch', () => {
+    it('should delegate dto.cinemas to service', async () => {
+      const cinemas = [
+        {
+          sourceId: 201,
+          name: 'Nowe Kino',
+          slug: 'nowe-kino',
+          sourceCityId: 10,
+          url: 'https://filmweb.pl/cinema/nowe',
+        },
+      ];
+      service.createCinemasBatch.mockResolvedValue(undefined);
+
+      await controller.createCinemasBatch({ cinemas } as any);
+
+      expect(service.createCinemasBatch).toHaveBeenCalledWith(cinemas);
+    });
+  });
+
+  describe('updateCinemaBySlug', () => {
+    it('should return updated cinema when found', async () => {
+      service.updateCinemaBySlug.mockResolvedValue(mockCinemaResponse);
+
+      const body = { description: 'Zaktualizowany opis' } as any;
+      const result = await controller.updateCinemaBySlug('kino-muranow', body);
+
+      expect(service.updateCinemaBySlug).toHaveBeenCalledWith(
+        'kino-muranow',
+        body,
+      );
+      expect(result).toEqual(mockCinemaResponse);
+    });
+
+    it('should throw NotFoundException when cinema not found', async () => {
+      service.updateCinemaBySlug.mockResolvedValue(null);
+
+      await expect(
+        controller.updateCinemaBySlug('nieistniejace', {
+          description: 'test',
+        } as any),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

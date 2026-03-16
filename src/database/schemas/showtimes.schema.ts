@@ -1,19 +1,20 @@
 import {
   date,
-  int,
-  mysqlTable,
+  integer,
+  pgTable,
+  serial,
   timestamp,
   varchar,
-} from 'drizzle-orm/mysql-core';
+} from 'drizzle-orm/pg-core';
 import { citiesTable } from './cities.schema';
 
-export const showtimesTable = mysqlTable('showtimes', {
-  id: int().primaryKey().autoincrement(),
+export const showtimesTable = pgTable('showtimes', {
+  id: serial().primaryKey(),
   url: varchar({ length: 255 }).notNull().unique(),
-  cityId: int()
+  cityId: integer()
     .notNull()
     .references(() => citiesTable.id),
-  date: date().notNull(),
+  date: date({ mode: 'date' }).notNull(),
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp().notNull().defaultNow(),
 });

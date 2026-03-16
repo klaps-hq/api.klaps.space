@@ -1,0 +1,10 @@
+export const CLASSIC_YEAR_THRESHOLD = 2000;
+export const DEEP_CLASSIC_YEAR_THRESHOLD = 1980;
+
+export const SCORE = {
+  DEEP_CLASSIC: 30,
+  CLASSIC: 20,
+  NORMAL_YEAR: 10,
+  MULTI_CITY: 20,
+  MULTI_GENRE: 10,
+} as const;

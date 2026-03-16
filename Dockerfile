@@ -1,21 +1,22 @@
 # Stage 1: Install all dependencies (dev + prod) for building
-FROM node:22-alpine AS deps
+FROM oven/bun:1-alpine AS deps
 WORKDIR /app
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile --ignore-scripts
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
 # Stage 2: Build the application
-FROM node:22-alpine AS builder
+FROM oven/bun:1-alpine AS builder
+RUN apk add --no-cache nodejs
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN yarn build
+RUN node node_modules/@nestjs/cli/bin/nest.js build
 
 # Stage 3: Production dependencies only
-FROM node:22-alpine AS prod-deps
+FROM oven/bun:1-alpine AS prod-deps
 WORKDIR /app
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile --production --ignore-scripts
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile --production
 
 # Stage 4: Production image
 FROM node:22-alpine AS runner
@@ -35,6 +36,6 @@ USER nestjs
 EXPOSE 5000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -q --spider http://localhost:5000/api/v1/health || exit 1
+  CMD wget -q --spider http://localhost:5000/api/v2/health || exit 1
 
 CMD ["node", "dist/main"]

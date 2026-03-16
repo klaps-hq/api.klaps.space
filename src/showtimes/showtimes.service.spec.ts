@@ -1,239 +1,225 @@
 import { Test } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
 import { ShowtimesService } from './showtimes.service';
-import { DRIZZLE } from '../database/constants';
+import { ShowtimesRepository } from './showtimes.repository';
+import { CitiesService } from '../cities/cities.service';
+import { getDateRangeUpToMonthFromNow } from '../lib/date';
 
 describe('ShowtimesService', () => {
   let service: ShowtimesService;
-  let mockDb: any;
+  let repo: jest.Mocked<ShowtimesRepository>;
+  let citiesService: jest.Mocked<CitiesService>;
 
   beforeEach(async () => {
-    const mockInsertChain = {
-      values: jest.fn().mockReturnThis(),
-      onDuplicateKeyUpdate: jest.fn().mockResolvedValue(undefined),
-    };
-
-    mockDb = {
-      query: {
-        showtimes: {
-          findMany: jest.fn(),
-          findFirst: jest.fn(),
-        },
-      },
-      insert: jest.fn().mockReturnValue(mockInsertChain),
-      selectDistinct: jest.fn().mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue([]),
-        }),
-      }),
-      select: jest.fn().mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          leftJoin: jest.fn().mockReturnValue({
-            where: jest.fn().mockResolvedValue([]),
-          }),
-        }),
-      }),
-    };
-
     const module = await Test.createTestingModule({
-      providers: [ShowtimesService, { provide: DRIZZLE, useValue: mockDb }],
+      providers: [
+        ShowtimesService,
+        {
+          provide: ShowtimesRepository,
+          useValue: {
+            findAll: jest.fn(),
+            upsertBatch: jest.fn(),
+            updateCitiesLastScrapedAt: jest.fn(),
+          },
+        },
+        {
+          provide: CitiesService,
+          useValue: {
+            findBySlug: jest.fn(),
+          },
+        },
+      ],
     }).compile();
 
     service = module.get(ShowtimesService);
+    repo = module.get(ShowtimesRepository);
+    citiesService = module.get(CitiesService);
   });
+
+  afterEach(() => jest.clearAllMocks());
 
   describe('getShowtimes', () => {
-    it('returns all showtimes', async () => {
+    it('should query with dateFrom, dateTo and cityId', async () => {
       const showtimes = [
-        { id: 1, url: 'http://a', cityId: 1, date: new Date() },
+        {
+          id: 1,
+          url: 'https://kino.pl/1',
+          cityId: 3,
+          date: '2025-01-15',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 2,
+          url: 'https://kino.pl/2',
+          cityId: 3,
+          date: '2025-01-16',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       ];
-      mockDb.query.showtimes.findMany.mockResolvedValue(showtimes);
-
-      const result = await service.getShowtimes();
-
-      expect(result).toEqual(showtimes);
-    });
-  });
-
-  describe('createShowtime', () => {
-    it('upserts and returns the showtime', async () => {
-      const dto = { url: 'http://a', cityId: 1, date: '2024-08-15' };
-      const row = { id: 1, ...dto, date: new Date(dto.date) };
-      mockDb.query.showtimes.findFirst.mockResolvedValue(row);
-
-      const result = await service.createShowtime(dto as any);
-
-      expect(result.id).toBe(1);
-      expect(mockDb.insert).toHaveBeenCalled();
-    });
-  });
-
-  describe('getProcessedCityIds', () => {
-    it('returns array of cityIds', async () => {
-      mockDb.selectDistinct.mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue([{ cityId: 1 }, { cityId: 2 }]),
-        }),
-      });
-
-      const result = await service.getProcessedCityIds(
-        '2024-01-01',
-        '2024-12-31',
+      repo.findAll.mockResolvedValue(
+        showtimes.map((s) => ({ ...s, date: new Date(s.date) })),
       );
 
-      expect(result).toEqual([1, 2]);
-    });
-  });
-
-  describe('markCityProcessed', () => {
-    it('inserts processed city record', async () => {
-      await service.markCityProcessed({ cityId: 1, processedAt: '2024-08-15' });
-
-      expect(mockDb.insert).toHaveBeenCalled();
-    });
-
-    it('defaults processedAt to today when not provided', async () => {
-      await service.markCityProcessed({ cityId: 1 } as any);
-
-      expect(mockDb.insert).toHaveBeenCalled();
-    });
-  });
-
-  describe('markShowtimeProcessed', () => {
-    it('inserts processed showtime record', async () => {
-      await service.markShowtimeProcessed({ showtimeId: 42 });
-
-      expect(mockDb.insert).toHaveBeenCalled();
-    });
-  });
-
-  describe('getUnprocessedShowtimes', () => {
-    it('returns mapped showtime rows', async () => {
-      const now = new Date('2024-08-15T12:00:00Z');
-      mockDb.select.mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          leftJoin: jest.fn().mockReturnValue({
-            where: jest.fn().mockResolvedValue([
-              {
-                id: 1,
-                url: 'http://a',
-                cityId: 5,
-                date: now,
-                createdAt: now,
-                updatedAt: now,
-              },
-            ]),
-          }),
-        }),
-      });
-
-      const result = await service.getUnprocessedShowtimes(
-        '2024-01-01',
-        '2024-12-31',
-      );
-
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe(1);
-      expect(result[0].url).toBe('http://a');
-      expect(result[0].date).toBe(now.toISOString());
-    });
-
-    it('returns empty array when none found', async () => {
-      const result = await service.getUnprocessedShowtimes(
-        '2024-01-01',
-        '2024-12-31',
-      );
-
-      expect(result).toEqual([]);
-    });
-
-    it('handles string dates in rows', async () => {
-      mockDb.select.mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          leftJoin: jest.fn().mockReturnValue({
-            where: jest.fn().mockResolvedValue([
-              {
-                id: 2,
-                url: 'http://b',
-                cityId: 3,
-                date: '2024-08-15T12:00:00Z',
-                createdAt: '2024-08-15T12:00:00Z',
-                updatedAt: '2024-08-15T12:00:00Z',
-              },
-            ]),
-          }),
-        }),
-      });
-
-      const result = await service.getUnprocessedShowtimes(
-        '2024-01-01',
-        '2024-12-31',
-      );
-
-      expect(result[0].date).toBe('2024-08-15T12:00:00Z');
-    });
-  });
-
-  describe('batchCreateShowtimes', () => {
-    it('returns count 0 for empty array', async () => {
-      const result = await service.batchCreateShowtimes([]);
-
-      expect(result).toEqual({ count: 0 });
-      expect(mockDb.insert).not.toHaveBeenCalled();
-    });
-
-    it('returns count matching input length', async () => {
-      const showtimes = [
-        { url: 'http://a', cityId: 1, date: '2024-08-15' },
-        { url: 'http://b', cityId: 1, date: '2024-08-16' },
-      ];
-
-      const result = await service.batchCreateShowtimes(showtimes as any);
-
-      expect(result).toEqual({ count: 2 });
-    });
-  });
-
-  describe('processShowtime', () => {
-    it('throws NotFoundException when showtime not found', async () => {
-      mockDb.query.showtimes.findFirst.mockResolvedValue(undefined);
-
-      await expect(
-        service.processShowtime(999, { movieId: 1, screenings: [] }),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('skips screenings when movieId is null', async () => {
-      mockDb.query.showtimes.findFirst.mockResolvedValue({ id: 1 });
-
-      const result = await service.processShowtime(1, {
-        movieId: null,
-        screenings: [],
+      const result = await service.getShowtimes({
+        dateFrom: '2025-01-10',
+        dateTo: '2025-01-20',
+        cityId: 3,
       } as any);
 
-      expect(result).toEqual({ movieId: null, screeningsCount: 0 });
+      expect(result).toEqual([
+        {
+          id: 1,
+          url: 'https://kino.pl/1',
+          cityId: 3,
+          date: new Date('2025-01-15'),
+        },
+        {
+          id: 2,
+          url: 'https://kino.pl/2',
+          cityId: 3,
+          date: new Date('2025-01-16'),
+        },
+      ]);
+      const { startDay, endDay } = getDateRangeUpToMonthFromNow(
+        '2025-01-10',
+        '2025-01-20',
+      );
+      expect(repo.findAll).toHaveBeenCalledWith(startDay, endDay, 3);
+      expect(citiesService.findBySlug).not.toHaveBeenCalled();
     });
 
-    it('inserts screenings and marks showtime as processed', async () => {
-      mockDb.query.showtimes.findFirst.mockResolvedValue({ id: 1 });
+    it('should resolve cityId via citiesService when citySlug provided', async () => {
+      citiesService.findBySlug.mockResolvedValue({
+        id: 7,
+        slug: 'gdansk',
+      } as any);
+      repo.findAll.mockResolvedValue([]);
 
-      const dto = {
-        movieId: 5,
-        screenings: [
-          {
-            url: 'http://ticket',
-            cinemaId: 1,
-            type: '2D',
-            date: '2024-08-15T18:00:00Z',
-            isDubbing: false,
-            isSubtitled: false,
-          },
-        ],
-      };
+      await service.getShowtimes({
+        dateFrom: '2025-01-10',
+        dateTo: '2025-01-20',
+        citySlug: 'gdansk',
+      } as any);
 
-      const result = await service.processShowtime(1, dto as any);
+      const { startDay, endDay } = getDateRangeUpToMonthFromNow(
+        '2025-01-10',
+        '2025-01-20',
+      );
+      expect(citiesService.findBySlug).toHaveBeenCalledWith('gdansk');
+      expect(repo.findAll).toHaveBeenCalledWith(startDay, endDay, 7);
+    });
 
-      expect(result).toEqual({ movieId: 5, screeningsCount: 1 });
+    it('should pass undefined cityId when neither cityId nor citySlug provided', async () => {
+      repo.findAll.mockResolvedValue([]);
+
+      await service.getShowtimes({
+        dateFrom: '2025-02-01',
+        dateTo: '2025-02-28',
+      } as any);
+
+      const { startDay, endDay } = getDateRangeUpToMonthFromNow(
+        '2025-02-01',
+        '2025-02-28',
+      );
+      expect(repo.findAll).toHaveBeenCalledWith(startDay, endDay, undefined);
+    });
+
+    it('should use current date range when dateFrom/dateTo are not provided', async () => {
+      repo.findAll.mockResolvedValue([]);
+
+      await service.getShowtimes({} as any);
+
+      const [startDay, endDay] = repo.findAll.mock.calls[0];
+      expect(startDay).toBeInstanceOf(Date);
+      expect(endDay).toBeInstanceOf(Date);
+      expect(endDay.getTime()).toBeGreaterThan(startDay.getTime());
+    });
+
+    it('should return undefined cityId when citySlug resolves to no city', async () => {
+      citiesService.findBySlug.mockResolvedValue(null);
+      repo.findAll.mockResolvedValue([]);
+
+      await service.getShowtimes({ citySlug: 'nonexistent' } as any);
+
+      expect(repo.findAll).toHaveBeenCalledWith(
+        expect.any(Date),
+        expect.any(Date),
+        undefined,
+      );
+    });
+  });
+
+  describe('createShowtimesBatch', () => {
+    it('should skip upsert but still update lastScrapedAt when showtimes empty', async () => {
+      repo.updateCitiesLastScrapedAt.mockResolvedValue(undefined);
+
+      await service.createShowtimesBatch({
+        showtimes: [],
+        scrapedCityIds: [1],
+      } as any);
+
+      expect(repo.upsertBatch).not.toHaveBeenCalled();
+      expect(repo.updateCitiesLastScrapedAt).toHaveBeenCalledWith([1]);
+    });
+
+    it('should skip both when showtimes empty and no scrapedCityIds', async () => {
+      await service.createShowtimesBatch({
+        showtimes: [],
+        scrapedCityIds: [],
+      } as any);
+
+      expect(repo.upsertBatch).not.toHaveBeenCalled();
+      expect(repo.updateCitiesLastScrapedAt).not.toHaveBeenCalled();
+    });
+
+    it('should derive cityIds from showtimes when scrapedCityIds not provided', async () => {
+      const showtimes = [
+        { url: 'https://kino.pl/1', cityId: 3, date: '2025-01-15' },
+        { url: 'https://kino.pl/2', cityId: 3, date: '2025-01-16' },
+      ];
+      repo.upsertBatch.mockResolvedValue(undefined);
+      repo.updateCitiesLastScrapedAt.mockResolvedValue(undefined);
+
+      await service.createShowtimesBatch({
+        showtimes,
+        scrapedCityIds: undefined,
+      } as any);
+
+      expect(repo.upsertBatch).toHaveBeenCalledWith(showtimes);
+      expect(repo.updateCitiesLastScrapedAt).toHaveBeenCalledWith([3]);
+    });
+
+    it('should update cities lastScrapedAt when scrapedCityIds provided', async () => {
+      const showtimes = [
+        { url: 'https://kino.pl/1', cityId: 3, date: '2025-01-15' },
+      ];
+      repo.upsertBatch.mockResolvedValue(undefined);
+      repo.updateCitiesLastScrapedAt.mockResolvedValue(undefined);
+
+      await service.createShowtimesBatch({
+        showtimes,
+        scrapedCityIds: [3, 5],
+      } as any);
+
+      expect(repo.upsertBatch).toHaveBeenCalledWith(showtimes);
+      expect(repo.updateCitiesLastScrapedAt).toHaveBeenCalledWith([3, 5]);
+    });
+
+    it('should derive cityIds from showtimes when scrapedCityIds is empty array', async () => {
+      const showtimes = [
+        { url: 'https://kino.pl/1', cityId: 3, date: '2025-01-15' },
+      ];
+      repo.upsertBatch.mockResolvedValue(undefined);
+      repo.updateCitiesLastScrapedAt.mockResolvedValue(undefined);
+
+      await service.createShowtimesBatch({
+        showtimes,
+        scrapedCityIds: [],
+      } as any);
+
+      expect(repo.upsertBatch).toHaveBeenCalledWith(showtimes);
+      expect(repo.updateCitiesLastScrapedAt).toHaveBeenCalledWith([3]);
     });
   });
 });
