@@ -2,15 +2,13 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { CitiesModule } from './cities/cities.module';
 import { DatabaseModule } from './database/database.module';
 import { MoviesModule } from './movies/movies.module';
 import { GenresModule } from './genres/genres.module';
 import { ScreeningsModule } from './screenings/screenings.module';
 import { CinemasModule } from './cinemas/cinemas.module';
-import { InstagramModule } from './instagram/instagram.module';
+import { SocialsModule } from './socials/socials.module';
 import { ShowtimesModule } from './showtimes/showtimes.module';
 import { InternalBypassThrottlerGuard } from './guards/internal-bypass-throttler.guard';
 import { AppLoggerModule } from './logger/logger.module';
@@ -20,24 +18,20 @@ import { HealthModule } from './health/health.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     AppLoggerModule,
-    ThrottlerModule.forRoot([
-      { name: 'short', ttl: 10_000, limit: 30 },
-      { name: 'long', ttl: 60_000, limit: 100 },
-    ]),
     DatabaseModule,
     HealthModule,
     MoviesModule,
     CitiesModule,
     CinemasModule,
     GenresModule,
-    InstagramModule,
+    SocialsModule,
     ScreeningsModule,
     ShowtimesModule,
+    ThrottlerModule.forRoot([
+      { name: 'short', ttl: 10_000, limit: 30 },
+      { name: 'long', ttl: 60_000, limit: 100 },
+    ]),
   ],
-  controllers: [AppController],
-  providers: [
-    AppService,
-    { provide: APP_GUARD, useClass: InternalBypassThrottlerGuard },
-  ],
+  providers: [{ provide: APP_GUARD, useClass: InternalBypassThrottlerGuard }],
 })
 export class AppModule {}

@@ -1,26 +1,23 @@
 import 'dotenv/config';
-import { createConnection } from 'mysql2/promise';
-import type { RowDataPacket } from 'mysql2';
-
-interface MigrationRow extends RowDataPacket {
-  hash: string;
-}
+import { Client, type QueryResultRow } from 'pg';
 
 const run = async () => {
-  const connection = await createConnection(process.env.DATABASE_URL!);
+  const client = new Client(process.env.DATABASE_URL);
+  await client.connect();
   try {
     for (const table of ['movies', 'cinemas', 'cities', 'genres']) {
-      const [rows] = await connection.execute<any[]>(
-        `SHOW COLUMNS FROM \`${table}\` WHERE Field = 'slug'`,
+      const { rows } = await client.query<QueryResultRow>(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND column_name = 'slug'`,
+        [table],
       );
       console.log(`${table}.slug: ${rows.length > 0 ? 'EXISTS' : 'MISSING'}`);
     }
-    const [mig] = await connection.execute<MigrationRow[]>(
-      'SELECT hash FROM `__drizzle_migrations`',
+    const { rows: mig } = await client.query<QueryResultRow>(
+      'SELECT hash FROM "__drizzle_migrations"',
     );
     console.log(`migrations recorded: ${mig.length}`);
   } finally {
-    await connection.end();
+    await client.end();
   }
 };
 

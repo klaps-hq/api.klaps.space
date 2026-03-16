@@ -1,13 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ScreeningsController } from './screenings.controller';
 import { ScreeningsService } from './screenings.service';
+import { ScreeningsRepository } from './screenings.repository';
 
-/**
- * Module for screening-related API and business logic.
- */
 @Module({
   controllers: [ScreeningsController],
-  providers: [ScreeningsService],
+  providers: [ScreeningsService, ScreeningsRepository],
   exports: [ScreeningsService],
 })
 export class ScreeningsModule {}

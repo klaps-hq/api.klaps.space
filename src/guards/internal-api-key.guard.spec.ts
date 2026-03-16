@@ -1,11 +1,12 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Test } from '@nestjs/testing';
 import {
   InternalApiKeyGuard,
   INTERNAL_API_KEY_HEADER,
 } from './internal-api-key.guard';
 
-const buildContext = (
+const createMockContext = (
   headers: Record<string, string | undefined> = {},
 ): ExecutionContext =>
   ({
@@ -16,24 +17,37 @@ const buildContext = (
 
 describe('InternalApiKeyGuard', () => {
   let guard: InternalApiKeyGuard;
-  let configGet: jest.Mock;
+  let configService: jest.Mocked<ConfigService>;
 
-  beforeEach(() => {
-    configGet = jest.fn();
-    const configService = { get: configGet } as unknown as ConfigService;
-    guard = new InternalApiKeyGuard(configService);
+  beforeEach(async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        InternalApiKeyGuard,
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn() },
+        },
+      ],
+    }).compile();
+
+    guard = module.get(InternalApiKeyGuard);
+    configService = module.get(ConfigService);
   });
 
-  it('returns true when header matches configured key', () => {
-    configGet.mockReturnValue('secret-123');
-    const ctx = buildContext({ [INTERNAL_API_KEY_HEADER]: 'secret-123' });
+  it('should allow request with valid API key', () => {
+    configService.get.mockReturnValue('secret-key');
+    const ctx = createMockContext({
+      [INTERNAL_API_KEY_HEADER]: 'secret-key',
+    });
 
     expect(guard.canActivate(ctx)).toBe(true);
   });
 
-  it('throws when INTERNAL_API_KEY is not configured', () => {
-    configGet.mockReturnValue(undefined);
-    const ctx = buildContext({ [INTERNAL_API_KEY_HEADER]: 'any' });
+  it('should throw when INTERNAL_API_KEY env var is not configured', () => {
+    configService.get.mockReturnValue(undefined);
+    const ctx = createMockContext({
+      [INTERNAL_API_KEY_HEADER]: 'any-key',
+    });
 
     expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
     expect(() => guard.canActivate(ctx)).toThrow(
@@ -41,17 +55,19 @@ describe('InternalApiKeyGuard', () => {
     );
   });
 
-  it('throws when header is missing', () => {
-    configGet.mockReturnValue('secret-123');
-    const ctx = buildContext({});
+  it('should throw when header is missing', () => {
+    configService.get.mockReturnValue('secret-key');
+    const ctx = createMockContext({});
 
     expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
     expect(() => guard.canActivate(ctx)).toThrow('Missing internal API key');
   });
 
-  it('throws when header value is wrong', () => {
-    configGet.mockReturnValue('secret-123');
-    const ctx = buildContext({ [INTERNAL_API_KEY_HEADER]: 'wrong-key' });
+  it('should throw when header value is wrong', () => {
+    configService.get.mockReturnValue('secret-key');
+    const ctx = createMockContext({
+      [INTERNAL_API_KEY_HEADER]: 'wrong-key',
+    });
 
     expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
     expect(() => guard.canActivate(ctx)).toThrow('Invalid internal API key');
