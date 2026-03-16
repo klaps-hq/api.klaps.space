@@ -39,6 +39,12 @@ export class CitiesRepository {
       .groupBy(...Object.values(cityColumns));
   }
 
+  async findById(id: number) {
+    return this.db.query.cities.findFirst({
+      where: eq(schema.cities.id, id),
+    });
+  }
+
   async findBySlug(slug: string) {
     return this.db.query.cities.findFirst({
       where: eq(schema.cities.slug, slug),
