@@ -11,7 +11,7 @@ Client
   -> Controller    (HTTP, walidacja DTO, guards)
   -> Service       (orkiestracja, mapowanie response)
   -> Repository    (queries do bazy)
-  -> Database      (Drizzle ORM + MySQL)
+  -> Database      (Drizzle ORM + PostgreSQL)
 ```
 
 ---
@@ -211,7 +211,7 @@ Zasady:
 @Injectable()
 export class CinemasService {
   constructor(
-    @Inject(DRIZZLE) private readonly db: MySql2Database<FullSchema>,
+    @Inject(DRIZZLE) private readonly db: NodePgDatabase<FullSchema>,
   ) {}
 
   // === READ ===
@@ -234,7 +234,7 @@ Sekcje oddzielone komentarzami `// === READ ===`, `// === WRITE ===`, `// === PR
 @Injectable()
 export class MoviesRepository {
   constructor(
-    @Inject(DRIZZLE) private readonly db: MySql2Database<FullSchema>,
+    @Inject(DRIZZLE) private readonly db: NodePgDatabase<FullSchema>,
   ) {}
 
   // === READ ===
@@ -267,7 +267,7 @@ Zasady:
 @Injectable()
 export class MoviesBatchService {
   constructor(
-    @Inject(DRIZZLE) private readonly db: MySql2Database<FullSchema>,
+    @Inject(DRIZZLE) private readonly db: NodePgDatabase<FullSchema>,
     private readonly moviesRepo: MoviesRepository,
   ) {}
 
@@ -311,16 +311,17 @@ Kazdy batch insert w projekcie stosuje ten sam wzorzec:
 // 1. sortAndChunk — sortuj po kluczu, podziel na chunki po 500
 const chunks = sortAndChunk(values, (item) => item.sourceId);
 
-// 2. withDeadlockRetry — exponential backoff na deadlocki MySQL
+// 2. withDeadlockRetry — exponential backoff na deadlocki PostgreSQL
 for (const chunk of chunks) {
   await withDeadlockRetry(
     () =>
       this.db
         .insert(schema.movies)
         .values(chunk)
-        .onDuplicateKeyUpdate({
+        .onConflictDoUpdate({
+          target: schema.movies.sourceId,
           set: {
-            title: sql`VALUES(${schema.movies.title})`,
+            title: sql`excluded.title`,
             // ... pola do updejtu
           },
         }),
@@ -332,7 +333,7 @@ for (const chunk of chunks) {
 Zasady:
 - Zawsze `sortAndChunk` przed insertem (redukuje gap-lock deadlocki)
 - Zawsze `withDeadlockRetry` wokol insertu
-- `onDuplicateKeyUpdate` z `sql\`VALUES()\`` pattern
+- `onConflictDoUpdate` z `excluded.*` pattern
 - Label w formacie `{operacja}:{tabela}`
 - BEZ explicit transactions (unikanie deadlockow)
 - Chunk size domyslnie 500 (z `sortAndChunk`)
@@ -394,7 +395,7 @@ export class GetMoviesQueryDto {
 
 ```ts
 // src/database/schemas/movies.schema.ts
-export const moviesTable = mysqlTable('movies', {
+export const moviesTable = pgTable('movies', {
   id: int().primaryKey().autoincrement(),
   sourceId: int().notNull().unique(),                // external ID from scraper
   slug: varchar({ length: 255 }).notNull().unique(),
@@ -412,7 +413,7 @@ export type NewMovie = typeof moviesTable.$inferInsert;
 
 ```ts
 // src/database/schemas/movies_actors.schema.ts
-export const moviesActorsTable = mysqlTable(
+export const moviesActorsTable = pgTable(
   'movies_actors',
   {
     id: int().primaryKey().autoincrement(),
@@ -499,12 +500,12 @@ import { DRIZZLE } from '../database/constants';
 type FullSchema = typeof schema & typeof relations;
 
 constructor(
-  @Inject(DRIZZLE) private readonly db: MySql2Database<FullSchema>,
+  @Inject(DRIZZLE) private readonly db: NodePgDatabase<FullSchema>,
 ) {}
 ```
 
 - Token `DRIZZLE` z `src/database/constants.ts`
-- Typ: `MySql2Database<FullSchema>` (schema + relations)
+- Typ: `NodePgDatabase<FullSchema>` (schema + relacje)
 - `FullSchema` deklarowany lokalnie w kazdym pliku ktory uzywa DB
 
 ---
