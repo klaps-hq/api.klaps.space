@@ -51,8 +51,20 @@ export class GetScreeningsQueryDto {
   genreSlug?: string;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'cinemaId must be an integer' })
+  @Min(1, { message: 'cinemaId must be a positive integer' })
+  cinemaId?: number;
+
+  @IsOptional()
   @IsString({ message: 'cinemaSlug must be a string' })
   cinemaSlug?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'limit must be an integer' })
+  @Min(1, { message: 'limit must be a positive integer' })
+  limit?: number;
 
   @IsOptional()
   @IsString({ message: 'search must be a string' })
