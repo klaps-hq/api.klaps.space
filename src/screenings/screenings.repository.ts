@@ -15,9 +15,11 @@ export type FindScreeningsParams = {
   movieId?: number;
   cityId?: number;
   citySlug?: string;
+  cinemaId?: number;
   cinemaSlug?: string;
   genreId?: number;
   genreSlug?: string;
+  limit?: number;
   search?: string;
 };
 
@@ -34,6 +36,7 @@ export class ScreeningsRepository {
     const locationCondition = await this.resolveLocationCondition(
       params.cityId,
       params.citySlug,
+      params.cinemaId,
       params.cinemaSlug,
     );
     const genreCondition = await this.resolveGenreCondition(
@@ -52,7 +55,7 @@ export class ScreeningsRepository {
       genreCondition,
     );
 
-    const rows = await this.db
+    const query = this.db
       .selectDistinct({ movieId: schema.screenings.movieId })
       .from(schema.screenings)
       .innerJoin(
@@ -65,6 +68,8 @@ export class ScreeningsRepository {
       )
       .where(whereConditions);
 
+    const rows = params.limit ? await query.limit(params.limit) : await query;
+
     return rows.map((r) => r.movieId);
   }
 
@@ -75,6 +80,7 @@ export class ScreeningsRepository {
     locationFilter?: {
       cityId?: number;
       citySlug?: string;
+      cinemaId?: number;
       cinemaSlug?: string;
     },
   ) {
@@ -82,6 +88,7 @@ export class ScreeningsRepository {
       ? await this.resolveLocationCondition(
           locationFilter.cityId,
           locationFilter.citySlug,
+          locationFilter.cinemaId,
           locationFilter.cinemaSlug,
         )
       : undefined;
@@ -198,8 +205,18 @@ export class ScreeningsRepository {
   private async resolveLocationCondition(
     cityId?: number,
     citySlug?: string,
+    cinemaId?: number,
     cinemaSlug?: string,
   ) {
+    if (cinemaId) {
+      const cinema = await this.db.query.cinemas.findFirst({
+        where: eq(schema.cinemas.id, cinemaId),
+        columns: { sourceId: true },
+      });
+      if (!cinema) return undefined;
+      return eq(schema.screenings.cinemaId, cinema.sourceId);
+    }
+
     if (cinemaSlug) {
       const cinema = await this.db.query.cinemas.findFirst({
         where: eq(schema.cinemas.slug, cinemaSlug),
