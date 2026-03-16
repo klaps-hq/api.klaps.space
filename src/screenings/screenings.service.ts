@@ -34,9 +34,11 @@ export class ScreeningsService {
       movieId: params?.movieId,
       cityId: params?.cityId,
       citySlug: params?.citySlug,
+      cinemaId: params?.cinemaId,
       cinemaSlug: params?.cinemaSlug,
       genreId: params?.genreId,
       genreSlug: params?.genreSlug,
+      limit: params?.limit,
       search: params?.search,
     });
 
@@ -49,6 +51,7 @@ export class ScreeningsService {
       {
         cityId: params?.cityId,
         citySlug: params?.citySlug,
+        cinemaId: params?.cinemaId,
         cinemaSlug: params?.cinemaSlug,
       },
     );

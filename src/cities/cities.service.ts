@@ -22,6 +22,11 @@ export class CitiesService {
     return cities.map((c) => mapCity(c));
   }
 
+  async findById(id: number): Promise<City | null> {
+    const city = await this.repo.findById(id);
+    return city ?? null;
+  }
+
   async findBySlug(slug: string): Promise<City | null> {
     const city = await this.repo.findBySlug(slug);
     return city ?? null;

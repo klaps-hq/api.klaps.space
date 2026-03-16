@@ -19,7 +19,10 @@ export class CinemasService {
   async getCinemas(
     query: GetCinemasQueryDto,
   ): Promise<CinemaSummaryResponse[]> {
-    const sourceCityId = await this.resolveSourceCityId(query.citySlug);
+    const sourceCityId = await this.resolveSourceCityId(
+      query.cityId,
+      query.citySlug,
+    );
     const cinemas = await this.repo.findAll(sourceCityId, query.limit);
     return cinemas.map(mapCinemaSummary);
   }
@@ -50,10 +53,17 @@ export class CinemasService {
   // === PRIVATE ===
 
   private async resolveSourceCityId(
+    cityId?: number,
     citySlug?: string,
   ): Promise<number | undefined> {
-    if (!citySlug) return undefined;
-    const city = await this.citiesService.findBySlug(citySlug);
-    return city?.sourceId;
+    if (cityId) {
+      const city = await this.citiesService.findById(cityId);
+      return city?.sourceId;
+    }
+    if (citySlug) {
+      const city = await this.citiesService.findBySlug(citySlug);
+      return city?.sourceId;
+    }
+    return undefined;
   }
 }
