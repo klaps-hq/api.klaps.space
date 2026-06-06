@@ -39,6 +39,21 @@ export const movieSlug = (title: string, productionYear: number): string =>
   toSlug(`${title}-${productionYear}`);
 
 /**
+ * Builds a cinema slug from name and city, e.g. "Multikino" + "Gdańsk" →
+ * "multikino-gdansk". Sieciówki (Helios, Multikino, Cinema City) mają
+ * identyczne nazwy w wielu miastach — miasto w slugu daje czytelne,
+ * deterministyczne URL-e zamiast przypadkowych sufiksów `-N`.
+ * Skips the city part when the name already ends with it
+ * (e.g. "Kino Nowe Horyzonty Wrocław").
+ */
+export const cinemaSlug = (name: string, cityName: string): string => {
+  const base = toSlug(name);
+  const city = toSlug(cityName);
+  if (!city || base === city || base.endsWith(`-${city}`)) return base;
+  return `${base}-${city}`;
+};
+
+/**
  * Given a base slug and a set of already-taken slugs, returns a unique
  * variant by appending `-2`, `-3`, … when needed.
  */

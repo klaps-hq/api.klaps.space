@@ -28,6 +28,8 @@ export type MovieSummaryResponse = {
   posterUrl: string | null;
   videoUrl: string | null;
   genres: GenreResponse[];
+  /** ISO 8601 UTC; ostatnia zauważalna zmiana treści (film lub jego seanse). */
+  updatedAt?: string;
 };
 
 export type MovieHeroResponse = MovieSummaryResponse & {

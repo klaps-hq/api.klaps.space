@@ -35,6 +35,7 @@ describe('GenresService', () => {
           useValue: {
             findAll: jest.fn(),
             findBySlug: jest.fn(),
+            findContentUpdatedAt: jest.fn().mockResolvedValue(new Map()),
             updateBySlug: jest.fn(),
           },
         },
@@ -64,6 +65,16 @@ describe('GenresService', () => {
       const result = await service.getGenres();
 
       expect(result).toEqual([]);
+    });
+
+    it('should include updatedAt from content updatedAt map', async () => {
+      const contentDate = new Date('2026-06-01T12:00:00.000Z');
+      repo.findAll.mockResolvedValue([mockGenre]);
+      repo.findContentUpdatedAt.mockResolvedValue(new Map([[1, contentDate]]));
+
+      const result = await service.getGenres();
+
+      expect(result[0].updatedAt).toBe('2026-06-01T12:00:00.000Z');
     });
   });
 
