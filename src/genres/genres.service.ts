@@ -11,8 +11,11 @@ export class GenresService {
   // === READ ===
 
   async getGenres(): Promise<GenreResponse[]> {
-    const genres = await this.repo.findAll();
-    return genres.map(mapGenre);
+    const [genres, updatedAtByGenreId] = await Promise.all([
+      this.repo.findAll(),
+      this.repo.findContentUpdatedAt(),
+    ]);
+    return genres.map((g) => mapGenre(g, updatedAtByGenreId.get(g.id)));
   }
 
   async findBySlug(slug: string) {

@@ -49,7 +49,7 @@ describe('SocialsController', () => {
         numberOfCandidates: 5,
       };
 
-      const result = await controller.getCandidate(query as any);
+      const result = await controller.getCandidate(query);
 
       expect(service.getCandidate).toHaveBeenCalledWith(query);
       expect(result).toEqual(mockResponse);
@@ -83,7 +83,7 @@ describe('SocialsController', () => {
 
       const body = { platform: 'instagram', screeningId: 42 };
 
-      await controller.reserve(body as any);
+      await controller.reserve(body);
 
       expect(service.reserveCandidate).toHaveBeenCalledWith(body);
     });
@@ -95,7 +95,7 @@ describe('SocialsController', () => {
 
       const body = { platform: 'twitter', screeningId: 99 };
 
-      await controller.publish(body as any);
+      await controller.publish(body);
 
       expect(service.publishCandidate).toHaveBeenCalledWith(body);
     });
