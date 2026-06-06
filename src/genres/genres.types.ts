@@ -7,4 +7,6 @@ export type GenreResponse = {
   slug: string;
   name: string;
   description: string | null;
+  /** ISO 8601 UTC; ostatnia zauważalna zmiana treści (gatunek lub jego filmy). */
+  updatedAt?: string;
 };

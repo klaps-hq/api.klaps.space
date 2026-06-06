@@ -4,10 +4,10 @@ import { SitemapController } from './sitemap.controller';
 import { SitemapService } from './sitemap.service';
 
 const mockSitemapResponse = {
-  movies: [{ slug: 'pan-tadeusz-1999', updatedAt: '2024-01-01T00:00:00.000Z' }],
-  cinemas: [{ slug: 'kino-muranow', updatedAt: '2024-01-01T00:00:00.000Z' }],
-  cities: [{ slug: 'warszawa' }],
-  genres: [{ slug: 'dramat', updatedAt: '2024-01-01T00:00:00.000Z' }],
+  movies: [{ slug: 'incepcja', updatedAt: '2026-06-01T12:00:00.000Z' }],
+  cinemas: [{ slug: 'kino-muranow', updatedAt: '2026-06-01T12:00:00.000Z' }],
+  cities: [{ slug: 'warszawa', updatedAt: '2026-06-01T12:00:00.000Z' }],
+  genres: [{ slug: 'dramat', updatedAt: '2026-06-01T12:00:00.000Z' }],
 };
 
 describe('SitemapController', () => {
@@ -20,7 +20,9 @@ describe('SitemapController', () => {
       providers: [
         {
           provide: SitemapService,
-          useValue: { getSitemap: jest.fn() },
+          useValue: {
+            getSitemap: jest.fn(),
+          },
         },
         {
           provide: ConfigService,
@@ -34,7 +36,7 @@ describe('SitemapController', () => {
   });
 
   describe('getSitemap', () => {
-    it('should return sitemap entries from service', async () => {
+    it('should return sitemap data from service', async () => {
       service.getSitemap.mockResolvedValue(mockSitemapResponse);
 
       const result = await controller.getSitemap();

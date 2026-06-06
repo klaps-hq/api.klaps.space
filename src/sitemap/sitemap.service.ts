@@ -1,13 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { SitemapRepository, type SitemapRow } from './sitemap.repository';
-import type { SitemapEntry, SitemapResponse } from './sitemap.types';
-
-// Omit updatedAt rather than send an unreliable value; the frontend
-// skips lastModified entirely when the field is absent.
-const toEntry = ({ slug, updatedAt }: SitemapRow): SitemapEntry => ({
-  slug,
-  ...(updatedAt && { updatedAt: updatedAt.toISOString() }),
-});
+import type { SitemapResponse } from './sitemap.types';
+import { mapSitemapEntry } from './sitemap.mapper';
+import { SitemapRepository } from './sitemap.repository';
 
 @Injectable()
 export class SitemapService {
@@ -19,15 +13,15 @@ export class SitemapService {
     const [movies, cinemas, cities, genres] = await Promise.all([
       this.repo.findMovieEntries(),
       this.repo.findCinemaEntries(),
-      this.repo.findCityEntriesWithCinemas(),
+      this.repo.findCityEntries(),
       this.repo.findGenreEntries(),
     ]);
 
     return {
-      movies: movies.map(toEntry),
-      cinemas: cinemas.map(toEntry),
-      cities: cities.map(toEntry),
-      genres: genres.map(toEntry),
+      movies: movies.map(mapSitemapEntry),
+      cinemas: cinemas.map(mapSitemapEntry),
+      cities: cities.map(mapSitemapEntry),
+      genres: genres.map(mapSitemapEntry),
     };
   }
 }

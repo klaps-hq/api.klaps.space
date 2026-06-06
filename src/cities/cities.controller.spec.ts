@@ -116,7 +116,7 @@ describe('CitiesController', () => {
       ];
       service.createCitiesBatch.mockResolvedValue(undefined);
 
-      await controller.createCitiesBatch({ cities } as any);
+      await controller.createCitiesBatch({ cities });
 
       expect(service.createCitiesBatch).toHaveBeenCalledWith(cities);
     });

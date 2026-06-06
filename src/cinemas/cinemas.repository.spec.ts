@@ -3,7 +3,7 @@ import { CinemasRepository } from './cinemas.repository';
 import { DRIZZLE } from '../database/constants';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
-import { toSlug, uniqueSlug } from '../lib/slug';
+import { cinemaSlug, uniqueSlug } from '../lib/slug';
 
 jest.mock('../lib/chunked-upsert', () => ({
   sortAndChunk: jest.fn((items) => [items]),
@@ -13,6 +13,9 @@ jest.mock('../lib/with-deadlock-retry', () => ({
 }));
 jest.mock('../lib/slug', () => ({
   toSlug: jest.fn((name: string) => name.toLowerCase().replace(/\s+/g, '-')),
+  cinemaSlug: jest.fn((name: string, city: string) =>
+    `${name} ${city}`.toLowerCase().replace(/\s+/g, '-'),
+  ),
   uniqueSlug: jest.fn((slug: string) => slug),
 }));
 
@@ -32,6 +35,9 @@ describe('CinemasRepository', () => {
         findMany: jest.fn(),
         findFirst: jest.fn(),
       },
+      cities: {
+        findMany: jest.fn(),
+      },
     },
     insert: jest.fn().mockReturnValue({ values: mockValues }),
     update: jest.fn().mockReturnValue({ set: mockSet }),
@@ -46,6 +52,9 @@ describe('CinemasRepository', () => {
     mockDb.select.mockReturnValue({
       from: jest.fn().mockResolvedValue([]),
     });
+    mockDb.query.cities.findMany.mockResolvedValue([
+      { sourceId: 10, name: 'Warszawa' },
+    ]);
 
     const module = await Test.createTestingModule({
       providers: [CinemasRepository, { provide: DRIZZLE, useValue: mockDb }],
@@ -123,12 +132,15 @@ describe('CinemasRepository', () => {
         },
       ];
 
-      await repository.upsertBatch(cinemas as any);
+      await repository.upsertBatch(cinemas);
 
-      expect(toSlug).toHaveBeenCalledWith('Kino Muranow');
-      expect(uniqueSlug).toHaveBeenCalledWith('kino-muranow', expect.any(Set));
+      expect(cinemaSlug).toHaveBeenCalledWith('Kino Muranow', 'Warszawa');
+      expect(uniqueSlug).toHaveBeenCalledWith(
+        'kino-muranow-warszawa',
+        expect.any(Set),
+      );
       expect(sortAndChunk).toHaveBeenCalledWith(
-        [{ ...cinemas[0], slug: 'kino-muranow' }],
+        [{ ...cinemas[0], slug: 'kino-muranow-warszawa' }],
         expect.any(Function),
       );
       expect(withDeadlockRetry).toHaveBeenCalledWith(expect.any(Function), {
@@ -136,7 +148,7 @@ describe('CinemasRepository', () => {
       });
       expect(mockDb.insert).toHaveBeenCalled();
       expect(mockValues).toHaveBeenCalledWith([
-        { ...cinemas[0], slug: 'kino-muranow' },
+        { ...cinemas[0], slug: 'kino-muranow-warszawa' },
       ]);
       expect(mockOnDuplicateKeyUpdate).toHaveBeenCalledWith({
         target: expect.anything(),
@@ -147,7 +159,9 @@ describe('CinemasRepository', () => {
           longitude: expect.anything(),
           latitude: expect.anything(),
           street: expect.anything(),
+          updatedAt: expect.anything(),
         }),
+        setWhere: expect.anything(),
       });
     });
 
@@ -167,13 +181,30 @@ describe('CinemasRepository', () => {
         },
       ];
 
-      await repository.upsertBatch(cinemas as any);
+      await repository.upsertBatch(cinemas);
 
-      expect(toSlug).toHaveBeenCalledTimes(2);
+      expect(cinemaSlug).toHaveBeenCalledTimes(2);
       expect(uniqueSlug).toHaveBeenCalledTimes(2);
       // Second call should receive a Set that already contains first slug
       const secondCallSet = (uniqueSlug as jest.Mock).mock.calls[1][1];
-      expect(secondCallSet.has('kino-a')).toBe(true);
+      expect(secondCallSet.has('kino-a-warszawa')).toBe(true);
+    });
+
+    it('should fall back to name-only slug when city is unknown', async () => {
+      mockDb.query.cities.findMany.mockResolvedValue([]);
+      const cinemas = [
+        {
+          sourceId: 101,
+          name: 'Kino Muranow',
+          url: 'https://filmweb.pl/cinema/kino-muranow',
+          sourceCityId: 99,
+        },
+      ];
+
+      await repository.upsertBatch(cinemas);
+
+      expect(cinemaSlug).not.toHaveBeenCalled();
+      expect(uniqueSlug).toHaveBeenCalledWith('kino-muranow', expect.any(Set));
     });
   });
 
