@@ -54,7 +54,7 @@ describe('CinemasController', () => {
 
   describe('getCinemas', () => {
     it('should pass query params to service', async () => {
-      service.getCinemas.mockResolvedValue([mockCinemaResponse as any]);
+      service.getCinemas.mockResolvedValue([mockCinemaResponse]);
 
       const query = { cityId: 5, citySlug: 'warszawa' } as any;
       const result = await controller.getCinemas(query);
@@ -106,7 +106,7 @@ describe('CinemasController', () => {
       ];
       service.createCinemasBatch.mockResolvedValue(undefined);
 
-      await controller.createCinemasBatch({ cinemas } as any);
+      await controller.createCinemasBatch({ cinemas });
 
       expect(service.createCinemasBatch).toHaveBeenCalledWith(cinemas);
     });

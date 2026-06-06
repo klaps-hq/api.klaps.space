@@ -241,6 +241,7 @@ describe('CitiesRepository', () => {
           nameDeclinated: expect.anything(),
           areacode: expect.anything(),
         }),
+        setWhere: expect.anything(),
       });
     });
   });

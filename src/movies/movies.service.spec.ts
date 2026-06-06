@@ -65,6 +65,7 @@ describe('MoviesService', () => {
             findAll: jest.fn(),
             count: jest.fn(),
             findBySlug: jest.fn(),
+            findContentUpdatedAt: jest.fn().mockResolvedValue(new Map()),
             findMultiCityMovies: jest.fn(),
             upsertBatch: jest.fn(),
           },
@@ -99,6 +100,18 @@ describe('MoviesService', () => {
         expect.objectContaining({ limit: 10, offset: 0 }),
       );
       expect(repo.count).toHaveBeenCalled();
+    });
+
+    it('should include updatedAt from content updatedAt map', async () => {
+      const contentDate = new Date('2026-06-01T12:00:00.000Z');
+      repo.findAll.mockResolvedValue([mockDbMovie] as any);
+      repo.count.mockResolvedValue(1);
+      repo.findContentUpdatedAt.mockResolvedValue(new Map([[1, contentDate]]));
+
+      const result = await service.getMovies({ page: 1, limit: 10 });
+
+      expect(result.data[0].updatedAt).toBe('2026-06-01T12:00:00.000Z');
+      expect(repo.findContentUpdatedAt).toHaveBeenCalledWith([1]);
     });
 
     it('should return all movies when no limit provided', async () => {

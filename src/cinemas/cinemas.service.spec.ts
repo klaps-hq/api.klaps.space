@@ -56,6 +56,8 @@ describe('CinemasService', () => {
           useValue: {
             findAll: jest.fn(),
             findBySlug: jest.fn(),
+            findContentUpdatedAt: jest.fn().mockResolvedValue(new Map()),
+            findCityContentUpdatedAt: jest.fn().mockResolvedValue(new Map()),
             upsertBatch: jest.fn(),
             updateBySlug: jest.fn(),
           },
@@ -110,6 +112,23 @@ describe('CinemasService', () => {
       expect(citiesService.findBySlug).toHaveBeenCalledWith('warszawa');
       expect(repo.findAll).toHaveBeenCalledWith(10, undefined);
       expect(result).toEqual([mockCinemaSummaryResponse]);
+    });
+
+    it('should include cinema and city updatedAt from content maps', async () => {
+      repo.findAll.mockResolvedValue([mockCinemaWithCity as any]);
+      repo.findContentUpdatedAt.mockResolvedValue(
+        new Map([[101, new Date('2026-06-02T10:00:00.000Z')]]),
+      );
+      repo.findCityContentUpdatedAt.mockResolvedValue(
+        new Map([[10, new Date('2026-06-03T10:00:00.000Z')]]),
+      );
+
+      const result = await service.getCinemas({});
+
+      expect(repo.findContentUpdatedAt).toHaveBeenCalledWith([101]);
+      expect(repo.findCityContentUpdatedAt).toHaveBeenCalledWith([10]);
+      expect(result[0].updatedAt).toBe('2026-06-02T10:00:00.000Z');
+      expect(result[0].city.updatedAt).toBe('2026-06-03T10:00:00.000Z');
     });
 
     it('should pass undefined sourceCityId when city not found by slug', async () => {
@@ -174,7 +193,7 @@ describe('CinemasService', () => {
       ];
       repo.upsertBatch.mockResolvedValue(undefined);
 
-      await service.createCinemasBatch(cinemas as any);
+      await service.createCinemasBatch(cinemas);
 
       expect(repo.upsertBatch).toHaveBeenCalledWith(cinemas);
     });
@@ -182,11 +201,11 @@ describe('CinemasService', () => {
 
   describe('updateCinemaBySlug', () => {
     it('should return mapped cinema response after update', async () => {
-      repo.updateBySlug.mockResolvedValue(mockCinemaWithCity as any);
+      repo.updateBySlug.mockResolvedValue(mockCinemaWithCity);
 
       const result = await service.updateCinemaBySlug('kino-muranow', {
         description: 'Updated',
-      } as any);
+      });
 
       expect(repo.updateBySlug).toHaveBeenCalledWith('kino-muranow', {
         description: 'Updated',
@@ -217,7 +236,7 @@ describe('CinemasService', () => {
 
       const result = await service.updateCinemaBySlug('nieistniejace', {
         description: 'Updated',
-      } as any);
+      });
 
       expect(result).toBeNull();
     });
