@@ -36,12 +36,8 @@ export class MoviesService {
 
     if (!params?.limit) {
       const data = await this.repo.findAll(filter);
-      return paginate(
-        data.map(mapMovieSummary),
-        data.length,
-        1,
-        data.length || 1,
-      );
+      const mapped = await this.mapWithUpdatedAt(data);
+      return paginate(mapped, data.length, 1, data.length || 1);
     }
 
     const { page, limit, offset } = parsePagination(
@@ -54,7 +50,7 @@ export class MoviesService {
       this.repo.count(filter),
     ]);
 
-    return paginate(data.map(mapMovieSummary), total, page, limit);
+    return paginate(await this.mapWithUpdatedAt(data), total, page, limit);
   }
 
   async getMovieBySlug(slug: string): Promise<MovieResponse | null> {
@@ -73,5 +69,16 @@ export class MoviesService {
 
   async createMoviesBatch(movies: CreateMoviesBatchItemDto[]): Promise<void> {
     return this.repo.upsertBatch(movies);
+  }
+
+  // === PRIVATE ===
+
+  private async mapWithUpdatedAt(
+    data: Awaited<ReturnType<MoviesRepository['findAll']>>,
+  ): Promise<MovieSummaryResponse[]> {
+    const updatedAtByMovieId = await this.repo.findContentUpdatedAt(
+      data.map((m) => m.id),
+    );
+    return data.map((m) => mapMovieSummary(m, updatedAtByMovieId.get(m.id)));
   }
 }

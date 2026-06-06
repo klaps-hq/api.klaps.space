@@ -24,7 +24,30 @@ export class CinemasService {
       query.citySlug,
     );
     const cinemas = await this.repo.findAll(sourceCityId, query.limit);
-    return cinemas.map(mapCinemaSummary);
+    if (cinemas.length === 0) return [];
+
+    const [updatedAtBySourceId, updatedAtBySourceCityId] = await Promise.all([
+      this.repo.findContentUpdatedAt(cinemas.map((c) => c.sourceId)),
+      this.repo.findCityContentUpdatedAt([
+        ...new Set(cinemas.map((c) => c.sourceCityId)),
+      ]),
+    ]);
+
+    return cinemas.map((c) =>
+      mapCinemaSummary(
+        c,
+        updatedAtBySourceId.get(c.sourceId),
+        updatedAtBySourceCityId.get(c.sourceCityId),
+      ),
+    );
+  }
+
+  async searchCinemas(
+    query: string,
+    limit: number,
+  ): Promise<CinemaSummaryResponse[]> {
+    const cinemas = await this.repo.searchByName(query, limit);
+    return cinemas.map((c) => mapCinemaSummary(c));
   }
 
   async getCinemaBySlug(slug: string): Promise<CinemaResponse | null> {

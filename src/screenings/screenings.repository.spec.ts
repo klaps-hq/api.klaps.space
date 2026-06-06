@@ -403,7 +403,7 @@ describe('ScreeningsRepository', () => {
       };
       mockDb.query.screenings.findFirst.mockResolvedValue(screening);
 
-      const result = await repo.insert(dto as any);
+      const result = await repo.insert(dto);
 
       expect(result).toEqual(screening);
       expect(mockInsert).toHaveBeenCalled();

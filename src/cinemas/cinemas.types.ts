@@ -8,6 +8,8 @@ export type CinemaSummaryResponse = {
   street: string | null;
   description: string | null;
   city: CityResponse;
+  /** ISO 8601 UTC; ostatnia zauważalna zmiana treści (kino lub jego seanse). */
+  updatedAt?: string;
 };
 
 export type CinemaResponse = {

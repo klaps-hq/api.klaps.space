@@ -10,6 +10,7 @@ export const mapCity = (
     description?: string | null;
   },
   numberOfCinemas?: number,
+  updatedAt?: Date,
 ): CityResponse => ({
   id: city.id,
   slug: city.slug,
@@ -18,4 +19,5 @@ export const mapCity = (
   population: city.population ?? null,
   description: city.description ?? null,
   ...(numberOfCinemas !== undefined && { numberOfCinemas }),
+  ...(updatedAt !== undefined && { updatedAt: updatedAt.toISOString() }),
 });
