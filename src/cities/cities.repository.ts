@@ -2,10 +2,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
-import { and, eq, getTableColumns, gte, lte, sql } from 'drizzle-orm';
+import { and, eq, getTableColumns, gte, ilike, lte, sql } from 'drizzle-orm';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
 import { toSlug, uniqueSlug } from '../lib/slug';
+import { excludedChanged } from '../lib/upsert';
 import type { City } from './cities.types';
 import type { CreateCitiesBatchItemDto } from './dto/create-cities-batch.dto';
 import type { UpdateCityDto } from './dto/update-city.dto';
@@ -48,6 +49,14 @@ export class CitiesRepository {
   async findBySlug(slug: string) {
     return this.db.query.cities.findFirst({
       where: eq(schema.cities.slug, slug),
+    });
+  }
+
+  async searchByName(query: string, limit: number): Promise<City[]> {
+    return this.db.query.cities.findMany({
+      where: ilike(schema.cities.name, `%${query}%`),
+      orderBy: sql`${schema.cities.population} DESC NULLS LAST`,
+      limit,
     });
   }
 
@@ -107,6 +116,12 @@ export class CitiesRepository {
                 areacode: sql`excluded."areacode"`,
                 population: sql`excluded."population"`,
               },
+              setWhere: excludedChanged([
+                schema.cities.name,
+                schema.cities.nameDeclinated,
+                schema.cities.areacode,
+                schema.cities.population,
+              ]),
             }),
         { label: 'createCitiesBatch' },
       );

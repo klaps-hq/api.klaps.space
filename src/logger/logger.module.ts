@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
-import { Module } from '@nestjs/common';
+import { Module, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import type { Params } from 'nestjs-pino';
@@ -46,6 +46,10 @@ import type { Params } from 'nestjs-pino';
         }
 
         return {
+          // Domyślne '*' z nestjs-pino to legacy składnia path-to-regexp —
+          // Nest 11 loguje warning LegacyRouteConverter. '{*path}' to
+          // odpowiednik w nowej składni (catch-all, łącznie z '/').
+          forRoutes: [{ path: '{*path}', method: RequestMethod.ALL }],
           pinoHttp: {
             level: logLevel,
             transport: { targets },

@@ -37,6 +37,7 @@ type DbMovieWithRelations = DbMovieWithGenres & {
 
 export const mapMovieSummary = (
   movie: DbMovieWithGenres,
+  updatedAt?: Date,
 ): MovieSummaryResponse => ({
   id: movie.id,
   sourceId: movie.sourceId,
@@ -50,6 +51,7 @@ export const mapMovieSummary = (
   posterUrl: movie.posterUrl,
   videoUrl: movie.videoUrl ?? null,
   genres: movie.movies_genres.map((mg) => mapGenre(mg.genre)),
+  ...(updatedAt !== undefined && { updatedAt: updatedAt.toISOString() }),
 });
 
 export const mapMovieHero = (movie: DbMovieWithGenres): MovieHeroResponse => ({

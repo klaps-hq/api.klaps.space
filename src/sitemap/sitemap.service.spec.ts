@@ -2,8 +2,6 @@ import { Test } from '@nestjs/testing';
 import { SitemapService } from './sitemap.service';
 import { SitemapRepository } from './sitemap.repository';
 
-const updatedAt = new Date('2024-01-01T00:00:00.000Z');
-
 describe('SitemapService', () => {
   let service: SitemapService;
   let repo: jest.Mocked<SitemapRepository>;
@@ -15,10 +13,10 @@ describe('SitemapService', () => {
         {
           provide: SitemapRepository,
           useValue: {
-            findMovieEntries: jest.fn(),
-            findCinemaEntries: jest.fn(),
-            findCityEntriesWithCinemas: jest.fn(),
-            findGenreEntries: jest.fn(),
+            findMovieEntries: jest.fn().mockResolvedValue([]),
+            findCinemaEntries: jest.fn().mockResolvedValue([]),
+            findCityEntries: jest.fn().mockResolvedValue([]),
+            findGenreEntries: jest.fn().mockResolvedValue([]),
           },
         },
       ],
@@ -29,48 +27,45 @@ describe('SitemapService', () => {
   });
 
   describe('getSitemap', () => {
-    it('should map rows to entries with ISO updatedAt', async () => {
+    it('should return mapped entries for all resource types', async () => {
+      const date = new Date('2026-06-01T12:00:00.000Z');
       repo.findMovieEntries.mockResolvedValue([
-        { slug: 'pan-tadeusz-1999', updatedAt },
+        { slug: 'incepcja', updatedAt: date },
       ]);
       repo.findCinemaEntries.mockResolvedValue([
-        { slug: 'kino-muranow', updatedAt },
+        { slug: 'kino-muranow', updatedAt: date },
       ]);
-      repo.findCityEntriesWithCinemas.mockResolvedValue([{ slug: 'warszawa' }]);
-      repo.findGenreEntries.mockResolvedValue([{ slug: 'dramat', updatedAt }]);
+      repo.findCityEntries.mockResolvedValue([
+        { slug: 'warszawa', updatedAt: date },
+      ]);
+      repo.findGenreEntries.mockResolvedValue([
+        { slug: 'dramat', updatedAt: date },
+      ]);
 
       const result = await service.getSitemap();
 
       expect(result).toEqual({
-        movies: [
-          { slug: 'pan-tadeusz-1999', updatedAt: '2024-01-01T00:00:00.000Z' },
-        ],
+        movies: [{ slug: 'incepcja', updatedAt: '2026-06-01T12:00:00.000Z' }],
         cinemas: [
-          { slug: 'kino-muranow', updatedAt: '2024-01-01T00:00:00.000Z' },
+          { slug: 'kino-muranow', updatedAt: '2026-06-01T12:00:00.000Z' },
         ],
-        cities: [{ slug: 'warszawa' }],
-        genres: [{ slug: 'dramat', updatedAt: '2024-01-01T00:00:00.000Z' }],
+        cities: [{ slug: 'warszawa', updatedAt: '2026-06-01T12:00:00.000Z' }],
+        genres: [{ slug: 'dramat', updatedAt: '2026-06-01T12:00:00.000Z' }],
       });
     });
 
-    it('should omit updatedAt when the row has none', async () => {
-      repo.findMovieEntries.mockResolvedValue([{ slug: 'no-date' }]);
-      repo.findCinemaEntries.mockResolvedValue([]);
-      repo.findCityEntriesWithCinemas.mockResolvedValue([]);
-      repo.findGenreEntries.mockResolvedValue([]);
+    it('should omit updatedAt when null', async () => {
+      repo.findGenreEntries.mockResolvedValue([
+        { slug: 'horror', updatedAt: null },
+      ]);
 
       const result = await service.getSitemap();
 
-      expect(result.movies).toEqual([{ slug: 'no-date' }]);
-      expect(result.movies[0]).not.toHaveProperty('updatedAt');
+      expect(result.genres).toEqual([{ slug: 'horror' }]);
+      expect(result.genres[0]).not.toHaveProperty('updatedAt');
     });
 
-    it('should return empty arrays when repository has no rows', async () => {
-      repo.findMovieEntries.mockResolvedValue([]);
-      repo.findCinemaEntries.mockResolvedValue([]);
-      repo.findCityEntriesWithCinemas.mockResolvedValue([]);
-      repo.findGenreEntries.mockResolvedValue([]);
-
+    it('should return empty arrays when no data exists', async () => {
       const result = await service.getSitemap();
 
       expect(result).toEqual({

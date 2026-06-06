@@ -6,7 +6,21 @@ const updatedAt = new Date('2024-01-01T00:00:00.000Z');
 
 const mockDb = {
   select: jest.fn(),
-  selectDistinct: jest.fn(),
+};
+
+/** Builds a select().from().leftJoin()...groupBy() chain resolving to rows. */
+const mockSelectChain = (rows: unknown[], { innerJoin = false } = {}) => {
+  const groupBy = jest.fn().mockResolvedValue(rows);
+  const leftJoin = jest.fn();
+  // Allow chained leftJoin calls (genres uses two) ending with groupBy.
+  leftJoin.mockReturnValue({ leftJoin, groupBy });
+  const from = innerJoin
+    ? jest.fn().mockReturnValue({
+        innerJoin: jest.fn().mockReturnValue({ leftJoin }),
+      })
+    : jest.fn().mockReturnValue({ leftJoin });
+  mockDb.select.mockReturnValue({ from });
+  return { from, leftJoin, groupBy };
 };
 
 describe('SitemapRepository', () => {
@@ -23,25 +37,22 @@ describe('SitemapRepository', () => {
   });
 
   describe('findMovieEntries', () => {
-    it('should select movie slugs with updatedAt', async () => {
+    it('should return movie slugs with effective updatedAt', async () => {
       const rows = [{ slug: 'pan-tadeusz-1999', updatedAt }];
-      mockDb.select.mockReturnValue({
-        from: jest.fn().mockResolvedValue(rows),
-      });
+      const { groupBy } = mockSelectChain(rows);
 
       const result = await repository.findMovieEntries();
 
       expect(result).toEqual(rows);
       expect(mockDb.select).toHaveBeenCalledTimes(1);
+      expect(groupBy).toHaveBeenCalled();
     });
   });
 
   describe('findCinemaEntries', () => {
-    it('should select cinema slugs with updatedAt', async () => {
+    it('should return cinema slugs with effective updatedAt', async () => {
       const rows = [{ slug: 'kino-muranow', updatedAt }];
-      mockDb.select.mockReturnValue({
-        from: jest.fn().mockResolvedValue(rows),
-      });
+      mockSelectChain(rows);
 
       const result = await repository.findCinemaEntries();
 
@@ -49,32 +60,27 @@ describe('SitemapRepository', () => {
     });
   });
 
-  describe('findCityEntriesWithCinemas', () => {
-    it('should select distinct city slugs joined with cinemas', async () => {
-      const rows = [{ slug: 'warszawa' }];
-      const mockInnerJoin = jest.fn().mockResolvedValue(rows);
-      mockDb.selectDistinct.mockReturnValue({
-        from: jest.fn().mockReturnValue({ innerJoin: mockInnerJoin }),
-      });
+  describe('findCityEntries', () => {
+    it('should return only cities joined with cinemas', async () => {
+      const rows = [{ slug: 'warszawa', updatedAt }];
+      mockSelectChain(rows, { innerJoin: true });
 
-      const result = await repository.findCityEntriesWithCinemas();
+      const result = await repository.findCityEntries();
 
       expect(result).toEqual(rows);
-      expect(mockDb.selectDistinct).toHaveBeenCalledTimes(1);
-      expect(mockInnerJoin).toHaveBeenCalled();
     });
   });
 
   describe('findGenreEntries', () => {
-    it('should select genre slugs with updatedAt', async () => {
+    it('should return genre slugs with effective updatedAt', async () => {
       const rows = [{ slug: 'dramat', updatedAt }];
-      mockDb.select.mockReturnValue({
-        from: jest.fn().mockResolvedValue(rows),
-      });
+      const { leftJoin } = mockSelectChain(rows);
 
       const result = await repository.findGenreEntries();
 
       expect(result).toEqual(rows);
+      // Genres join through movies_genres and movies.
+      expect(leftJoin).toHaveBeenCalledTimes(2);
     });
   });
 });

@@ -65,7 +65,7 @@ describe('ShowtimesService', () => {
         dateFrom: '2025-01-10',
         dateTo: '2025-01-20',
         cityId: 3,
-      } as any);
+      });
 
       expect(result).toEqual([
         {
@@ -100,7 +100,7 @@ describe('ShowtimesService', () => {
         dateFrom: '2025-01-10',
         dateTo: '2025-01-20',
         citySlug: 'gdansk',
-      } as any);
+      });
 
       const { startDay, endDay } = getDateRangeUpToMonthFromNow(
         '2025-01-10',
@@ -116,7 +116,7 @@ describe('ShowtimesService', () => {
       await service.getShowtimes({
         dateFrom: '2025-02-01',
         dateTo: '2025-02-28',
-      } as any);
+      });
 
       const { startDay, endDay } = getDateRangeUpToMonthFromNow(
         '2025-02-01',
@@ -128,7 +128,7 @@ describe('ShowtimesService', () => {
     it('should use current date range when dateFrom/dateTo are not provided', async () => {
       repo.findAll.mockResolvedValue([]);
 
-      await service.getShowtimes({} as any);
+      await service.getShowtimes({});
 
       const [startDay, endDay] = repo.findAll.mock.calls[0];
       expect(startDay).toBeInstanceOf(Date);
@@ -140,7 +140,7 @@ describe('ShowtimesService', () => {
       citiesService.findBySlug.mockResolvedValue(null);
       repo.findAll.mockResolvedValue([]);
 
-      await service.getShowtimes({ citySlug: 'nonexistent' } as any);
+      await service.getShowtimes({ citySlug: 'nonexistent' });
 
       expect(repo.findAll).toHaveBeenCalledWith(
         expect.any(Date),
@@ -157,7 +157,7 @@ describe('ShowtimesService', () => {
       await service.createShowtimesBatch({
         showtimes: [],
         scrapedCityIds: [1],
-      } as any);
+      });
 
       expect(repo.upsertBatch).not.toHaveBeenCalled();
       expect(repo.updateCitiesLastScrapedAt).toHaveBeenCalledWith([1]);
@@ -167,7 +167,7 @@ describe('ShowtimesService', () => {
       await service.createShowtimesBatch({
         showtimes: [],
         scrapedCityIds: [],
-      } as any);
+      });
 
       expect(repo.upsertBatch).not.toHaveBeenCalled();
       expect(repo.updateCitiesLastScrapedAt).not.toHaveBeenCalled();
@@ -184,7 +184,7 @@ describe('ShowtimesService', () => {
       await service.createShowtimesBatch({
         showtimes,
         scrapedCityIds: undefined,
-      } as any);
+      });
 
       expect(repo.upsertBatch).toHaveBeenCalledWith(showtimes);
       expect(repo.updateCitiesLastScrapedAt).toHaveBeenCalledWith([3]);
@@ -200,7 +200,7 @@ describe('ShowtimesService', () => {
       await service.createShowtimesBatch({
         showtimes,
         scrapedCityIds: [3, 5],
-      } as any);
+      });
 
       expect(repo.upsertBatch).toHaveBeenCalledWith(showtimes);
       expect(repo.updateCitiesLastScrapedAt).toHaveBeenCalledWith([3, 5]);
@@ -216,7 +216,7 @@ describe('ShowtimesService', () => {
       await service.createShowtimesBatch({
         showtimes,
         scrapedCityIds: [],
-      } as any);
+      });
 
       expect(repo.upsertBatch).toHaveBeenCalledWith(showtimes);
       expect(repo.updateCitiesLastScrapedAt).toHaveBeenCalledWith([3]);
