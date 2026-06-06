@@ -8,8 +8,9 @@ import type {
   CreateMoviesBatchItemDto,
   ActorInsertDto,
 } from './dto/create-movies-batch.dto';
-import { and, desc, eq, gte, inArray, like, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, inArray, sql } from 'drizzle-orm';
 import { movieSlug, toSlug, uniqueSlug } from '../lib/slug';
+import { excludedChanged } from '../lib/upsert';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
 import { MULTI_CITY } from './movies.constants';
@@ -41,7 +42,7 @@ export class MoviesRepository {
   }) {
     const where = and(
       params?.search
-        ? like(schema.movies.title, `%${params.search}%`)
+        ? ilike(schema.movies.title, `%${params.search}%`)
         : undefined,
       this.buildGenreCondition(params?.genreId),
     );
@@ -58,7 +59,7 @@ export class MoviesRepository {
   async count(params?: { search?: string; genreId?: number }) {
     const where = and(
       params?.search
-        ? like(schema.movies.title, `%${params.search}%`)
+        ? ilike(schema.movies.title, `%${params.search}%`)
         : undefined,
       this.buildGenreCondition(params?.genreId),
     );
@@ -75,6 +76,32 @@ export class MoviesRepository {
       where: eq(schema.movies.slug, slug),
       with: MOVIE_RELATIONS,
     });
+  }
+
+  /**
+   * Returns the effective content `updatedAt` per movie:
+   * max(movie.updatedAt, newest screening.updatedAt of that movie).
+   */
+  async findContentUpdatedAt(movieIds: number[]): Promise<Map<number, Date>> {
+    if (movieIds.length === 0) return new Map();
+
+    const rows = await this.db
+      .select({
+        movieId: schema.movies.id,
+        updatedAt:
+          sql<Date>`GREATEST(${schema.movies.updatedAt}, max(${schema.screenings.updatedAt}))`.mapWith(
+            schema.movies.updatedAt,
+          ),
+      })
+      .from(schema.movies)
+      .leftJoin(
+        schema.screenings,
+        eq(schema.screenings.movieId, schema.movies.id),
+      )
+      .where(inArray(schema.movies.id, movieIds))
+      .groupBy(schema.movies.id);
+
+    return new Map(rows.map((r) => [r.movieId, r.updatedAt]));
   }
 
   async findMultiCityMovies(params?: GetMultiCityMoviesParams) {
@@ -224,7 +251,29 @@ export class MoviesRepository {
                 boxoffice: sql`excluded."boxoffice"`,
                 budget: sql`excluded."budget"`,
                 distribution: sql`excluded."distribution"`,
+                updatedAt: sql`now()`,
               },
+              setWhere: excludedChanged([
+                schema.movies.url,
+                schema.movies.title,
+                schema.movies.titleOriginal,
+                schema.movies.description,
+                schema.movies.productionYear,
+                schema.movies.worldPremiereDate,
+                schema.movies.polishPremiereDate,
+                schema.movies.usersRating,
+                schema.movies.usersRatingVotes,
+                schema.movies.criticsRating,
+                schema.movies.criticsRatingVotes,
+                schema.movies.language,
+                schema.movies.duration,
+                schema.movies.posterUrl,
+                schema.movies.backdropUrl,
+                schema.movies.videoUrl,
+                schema.movies.boxoffice,
+                schema.movies.budget,
+                schema.movies.distribution,
+              ]),
             }),
         { label: 'createBatch:movies' },
       );
@@ -461,10 +510,13 @@ export class MoviesRepository {
             .values(chunk)
             .onConflictDoUpdate({
               target: schema.genres.sourceId,
+              // Celowo bez `slug` — regenerowany slug zawsze koliduje
+              // z własnym slugiem encji i churnowałby URL-e przy każdym batchu.
               set: {
                 name: sql`excluded."name"`,
-                slug: sql`excluded."slug"`,
+                updatedAt: sql`now()`,
               },
+              setWhere: excludedChanged([schema.genres.name]),
             }),
         { label: 'createBatch:genres' },
       );

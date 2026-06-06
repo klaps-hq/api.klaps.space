@@ -78,7 +78,7 @@ describe('CitiesService', () => {
 
   describe('getCities', () => {
     it('should return mapped city responses', async () => {
-      repo.findAll.mockResolvedValue([mockCity as any]);
+      repo.findAll.mockResolvedValue([mockCity]);
 
       const result = await service.getCities();
 
@@ -89,7 +89,7 @@ describe('CitiesService', () => {
 
   describe('findBySlug', () => {
     it('should return city when found', async () => {
-      repo.findBySlug.mockResolvedValue(mockCity as any);
+      repo.findBySlug.mockResolvedValue(mockCity);
 
       const result = await service.findBySlug('warszawa');
 
@@ -108,7 +108,7 @@ describe('CitiesService', () => {
 
   describe('getCitiesWithCinemas', () => {
     it('should return mapped cities with numberOfCinemas', async () => {
-      repo.findWithCinemaCount.mockResolvedValue([mockCityWithCount as any]);
+      repo.findWithCinemaCount.mockResolvedValue([mockCityWithCount]);
 
       const result = await service.getCitiesWithCinemas();
 
@@ -129,7 +129,7 @@ describe('CitiesService', () => {
 
   describe('getCityBySlug', () => {
     it('should return mapped city with screenings when found', async () => {
-      repo.findBySlug.mockResolvedValue(mockCity as any);
+      repo.findBySlug.mockResolvedValue(mockCity);
       repo.countCinemasBySourceId.mockResolvedValue(12);
       screeningsService.getScreenings.mockResolvedValue([mockScreening as any]);
 
@@ -212,7 +212,7 @@ describe('CitiesService', () => {
       ];
       repo.upsertBatch.mockResolvedValue(undefined);
 
-      await service.createCitiesBatch(cities as any);
+      await service.createCitiesBatch(cities);
 
       expect(repo.upsertBatch).toHaveBeenCalledWith(cities);
     });
@@ -220,11 +220,11 @@ describe('CitiesService', () => {
 
   describe('updateCityBySlug', () => {
     it('should return mapped city response after update', async () => {
-      repo.updateBySlug.mockResolvedValue(mockCity as any);
+      repo.updateBySlug.mockResolvedValue(mockCity);
 
       const result = await service.updateCityBySlug('warszawa', {
         description: 'Nowy opis',
-      } as any);
+      });
 
       expect(repo.updateBySlug).toHaveBeenCalledWith('warszawa', {
         description: 'Nowy opis',
@@ -237,7 +237,7 @@ describe('CitiesService', () => {
 
       const result = await service.updateCityBySlug('nieistniejace', {
         description: 'test',
-      } as any);
+      });
 
       expect(result).toBeNull();
     });

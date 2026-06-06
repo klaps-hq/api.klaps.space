@@ -32,6 +32,11 @@ export class CitiesService {
     return city ?? null;
   }
 
+  async searchCities(query: string, limit: number): Promise<CityResponse[]> {
+    const cities = await this.repo.searchByName(query, limit);
+    return cities.map((c) => mapCity(c));
+  }
+
   async getCitiesWithCinemas(): Promise<CityResponse[]> {
     const cities = await this.repo.findWithCinemaCount();
     return cities.map((c) => mapCity(c, c.numberOfCinemas));

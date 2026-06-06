@@ -212,7 +212,7 @@ describe('ScreeningsService', () => {
       };
       repo.insert.mockResolvedValue(created);
 
-      const result = await service.createScreening(dto as any);
+      const result = await service.createScreening(dto);
 
       expect(result).toEqual(created);
       expect(repo.insert).toHaveBeenCalledWith(dto);
