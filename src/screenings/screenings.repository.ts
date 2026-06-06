@@ -3,7 +3,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
-import { and, eq, gte, inArray, isNotNull, like, lte, ne } from 'drizzle-orm';
+import { and, eq, gte, ilike, inArray, isNotNull, lte, ne } from 'drizzle-orm';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
 import type { Screening } from './screenings.types';
 
@@ -113,6 +113,8 @@ export class ScreeningsRepository {
     const rows = await this.db.query.movies.findMany({
       where: and(
         lte(schema.movies.productionYear, yearThreshold),
+        ne(schema.movies.title, ''),
+        ne(schema.movies.description, ''),
         isNotNull(schema.movies.backdropUrl),
         ne(schema.movies.backdropUrl, ''),
       ),
@@ -266,7 +268,7 @@ export class ScreeningsRepository {
       this.db
         .select({ id: schema.movies.id })
         .from(schema.movies)
-        .where(like(schema.movies.title, `%${search}%`)),
+        .where(ilike(schema.movies.title, `%${search}%`)),
     );
   }
 }

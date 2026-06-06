@@ -32,6 +32,8 @@ type DbCinemaWithCity = {
 
 export const mapCinemaSummary = (
   cinema: DbCinemaWithCity,
+  updatedAt?: Date,
+  cityUpdatedAt?: Date,
 ): CinemaSummaryResponse => ({
   id: cinema.id,
   sourceId: cinema.sourceId,
@@ -39,7 +41,10 @@ export const mapCinemaSummary = (
   name: cinema.name,
   street: cinema.street,
   description: cinema.description ?? null,
-  city: cinema.city ? mapCity(cinema.city) : EMPTY_CITY,
+  city: cinema.city
+    ? mapCity(cinema.city, undefined, cityUpdatedAt)
+    : EMPTY_CITY,
+  ...(updatedAt !== undefined && { updatedAt: updatedAt.toISOString() }),
 });
 
 export const mapCinemaDetail = (cinema: DbCinemaWithCity): CinemaResponse => ({
