@@ -10,6 +10,7 @@ import { ScreeningsModule } from './screenings/screenings.module';
 import { CinemasModule } from './cinemas/cinemas.module';
 import { SocialsModule } from './socials/socials.module';
 import { ShowtimesModule } from './showtimes/showtimes.module';
+import { SitemapModule } from './sitemap/sitemap.module';
 import { InternalBypassThrottlerGuard } from './guards/internal-bypass-throttler.guard';
 import { AppLoggerModule } from './logger/logger.module';
 import { HealthModule } from './health/health.module';
@@ -27,6 +28,7 @@ import { HealthModule } from './health/health.module';
     SocialsModule,
     ScreeningsModule,
     ShowtimesModule,
+    SitemapModule,
     ThrottlerModule.forRoot([
       { name: 'short', ttl: 10_000, limit: 30 },
       { name: 'long', ttl: 60_000, limit: 100 },
