@@ -1,5 +1,6 @@
 import {
   IsDateString,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -8,6 +9,7 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { getTodayInPoland } from '../../lib/date';
+import { VOIVODESHIPS, type Voivodeship } from '../../lib/voivodeships';
 
 export class GetScreeningsQueryDto {
   @IsOptional()
@@ -39,6 +41,10 @@ export class GetScreeningsQueryDto {
   @IsOptional()
   @IsString({ message: 'citySlug must be a string' })
   citySlug?: string;
+
+  @IsOptional()
+  @IsIn(VOIVODESHIPS)
+  voivodeship?: Voivodeship;
 
   @IsOptional()
   @Type(() => Number)

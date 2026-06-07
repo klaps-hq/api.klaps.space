@@ -22,6 +22,7 @@ describe('CinemasController', () => {
       nameDeclinated: 'Warszawie',
       population: null,
       description: null,
+      voivodeship: null,
     },
     latitude: 52.2463,
     longitude: 21.0027,

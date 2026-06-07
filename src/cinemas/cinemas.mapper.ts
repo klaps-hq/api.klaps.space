@@ -9,6 +9,7 @@ const EMPTY_CITY: CityResponse = {
   nameDeclinated: '',
   population: null,
   description: null,
+  voivodeship: null,
 };
 
 type DbCinemaWithCity = {
