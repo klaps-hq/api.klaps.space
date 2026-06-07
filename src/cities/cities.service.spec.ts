@@ -17,6 +17,7 @@ describe('CitiesService', () => {
     nameDeclinated: 'Warszawie',
     areacode: null,
     population: null,
+    voivodeship: 'mazowieckie',
     description: 'Stolica Polski',
     lastScrapedAt: new Date('2025-06-01'),
     createdAt: new Date('2025-01-01'),
@@ -74,6 +75,7 @@ describe('CitiesService', () => {
     nameDeclinated: 'Warszawie',
     population: null,
     description: 'Stolica Polski',
+    voivodeship: 'mazowieckie',
   };
 
   describe('getCities', () => {
@@ -112,7 +114,7 @@ describe('CitiesService', () => {
 
       const result = await service.getCitiesWithCinemas();
 
-      expect(repo.findWithCinemaCount).toHaveBeenCalled();
+      expect(repo.findWithCinemaCount).toHaveBeenCalledWith(undefined);
       expect(result).toEqual([
         {
           id: 5,
@@ -121,9 +123,18 @@ describe('CitiesService', () => {
           nameDeclinated: 'Warszawie',
           population: null,
           description: 'Stolica Polski',
+          voivodeship: 'mazowieckie',
           numberOfCinemas: 12,
         },
       ]);
+    });
+
+    it('should pass voivodeship filter to repository', async () => {
+      repo.findWithCinemaCount.mockResolvedValue([mockCityWithCount]);
+
+      await service.getCitiesWithCinemas('mazowieckie');
+
+      expect(repo.findWithCinemaCount).toHaveBeenCalledWith('mazowieckie');
     });
   });
 
@@ -148,6 +159,7 @@ describe('CitiesService', () => {
           nameDeclinated: 'Warszawie',
           population: null,
           description: 'Stolica Polski',
+          voivodeship: 'mazowieckie',
           numberOfCinemas: 12,
         },
         screenings: [mockScreening],

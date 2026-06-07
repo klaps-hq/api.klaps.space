@@ -37,8 +37,8 @@ export class CitiesService {
     return cities.map((c) => mapCity(c));
   }
 
-  async getCitiesWithCinemas(): Promise<CityResponse[]> {
-    const cities = await this.repo.findWithCinemaCount();
+  async getCitiesWithCinemas(voivodeship?: string): Promise<CityResponse[]> {
+    const cities = await this.repo.findWithCinemaCount(voivodeship);
     return cities.map((c) => mapCity(c, c.numberOfCinemas));
   }
 

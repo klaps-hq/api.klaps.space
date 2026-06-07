@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -8,6 +9,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { VOIVODESHIPS, type Voivodeship } from '../../lib/voivodeships';
 
 export class CreateCitiesBatchItemDto {
   @Type(() => Number)
@@ -42,6 +44,10 @@ export class CreateCitiesBatchItemDto {
   @IsOptional()
   @IsString()
   description?: string | null;
+
+  @IsOptional()
+  @IsIn(VOIVODESHIPS)
+  voivodeship?: Voivodeship;
 }
 
 export class CreateCitiesBatchDto {

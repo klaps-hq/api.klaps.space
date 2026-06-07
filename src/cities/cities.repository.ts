@@ -6,6 +6,7 @@ import { and, eq, getTableColumns, gte, ilike, lte, sql } from 'drizzle-orm';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
 import { toSlug, uniqueSlug } from '../lib/slug';
+import { AREACODE_TO_VOIVODESHIP } from '../lib/voivodeships';
 import { excludedChanged } from '../lib/upsert';
 import type { City } from './cities.types';
 import type { CreateCitiesBatchItemDto } from './dto/create-cities-batch.dto';
@@ -24,18 +25,25 @@ export class CitiesRepository {
     return this.db.query.cities.findMany();
   }
 
-  async findWithCinemaCount() {
+  async findWithCinemaCount(voivodeship?: string) {
     const cityColumns = getTableColumns(schema.cities);
 
     return this.db
       .select({
         ...cityColumns,
-        numberOfCinemas: sql<number>`count(${schema.cinemas.id})`,
+        // count() returns bigint, which pg serializes as a string -
+        // map to a real number so the JSON response is not "12".
+        numberOfCinemas: sql<number>`count(${schema.cinemas.id})`.mapWith(
+          Number,
+        ),
       })
       .from(schema.cities)
       .innerJoin(
         schema.cinemas,
         eq(schema.cinemas.sourceCityId, schema.cities.sourceId),
+      )
+      .where(
+        voivodeship ? eq(schema.cities.voivodeship, voivodeship) : undefined,
       )
       .groupBy(...Object.values(cityColumns));
   }
@@ -62,7 +70,9 @@ export class CitiesRepository {
 
   async countCinemasBySourceId(sourceCityId: number): Promise<number> {
     const [{ count }] = await this.db
-      .select({ count: sql<number>`count(*)` })
+      // count() returns bigint, which pg serializes as a string -
+      // map to a real number so callers can do arithmetic on it.
+      .select({ count: sql<number>`count(*)`.mapWith(Number) })
       .from(schema.cinemas)
       .where(eq(schema.cinemas.sourceCityId, sourceCityId));
     return count;
@@ -98,7 +108,15 @@ export class CitiesRepository {
     const values = cities.map((c) => {
       const slug = uniqueSlug(toSlug(c.name), taken);
       taken.add(slug);
-      return { ...c, slug };
+      // Voivodeship is set on insert only (absent from the conflict set),
+      // so the scraper never overwrites manual fixes; area code as fallback.
+      const voivodeship =
+        c.voivodeship ??
+        (c.areacode !== undefined
+          ? AREACODE_TO_VOIVODESHIP[c.areacode]
+          : undefined) ??
+        null;
+      return { ...c, slug, voivodeship };
     });
 
     const chunks = sortAndChunk(values, (c) => c.sourceId);

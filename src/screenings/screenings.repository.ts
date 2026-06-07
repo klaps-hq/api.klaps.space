@@ -3,7 +3,17 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
-import { and, eq, gte, ilike, inArray, isNotNull, lte, ne } from 'drizzle-orm';
+import {
+  and,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  lte,
+  max,
+  ne,
+} from 'drizzle-orm';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
 import type { Screening } from './screenings.types';
 
@@ -15,6 +25,7 @@ export type FindScreeningsParams = {
   movieId?: number;
   cityId?: number;
   citySlug?: string;
+  voivodeship?: string;
   cinemaId?: number;
   cinemaSlug?: string;
   genreId?: number;
@@ -38,6 +49,7 @@ export class ScreeningsRepository {
       params.citySlug,
       params.cinemaId,
       params.cinemaSlug,
+      params.voivodeship,
     );
     const genreCondition = await this.resolveGenreCondition(
       params.genreId,
@@ -80,6 +92,7 @@ export class ScreeningsRepository {
     locationFilter?: {
       cityId?: number;
       citySlug?: string;
+      voivodeship?: string;
       cinemaId?: number;
       cinemaSlug?: string;
     },
@@ -90,6 +103,7 @@ export class ScreeningsRepository {
           locationFilter.citySlug,
           locationFilter.cinemaId,
           locationFilter.cinemaSlug,
+          locationFilter.voivodeship,
         )
       : undefined;
 
@@ -165,6 +179,34 @@ export class ScreeningsRepository {
     });
   }
 
+  /**
+   * Newest `screenings.updatedAt` across the (optionally location-filtered)
+   * set, i.e. when repertoire data was last added. Backs the visible
+   * "repertuar zaktualizowano" freshness label. Returns null when no
+   * screening matches the filter.
+   */
+  async findLastUpdatedAt(
+    params: Pick<
+      FindScreeningsParams,
+      'cityId' | 'citySlug' | 'voivodeship' | 'cinemaId' | 'cinemaSlug'
+    > = {},
+  ): Promise<Date | null> {
+    const locationCondition = await this.resolveLocationCondition(
+      params.cityId,
+      params.citySlug,
+      params.cinemaId,
+      params.cinemaSlug,
+      params.voivodeship,
+    );
+
+    const [row] = await this.db
+      .select({ updatedAt: max(schema.screenings.updatedAt) })
+      .from(schema.screenings)
+      .where(locationCondition);
+
+    return row?.updatedAt ?? null;
+  }
+
   // === WRITE ===
 
   async insert(dto: CreateScreeningDto): Promise<Screening> {
@@ -209,6 +251,7 @@ export class ScreeningsRepository {
     citySlug?: string,
     cinemaId?: number,
     cinemaSlug?: string,
+    voivodeship?: string,
   ) {
     if (cinemaId) {
       const cinema = await this.db.query.cinemas.findFirst({
@@ -242,6 +285,20 @@ export class ScreeningsRepository {
           .select({ sourceId: schema.cinemas.sourceId })
           .from(schema.cinemas)
           .where(eq(schema.cinemas.sourceCityId, city.sourceId)),
+      );
+    }
+
+    if (voivodeship) {
+      return inArray(
+        schema.screenings.cinemaId,
+        this.db
+          .select({ sourceId: schema.cinemas.sourceId })
+          .from(schema.cinemas)
+          .innerJoin(
+            schema.cities,
+            eq(schema.cinemas.sourceCityId, schema.cities.sourceId),
+          )
+          .where(eq(schema.cities.voivodeship, voivodeship)),
       );
     }
 

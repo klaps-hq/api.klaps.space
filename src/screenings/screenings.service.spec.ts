@@ -19,6 +19,7 @@ import { Test } from '@nestjs/testing';
 import { randomInt } from 'node:crypto';
 import { ScreeningsService } from './screenings.service';
 import { ScreeningsRepository } from './screenings.repository';
+import { IndexNowService } from '../indexnow/indexnow.service';
 import { mapScreening, mapScreeningGroup } from './screenings.mapper';
 import { mapMovieHero } from '../movies/movies.mapper';
 
@@ -27,6 +28,7 @@ const mockRandomInt = randomInt as jest.Mock;
 describe('ScreeningsService', () => {
   let service: ScreeningsService;
   let repo: jest.Mocked<ScreeningsRepository>;
+  let indexNowService: jest.Mocked<IndexNowService>;
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
@@ -40,7 +42,14 @@ describe('ScreeningsService', () => {
             findRetroMovieIds: jest.fn(),
             findCandidateRetroMovieIds: jest.fn(),
             findMovieWithScreeningsById: jest.fn(),
+            findLastUpdatedAt: jest.fn(),
             insert: jest.fn(),
+          },
+        },
+        {
+          provide: IndexNowService,
+          useValue: {
+            notifyContentChanged: jest.fn(),
           },
         },
       ],
@@ -48,6 +57,7 @@ describe('ScreeningsService', () => {
 
     service = module.get(ScreeningsService);
     repo = module.get(ScreeningsRepository);
+    indexNowService = module.get(IndexNowService);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -118,6 +128,28 @@ describe('ScreeningsService', () => {
       const result = await service.getScreenings({});
 
       expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('getLastUpdatedAt', () => {
+    it('should return ISO timestamp of newest screening', async () => {
+      const updatedAt = new Date('2026-06-07T10:00:00.000Z');
+      repo.findLastUpdatedAt.mockResolvedValue(updatedAt);
+
+      const result = await service.getLastUpdatedAt({ citySlug: 'krakow' });
+
+      expect(result).toEqual({ updatedAt: '2026-06-07T10:00:00.000Z' });
+      expect(repo.findLastUpdatedAt).toHaveBeenCalledWith({
+        citySlug: 'krakow',
+      });
+    });
+
+    it('should return null when no screening matches', async () => {
+      repo.findLastUpdatedAt.mockResolvedValue(null);
+
+      const result = await service.getLastUpdatedAt();
+
+      expect(result).toEqual({ updatedAt: null });
     });
   });
 
@@ -216,6 +248,7 @@ describe('ScreeningsService', () => {
 
       expect(result).toEqual(created);
       expect(repo.insert).toHaveBeenCalledWith(dto);
+      expect(indexNowService.notifyContentChanged).toHaveBeenCalledTimes(1);
     });
   });
 });

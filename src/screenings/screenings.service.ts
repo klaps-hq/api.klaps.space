@@ -3,6 +3,8 @@ import { getDateRangeUpToMonthFromNow } from '../lib/date';
 import { randomInt } from 'node:crypto';
 import type {
   GetScreeningsParams,
+  GetLastUpdatedParams,
+  LastUpdatedResponse,
   Screening,
   ScreeningResponse,
   ScreeningGroupResponse,
@@ -13,10 +15,14 @@ import { mapScreening, mapScreeningGroup } from './screenings.mapper';
 import { mapMovieHero } from '../movies/movies.mapper';
 import { ScreeningsRepository } from './screenings.repository';
 import { RETRO_YEAR_THRESHOLD } from './screenings.constants';
+import { IndexNowService } from '../indexnow/indexnow.service';
 
 @Injectable()
 export class ScreeningsService {
-  constructor(private readonly repo: ScreeningsRepository) {}
+  constructor(
+    private readonly repo: ScreeningsRepository,
+    private readonly indexNowService: IndexNowService,
+  ) {}
 
   // === READ ===
 
@@ -34,6 +40,7 @@ export class ScreeningsService {
       movieId: params?.movieId,
       cityId: params?.cityId,
       citySlug: params?.citySlug,
+      voivodeship: params?.voivodeship,
       cinemaId: params?.cinemaId,
       cinemaSlug: params?.cinemaSlug,
       genreId: params?.genreId,
@@ -51,6 +58,7 @@ export class ScreeningsService {
       {
         cityId: params?.cityId,
         citySlug: params?.citySlug,
+        voivodeship: params?.voivodeship,
         cinemaId: params?.cinemaId,
         cinemaSlug: params?.cinemaSlug,
       },
@@ -65,6 +73,13 @@ export class ScreeningsService {
     return filtered.map(({ screenings, ...movie }) =>
       mapScreeningGroup(movie, screenings),
     );
+  }
+
+  async getLastUpdatedAt(
+    params?: GetLastUpdatedParams,
+  ): Promise<LastUpdatedResponse> {
+    const updatedAt = await this.repo.findLastUpdatedAt(params);
+    return { updatedAt: updatedAt ? updatedAt.toISOString() : null };
   }
 
   async getRandomRetroScreening(): Promise<RandomScreeningResponse | null> {
@@ -105,6 +120,13 @@ export class ScreeningsService {
   // === WRITE ===
 
   async createScreening(dto: CreateScreeningDto): Promise<Screening> {
-    return this.repo.insert(dto);
+    const screening = await this.repo.insert(dto);
+
+    // Screenings are the public-facing churn: new ones bump the effective
+    // updatedAt of movie, cinema and city pages, so a debounced IndexNow
+    // ping after a scrape run covers all of them.
+    this.indexNowService.notifyContentChanged();
+
+    return screening;
   }
 }
