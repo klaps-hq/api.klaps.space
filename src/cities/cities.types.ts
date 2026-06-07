@@ -13,6 +13,7 @@ export type CityResponse = {
   nameDeclinated: string;
   population: number | null;
   description: string | null;
+  voivodeship: string | null;
   numberOfCinemas?: number;
   /** ISO 8601 UTC; ostatnia zauważalna zmiana treści (max po kinach miasta). */
   updatedAt?: string;

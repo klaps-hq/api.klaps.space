@@ -32,6 +32,7 @@ describe('CinemasService', () => {
       nameDeclinated: 'Warszawie',
       population: null,
       description: null,
+      voivodeship: null,
     },
   };
 
@@ -43,6 +44,7 @@ describe('CinemasService', () => {
     nameDeclinated: 'Warszawie',
     areacode: null,
     population: null,
+    voivodeship: null,
     description: null,
     lastScrapedAt: null,
   };
@@ -90,6 +92,7 @@ describe('CinemasService', () => {
       nameDeclinated: 'Warszawie',
       population: null,
       description: null,
+      voivodeship: null,
     },
   };
 
@@ -164,6 +167,7 @@ describe('CinemasService', () => {
           nameDeclinated: 'Warszawie',
           population: null,
           description: null,
+          voivodeship: null,
         },
         latitude: 52.2463,
         longitude: 21.0027,
@@ -224,6 +228,7 @@ describe('CinemasService', () => {
           nameDeclinated: 'Warszawie',
           population: null,
           description: null,
+          voivodeship: null,
         },
         latitude: 52.2463,
         longitude: 21.0027,
