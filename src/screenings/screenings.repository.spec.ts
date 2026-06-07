@@ -417,6 +417,28 @@ describe('ScreeningsRepository', () => {
     });
   });
 
+  describe('findLastUpdatedAt', () => {
+    it('should return newest updatedAt without a location filter', async () => {
+      const updatedAt = new Date('2026-06-07T10:00:00.000Z');
+      selectChain = createChain([{ updatedAt }]);
+      mockSelect.mockReturnValue(selectChain);
+
+      const result = await repo.findLastUpdatedAt();
+
+      expect(result).toEqual(updatedAt);
+      expect(mockSelect).toHaveBeenCalled();
+    });
+
+    it('should return null when no screening matches', async () => {
+      selectChain = createChain([{ updatedAt: null }]);
+      mockSelect.mockReturnValue(selectChain);
+
+      const result = await repo.findLastUpdatedAt({ citySlug: 'nowhere' });
+
+      expect(result).toBeNull();
+    });
+  });
+
   describe('insert', () => {
     const dto = {
       url: 'https://kino.pl/tickets/99',
