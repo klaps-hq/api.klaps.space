@@ -16,6 +16,7 @@ describe('SearchService', () => {
     nameDeclinated: 'Warszawie',
     population: 1800000,
     description: null,
+    voivodeship: 'mazowieckie',
   };
 
   const mockCinemaSummaryResponse = {
