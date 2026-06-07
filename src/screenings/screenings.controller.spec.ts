@@ -16,6 +16,7 @@ describe('ScreeningsController', () => {
           provide: ScreeningsService,
           useValue: {
             getScreenings: jest.fn(),
+            getLastUpdatedAt: jest.fn(),
             getRandomRetroScreening: jest.fn(),
             createScreening: jest.fn(),
           },
@@ -52,6 +53,19 @@ describe('ScreeningsController', () => {
 
       expect(result).toEqual(expected);
       expect(service.getScreenings).toHaveBeenCalledWith(query);
+    });
+  });
+
+  describe('getLastUpdatedAt', () => {
+    it('should delegate to service with query params', async () => {
+      const query = { citySlug: 'krakow' } as any;
+      const expected = { updatedAt: '2026-06-07T10:00:00.000Z' };
+      service.getLastUpdatedAt.mockResolvedValue(expected);
+
+      const result = await controller.getLastUpdatedAt(query);
+
+      expect(result).toEqual(expected);
+      expect(service.getLastUpdatedAt).toHaveBeenCalledWith(query);
     });
   });
 

@@ -48,3 +48,16 @@ export type RandomScreeningResponse = {
   movie: MovieHeroResponse;
   screening: ScreeningResponse;
 };
+
+export type GetLastUpdatedParams = {
+  cityId?: number;
+  citySlug?: string;
+  voivodeship?: string;
+  cinemaId?: number;
+  cinemaSlug?: string;
+};
+
+export type LastUpdatedResponse = {
+  // ISO timestamp of the newest screening, or null when none match.
+  updatedAt: string | null;
+};

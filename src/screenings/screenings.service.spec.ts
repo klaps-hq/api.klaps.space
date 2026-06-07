@@ -42,6 +42,7 @@ describe('ScreeningsService', () => {
             findRetroMovieIds: jest.fn(),
             findCandidateRetroMovieIds: jest.fn(),
             findMovieWithScreeningsById: jest.fn(),
+            findLastUpdatedAt: jest.fn(),
             insert: jest.fn(),
           },
         },
@@ -127,6 +128,28 @@ describe('ScreeningsService', () => {
       const result = await service.getScreenings({});
 
       expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('getLastUpdatedAt', () => {
+    it('should return ISO timestamp of newest screening', async () => {
+      const updatedAt = new Date('2026-06-07T10:00:00.000Z');
+      repo.findLastUpdatedAt.mockResolvedValue(updatedAt);
+
+      const result = await service.getLastUpdatedAt({ citySlug: 'krakow' });
+
+      expect(result).toEqual({ updatedAt: '2026-06-07T10:00:00.000Z' });
+      expect(repo.findLastUpdatedAt).toHaveBeenCalledWith({
+        citySlug: 'krakow',
+      });
+    });
+
+    it('should return null when no screening matches', async () => {
+      repo.findLastUpdatedAt.mockResolvedValue(null);
+
+      const result = await service.getLastUpdatedAt();
+
+      expect(result).toEqual({ updatedAt: null });
     });
   });
 
