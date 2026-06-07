@@ -23,6 +23,7 @@ import type { PaginatedResponse } from '../lib/paginate';
 import { GetMultiCityMoviesQueryDto } from './dto/get-multi-city-movies-query.dto';
 import { GetMoviesQueryDto } from './dto/get-movies-query.dto';
 import { CreateMoviesBatchDto } from './dto/create-movies-batch.dto';
+import { UpdateMovieDto } from './dto/update-movie.dto';
 import { CACHE_TTL } from './movies.constants';
 
 @Controller('movies')
@@ -58,6 +59,21 @@ export class MoviesController {
   @UseGuards(InternalApiKeyGuard)
   async getMovieBySlug(@Param('slug') slug: string): Promise<MovieResponse> {
     const movie = await this.moviesService.getMovieBySlug(slug);
+    if (!movie) {
+      throw new NotFoundException(`Movie "${slug}" not found`);
+    }
+
+    return movie;
+  }
+
+  @Post(':slug')
+  @UseGuards(InternalApiKeyGuard)
+  @HttpCode(HttpStatus.OK)
+  async updateMovieBySlug(
+    @Param('slug') slug: string,
+    @Body() body: UpdateMovieDto,
+  ): Promise<MovieResponse> {
+    const movie = await this.moviesService.updateMovieBySlug(slug, body);
     if (!movie) {
       throw new NotFoundException(`Movie "${slug}" not found`);
     }

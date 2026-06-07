@@ -15,6 +15,7 @@ describe('CitiesController', () => {
     nameDeclinated: 'Warszawie',
     population: null,
     description: 'Stolica Polski',
+    voivodeship: 'mazowieckie',
     numberOfCinemas: 12,
   };
 
@@ -78,9 +79,20 @@ describe('CitiesController', () => {
     it('should delegate to service.getCitiesWithCinemas', async () => {
       service.getCitiesWithCinemas.mockResolvedValue([mockCityResponse]);
 
-      const result = await controller.getCitiesWithCinemas();
+      const result = await controller.getCitiesWithCinemas({});
 
-      expect(service.getCitiesWithCinemas).toHaveBeenCalled();
+      expect(service.getCitiesWithCinemas).toHaveBeenCalledWith(undefined);
+      expect(result).toEqual([mockCityResponse]);
+    });
+
+    it('should pass voivodeship filter to service', async () => {
+      service.getCitiesWithCinemas.mockResolvedValue([mockCityResponse]);
+
+      const result = await controller.getCitiesWithCinemas({
+        voivodeship: 'mazowieckie',
+      });
+
+      expect(service.getCitiesWithCinemas).toHaveBeenCalledWith('mazowieckie');
       expect(result).toEqual([mockCityResponse]);
     });
   });

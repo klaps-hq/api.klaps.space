@@ -163,6 +163,41 @@ describe('ScreeningsRepository', () => {
       expect(mockDb.query.cities.findFirst).toHaveBeenCalled();
     });
 
+    it('should resolve voivodeship location when voivodeship provided', async () => {
+      selectDistinctChain = createChain([{ movieId: 9 }]);
+      mockSelectDistinct.mockReturnValue(selectDistinctChain);
+
+      const result = await repo.findFilteredMovieIds({
+        ...baseParams,
+        voivodeship: 'mazowieckie',
+      });
+
+      expect(result).toEqual([9]);
+      // Cinema subquery by voivodeship: select → innerJoin(cities) → where
+      expect(mockSelect).toHaveBeenCalled();
+      expect(selectChain.innerJoin).toHaveBeenCalled();
+      expect(selectChain.where).toHaveBeenCalled();
+    });
+
+    it('should prefer city over voivodeship when both provided', async () => {
+      mockDb.query.cities.findFirst.mockResolvedValueOnce({
+        sourceId: 'city-3',
+      });
+      selectDistinctChain = createChain([{ movieId: 11 }]);
+      mockSelectDistinct.mockReturnValue(selectDistinctChain);
+
+      const result = await repo.findFilteredMovieIds({
+        ...baseParams,
+        cityId: 3,
+        voivodeship: 'mazowieckie',
+      });
+
+      expect(result).toEqual([11]);
+      expect(mockDb.query.cities.findFirst).toHaveBeenCalled();
+      // City condition wins — the voivodeship subquery (with innerJoin) is never built
+      expect(selectChain.innerJoin).not.toHaveBeenCalled();
+    });
+
     it('should return undefined location when cinema not found', async () => {
       mockDb.query.cinemas.findFirst.mockResolvedValueOnce(undefined);
       selectDistinctChain = createChain([{ movieId: 1 }]);
@@ -379,6 +414,28 @@ describe('ScreeningsRepository', () => {
       );
 
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('findLastUpdatedAt', () => {
+    it('should return newest updatedAt without a location filter', async () => {
+      const updatedAt = new Date('2026-06-07T10:00:00.000Z');
+      selectChain = createChain([{ updatedAt }]);
+      mockSelect.mockReturnValue(selectChain);
+
+      const result = await repo.findLastUpdatedAt();
+
+      expect(result).toEqual(updatedAt);
+      expect(mockSelect).toHaveBeenCalled();
+    });
+
+    it('should return null when no screening matches', async () => {
+      selectChain = createChain([{ updatedAt: null }]);
+      mockSelect.mockReturnValue(selectChain);
+
+      const result = await repo.findLastUpdatedAt({ citySlug: 'nowhere' });
+
+      expect(result).toBeNull();
     });
   });
 

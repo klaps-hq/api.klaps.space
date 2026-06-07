@@ -16,6 +16,7 @@ import type { CityDetailResponse, CityResponse } from './cities.types';
 import { CreateCitiesBatchDto } from './dto/create-cities-batch.dto';
 import { UpdateCityDto } from './dto/update-city.dto';
 import { GetScrapedCitiesQueryDto } from './dto/get-scraped-cities-query.dto';
+import { GetCitiesWithCinemasQueryDto } from './dto/get-cities-with-cinemas-query.dto';
 
 @Controller('cities')
 export class CitiesController {
@@ -37,8 +38,10 @@ export class CitiesController {
 
   @Get('with-cinemas')
   @UseGuards(InternalApiKeyGuard)
-  getCitiesWithCinemas(): Promise<CityResponse[]> {
-    return this.citiesService.getCitiesWithCinemas();
+  getCitiesWithCinemas(
+    @Query() query: GetCitiesWithCinemasQueryDto,
+  ): Promise<CityResponse[]> {
+    return this.citiesService.getCitiesWithCinemas(query.voivodeship);
   }
 
   @Get(':slug')
