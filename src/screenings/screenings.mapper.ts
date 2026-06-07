@@ -28,6 +28,7 @@ const EMPTY_CINEMA = {
     nameDeclinated: '',
     population: null,
     description: null,
+    voivodeship: null,
   },
 } as const;
 
