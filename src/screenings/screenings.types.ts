@@ -13,6 +13,7 @@ export type GetScreeningsParams = {
   movieId?: number;
   cityId?: number;
   citySlug?: string;
+  voivodeship?: string;
   genreId?: number;
   genreSlug?: string;
   cinemaId?: number;

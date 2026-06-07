@@ -15,6 +15,7 @@ export type FindScreeningsParams = {
   movieId?: number;
   cityId?: number;
   citySlug?: string;
+  voivodeship?: string;
   cinemaId?: number;
   cinemaSlug?: string;
   genreId?: number;
@@ -38,6 +39,7 @@ export class ScreeningsRepository {
       params.citySlug,
       params.cinemaId,
       params.cinemaSlug,
+      params.voivodeship,
     );
     const genreCondition = await this.resolveGenreCondition(
       params.genreId,
@@ -80,6 +82,7 @@ export class ScreeningsRepository {
     locationFilter?: {
       cityId?: number;
       citySlug?: string;
+      voivodeship?: string;
       cinemaId?: number;
       cinemaSlug?: string;
     },
@@ -90,6 +93,7 @@ export class ScreeningsRepository {
           locationFilter.citySlug,
           locationFilter.cinemaId,
           locationFilter.cinemaSlug,
+          locationFilter.voivodeship,
         )
       : undefined;
 
@@ -209,6 +213,7 @@ export class ScreeningsRepository {
     citySlug?: string,
     cinemaId?: number,
     cinemaSlug?: string,
+    voivodeship?: string,
   ) {
     if (cinemaId) {
       const cinema = await this.db.query.cinemas.findFirst({
@@ -242,6 +247,20 @@ export class ScreeningsRepository {
           .select({ sourceId: schema.cinemas.sourceId })
           .from(schema.cinemas)
           .where(eq(schema.cinemas.sourceCityId, city.sourceId)),
+      );
+    }
+
+    if (voivodeship) {
+      return inArray(
+        schema.screenings.cinemaId,
+        this.db
+          .select({ sourceId: schema.cinemas.sourceId })
+          .from(schema.cinemas)
+          .innerJoin(
+            schema.cities,
+            eq(schema.cinemas.sourceCityId, schema.cities.sourceId),
+          )
+          .where(eq(schema.cities.voivodeship, voivodeship)),
       );
     }
 

@@ -8,6 +8,7 @@ export const mapCity = (
     nameDeclinated: string;
     population?: number | null;
     description?: string | null;
+    voivodeship?: string | null;
   },
   numberOfCinemas?: number,
   updatedAt?: Date,
@@ -18,6 +19,7 @@ export const mapCity = (
   nameDeclinated: city.nameDeclinated,
   population: city.population ?? null,
   description: city.description ?? null,
+  voivodeship: city.voivodeship ?? null,
   ...(numberOfCinemas !== undefined && { numberOfCinemas }),
   ...(updatedAt !== undefined && { updatedAt: updatedAt.toISOString() }),
 });
