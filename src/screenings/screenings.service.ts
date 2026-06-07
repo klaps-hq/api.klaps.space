@@ -13,10 +13,14 @@ import { mapScreening, mapScreeningGroup } from './screenings.mapper';
 import { mapMovieHero } from '../movies/movies.mapper';
 import { ScreeningsRepository } from './screenings.repository';
 import { RETRO_YEAR_THRESHOLD } from './screenings.constants';
+import { IndexNowService } from '../indexnow/indexnow.service';
 
 @Injectable()
 export class ScreeningsService {
-  constructor(private readonly repo: ScreeningsRepository) {}
+  constructor(
+    private readonly repo: ScreeningsRepository,
+    private readonly indexNowService: IndexNowService,
+  ) {}
 
   // === READ ===
 
@@ -107,6 +111,13 @@ export class ScreeningsService {
   // === WRITE ===
 
   async createScreening(dto: CreateScreeningDto): Promise<Screening> {
-    return this.repo.insert(dto);
+    const screening = await this.repo.insert(dto);
+
+    // Screenings are the public-facing churn: new ones bump the effective
+    // updatedAt of movie, cinema and city pages, so a debounced IndexNow
+    // ping after a scrape run covers all of them.
+    this.indexNowService.notifyContentChanged();
+
+    return screening;
   }
 }

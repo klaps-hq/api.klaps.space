@@ -19,6 +19,7 @@ import { Test } from '@nestjs/testing';
 import { randomInt } from 'node:crypto';
 import { ScreeningsService } from './screenings.service';
 import { ScreeningsRepository } from './screenings.repository';
+import { IndexNowService } from '../indexnow/indexnow.service';
 import { mapScreening, mapScreeningGroup } from './screenings.mapper';
 import { mapMovieHero } from '../movies/movies.mapper';
 
@@ -27,6 +28,7 @@ const mockRandomInt = randomInt as jest.Mock;
 describe('ScreeningsService', () => {
   let service: ScreeningsService;
   let repo: jest.Mocked<ScreeningsRepository>;
+  let indexNowService: jest.Mocked<IndexNowService>;
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
@@ -43,11 +45,18 @@ describe('ScreeningsService', () => {
             insert: jest.fn(),
           },
         },
+        {
+          provide: IndexNowService,
+          useValue: {
+            notifyContentChanged: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get(ScreeningsService);
     repo = module.get(ScreeningsRepository);
+    indexNowService = module.get(IndexNowService);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -216,6 +225,7 @@ describe('ScreeningsService', () => {
 
       expect(result).toEqual(created);
       expect(repo.insert).toHaveBeenCalledWith(dto);
+      expect(indexNowService.notifyContentChanged).toHaveBeenCalledTimes(1);
     });
   });
 });

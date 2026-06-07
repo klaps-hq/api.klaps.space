@@ -6,5 +6,6 @@ import { SitemapRepository } from './sitemap.repository';
 @Module({
   controllers: [SitemapController],
   providers: [SitemapService, SitemapRepository],
+  exports: [SitemapService],
 })
 export class SitemapModule {}
