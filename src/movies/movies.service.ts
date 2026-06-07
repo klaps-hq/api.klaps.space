@@ -7,6 +7,7 @@ import type {
   MultiCityMovieResponse,
 } from './movies.types';
 import type { CreateMoviesBatchItemDto } from './dto/create-movies-batch.dto';
+import type { UpdateMovieDto } from './dto/update-movie.dto';
 import type { PaginatedResponse } from '../lib/paginate';
 import { parsePagination, paginate } from '../lib/paginate';
 import { mapMovieSummary, mapMovieDetail } from './movies.mapper';
@@ -69,6 +70,15 @@ export class MoviesService {
 
   async createMoviesBatch(movies: CreateMoviesBatchItemDto[]): Promise<void> {
     return this.repo.upsertBatch(movies);
+  }
+
+  async updateMovieBySlug(
+    slug: string,
+    data: UpdateMovieDto,
+  ): Promise<MovieResponse | null> {
+    const movie = await this.repo.updateBySlug(slug, data);
+    if (!movie) return null;
+    return mapMovieDetail(movie);
   }
 
   // === PRIVATE ===

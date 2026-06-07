@@ -518,4 +518,38 @@ describe('MoviesRepository', () => {
       expect(chunkCallArgs[0].polishPremiereDate).toBeUndefined();
     });
   });
+
+  describe('updateBySlug', () => {
+    it('should update and return movie when found', async () => {
+      const expected = {
+        id: 1,
+        slug: 'matrix-1999',
+        title: 'Matrix',
+      };
+      mockDb.query.movies.findFirst.mockResolvedValue(expected);
+
+      const result = await repository.updateBySlug('matrix-1999', {
+        description: 'Updated description',
+      });
+
+      expect(mockDb.update).toHaveBeenCalled();
+      expect(insertChain.set).toHaveBeenCalledWith({
+        description: 'Updated description',
+        updatedAt: expect.any(Date),
+      });
+      expect(insertChain.where).toHaveBeenCalled();
+      expect(result).toEqual(expected);
+    });
+
+    it('should return null when movie not found after update', async () => {
+      mockDb.query.movies.findFirst.mockResolvedValue(undefined);
+
+      const result = await repository.updateBySlug('nieistniejace', {
+        description: 'Test',
+      });
+
+      expect(mockDb.update).toHaveBeenCalled();
+      expect(result).toBeNull();
+    });
+  });
 });
