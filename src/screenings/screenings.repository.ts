@@ -3,7 +3,17 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
-import { and, eq, gte, ilike, inArray, isNotNull, lte, ne } from 'drizzle-orm';
+import {
+  and,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  lte,
+  max,
+  ne,
+} from 'drizzle-orm';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
 import type { Screening } from './screenings.types';
 
@@ -167,6 +177,34 @@ export class ScreeningsRepository {
         },
       },
     });
+  }
+
+  /**
+   * Newest `screenings.updatedAt` across the (optionally location-filtered)
+   * set, i.e. when repertoire data was last added. Backs the visible
+   * "repertuar zaktualizowano" freshness label. Returns null when no
+   * screening matches the filter.
+   */
+  async findLastUpdatedAt(
+    params: Pick<
+      FindScreeningsParams,
+      'cityId' | 'citySlug' | 'voivodeship' | 'cinemaId' | 'cinemaSlug'
+    > = {},
+  ): Promise<Date | null> {
+    const locationCondition = await this.resolveLocationCondition(
+      params.cityId,
+      params.citySlug,
+      params.cinemaId,
+      params.cinemaSlug,
+      params.voivodeship,
+    );
+
+    const [row] = await this.db
+      .select({ updatedAt: max(schema.screenings.updatedAt) })
+      .from(schema.screenings)
+      .where(locationCondition);
+
+    return row?.updatedAt ?? null;
   }
 
   // === WRITE ===

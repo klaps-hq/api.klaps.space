@@ -3,6 +3,8 @@ import { getDateRangeUpToMonthFromNow } from '../lib/date';
 import { randomInt } from 'node:crypto';
 import type {
   GetScreeningsParams,
+  GetLastUpdatedParams,
+  LastUpdatedResponse,
   Screening,
   ScreeningResponse,
   ScreeningGroupResponse,
@@ -71,6 +73,13 @@ export class ScreeningsService {
     return filtered.map(({ screenings, ...movie }) =>
       mapScreeningGroup(movie, screenings),
     );
+  }
+
+  async getLastUpdatedAt(
+    params?: GetLastUpdatedParams,
+  ): Promise<LastUpdatedResponse> {
+    const updatedAt = await this.repo.findLastUpdatedAt(params);
+    return { updatedAt: updatedAt ? updatedAt.toISOString() : null };
   }
 
   async getRandomRetroScreening(): Promise<RandomScreeningResponse | null> {

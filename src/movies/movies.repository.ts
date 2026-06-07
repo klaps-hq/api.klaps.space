@@ -8,6 +8,7 @@ import type {
   CreateMoviesBatchItemDto,
   ActorInsertDto,
 } from './dto/create-movies-batch.dto';
+import type { UpdateMovieDto } from './dto/update-movie.dto';
 import { and, desc, eq, gte, ilike, inArray, sql } from 'drizzle-orm';
 import { movieSlug, toSlug, uniqueSlug } from '../lib/slug';
 import { excludedChanged } from '../lib/upsert';
@@ -181,6 +182,21 @@ export class MoviesRepository {
       this.upsertCountries(movies, movieIdMap),
       this.upsertGenres(movies, movieIdMap),
     ]);
+  }
+
+  async updateBySlug(slug: string, data: UpdateMovieDto) {
+    const condition = eq(schema.movies.slug, slug);
+
+    await this.db
+      .update(schema.movies)
+      .set({ ...data, updatedAt: new Date() })
+      .where(condition);
+
+    const movie = await this.db.query.movies.findFirst({
+      where: condition,
+      with: MOVIE_RELATIONS,
+    });
+    return movie ?? null;
   }
 
   // === PRIVATE ===
