@@ -16,6 +16,7 @@ describe('SearchController', () => {
         nameDeclinated: 'Warszawie',
         population: 1800000,
         description: null,
+        voivodeship: 'mazowieckie',
       },
     ],
     cinemas: [],
