@@ -31,7 +31,11 @@ export class CitiesRepository {
     return this.db
       .select({
         ...cityColumns,
-        numberOfCinemas: sql<number>`count(${schema.cinemas.id})`,
+        // count() returns bigint, which pg serializes as a string -
+        // map to a real number so the JSON response is not "12".
+        numberOfCinemas: sql<number>`count(${schema.cinemas.id})`.mapWith(
+          Number,
+        ),
       })
       .from(schema.cities)
       .innerJoin(
@@ -66,7 +70,9 @@ export class CitiesRepository {
 
   async countCinemasBySourceId(sourceCityId: number): Promise<number> {
     const [{ count }] = await this.db
-      .select({ count: sql<number>`count(*)` })
+      // count() returns bigint, which pg serializes as a string -
+      // map to a real number so callers can do arithmetic on it.
+      .select({ count: sql<number>`count(*)`.mapWith(Number) })
       .from(schema.cinemas)
       .where(eq(schema.cinemas.sourceCityId, sourceCityId));
     return count;
