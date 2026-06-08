@@ -28,6 +28,7 @@ describe('DirectorsService', () => {
             findAll: jest.fn().mockResolvedValue([]),
             count: jest.fn(),
             findBySlug: jest.fn(),
+            updateBySlug: jest.fn(),
             findStats: jest.fn().mockResolvedValue(new Map()),
             findContentUpdatedAt: jest.fn().mockResolvedValue(new Map()),
           },
@@ -116,6 +117,33 @@ describe('DirectorsService', () => {
       repo.findBySlug.mockResolvedValue(undefined);
 
       const result = await service.getDirectorBySlug('nieistnieje');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('updateDirectorBySlug', () => {
+    it('returns the mapped director after update', async () => {
+      const updatedRow = { ...mockDirectorRow, bio: 'Polski reżyser.' };
+      repo.updateBySlug.mockResolvedValue(updatedRow as never);
+
+      const result = await service.updateDirectorBySlug('pawel-pawlikowski', {
+        bio: 'Polski reżyser.',
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.bio).toBe('Polski reżyser.');
+      expect(repo.updateBySlug).toHaveBeenCalledWith('pawel-pawlikowski', {
+        bio: 'Polski reżyser.',
+      });
+    });
+
+    it('returns null when the director is not found', async () => {
+      repo.updateBySlug.mockResolvedValue(null);
+
+      const result = await service.updateDirectorBySlug('nieistnieje', {
+        bio: 'x',
+      });
 
       expect(result).toBeNull();
     });

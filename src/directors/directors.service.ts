@@ -5,6 +5,7 @@ import { paginate, parsePagination } from '../lib/paginate';
 import { mapDirector } from './directors.mapper';
 import { DirectorsRepository } from './directors.repository';
 import { PAGINATION } from './directors.constants';
+import type { UpdateDirectorDto } from './dto/update-director.dto';
 
 @Injectable()
 export class DirectorsService {
@@ -38,6 +39,18 @@ export class DirectorsService {
 
   async getDirectorBySlug(slug: string): Promise<DirectorResponse | null> {
     const director = await this.repo.findBySlug(slug);
+    if (!director) return null;
+    const [mapped] = await this.mapWithStats([director]);
+    return mapped;
+  }
+
+  // === WRITE ===
+
+  async updateDirectorBySlug(
+    slug: string,
+    data: UpdateDirectorDto,
+  ): Promise<DirectorResponse | null> {
+    const director = await this.repo.updateBySlug(slug, data);
     if (!director) return null;
     const [mapped] = await this.mapWithStats([director]);
     return mapped;
