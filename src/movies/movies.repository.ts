@@ -7,6 +7,7 @@ import type { GetMultiCityMoviesParams } from './movies.types';
 import type {
   CreateMoviesBatchItemDto,
   ActorInsertDto,
+  DirectorInsertDto,
 } from './dto/create-movies-batch.dto';
 import type { UpdateMovieDto } from './dto/update-movie.dto';
 import { and, desc, eq, gte, ilike, inArray, sql } from 'drizzle-orm';
@@ -38,6 +39,7 @@ export class MoviesRepository {
   async findAll(params?: {
     search?: string;
     genreId?: number;
+    directorId?: number;
     limit?: number;
     offset?: number;
   }) {
@@ -46,6 +48,7 @@ export class MoviesRepository {
         ? ilike(schema.movies.title, `%${params.search}%`)
         : undefined,
       this.buildGenreCondition(params?.genreId),
+      this.buildDirectorCondition(params?.directorId),
     );
 
     return this.db.query.movies.findMany({
@@ -57,12 +60,17 @@ export class MoviesRepository {
     });
   }
 
-  async count(params?: { search?: string; genreId?: number }) {
+  async count(params?: {
+    search?: string;
+    genreId?: number;
+    directorId?: number;
+  }) {
     const where = and(
       params?.search
         ? ilike(schema.movies.title, `%${params.search}%`)
         : undefined,
       this.buildGenreCondition(params?.genreId),
+      this.buildDirectorCondition(params?.directorId),
     );
 
     const [result] = await this.db
@@ -165,13 +173,7 @@ export class MoviesRepository {
         'movies_actors',
         'actorId',
       ),
-      this.upsertPersons(
-        movies,
-        movieIdMap,
-        'directors',
-        'movies_directors',
-        'directorId',
-      ),
+      this.upsertDirectors(movies, movieIdMap),
       this.upsertPersons(
         movies,
         movieIdMap,
@@ -325,12 +327,24 @@ export class MoviesRepository {
     );
   }
 
+  private buildDirectorCondition(directorId?: number) {
+    if (!directorId) return undefined;
+
+    return inArray(
+      schema.movies.id,
+      this.db
+        .select({ movieId: schema.movies_directors.movieId })
+        .from(schema.movies_directors)
+        .where(eq(schema.movies_directors.directorId, directorId)),
+    );
+  }
+
   private async upsertPersons(
     movies: CreateMoviesBatchItemDto[],
     movieIdMap: Map<number, number>,
-    personKey: 'actors' | 'directors' | 'scriptwriters',
-    junctionKey: 'movies_actors' | 'movies_directors' | 'movies_scriptwriters',
-    fkName: 'actorId' | 'directorId' | 'scriptwriterId',
+    personKey: 'actors' | 'scriptwriters',
+    junctionKey: 'movies_actors' | 'movies_scriptwriters',
+    fkName: 'actorId' | 'scriptwriterId',
   ): Promise<void> {
     const personMap = new Map<number, ActorInsertDto>();
     const junctionPairs: { movieSourceId: number; personSourceId: number }[] =
@@ -403,6 +417,129 @@ export class MoviesRepository {
               set: { movieId: sql`excluded."movieId"` },
             }),
         { label: `createBatch:${junctionKey}` },
+      );
+    }
+  }
+
+  /**
+   * Directors diverge from the generic person upsert: they own a stable URL
+   * slug, a `role`, and optional bio/photoUrl. The slug is generated once and
+   * never overwritten on conflict (like genres/movies) so public URLs never
+   * churn; bio/photoUrl use COALESCE so a batch that omits them never wipes
+   * already-stored values.
+   */
+  private async upsertDirectors(
+    movies: CreateMoviesBatchItemDto[],
+    movieIdMap: Map<number, number>,
+  ): Promise<void> {
+    const directorMap = new Map<number, DirectorInsertDto>();
+    const junctionPairs: { movieSourceId: number; personSourceId: number }[] =
+      [];
+
+    for (const movie of movies) {
+      if (!movie.directors?.length) continue;
+      for (const director of movie.directors) {
+        directorMap.set(director.sourceId, director);
+        junctionPairs.push({
+          movieSourceId: movie.sourceId,
+          personSourceId: director.sourceId,
+        });
+      }
+    }
+
+    if (directorMap.size === 0) return;
+
+    // Load every existing director slug for global uniqueness, plus the slug
+    // already assigned per sourceId so re-scrapes reuse it (frozen slug).
+    const existing = await this.db
+      .select({
+        sourceId: schema.directors.sourceId,
+        slug: schema.directors.slug,
+      })
+      .from(schema.directors);
+    const taken = new Set<string>();
+    const slugBySourceId = new Map<number, string>();
+    for (const row of existing) {
+      if (!row.slug) continue;
+      taken.add(row.slug);
+      slugBySourceId.set(row.sourceId, row.slug);
+    }
+
+    const directorValues = [...directorMap.values()].map((d) => {
+      let slug = slugBySourceId.get(d.sourceId);
+      if (!slug) {
+        slug = uniqueSlug(toSlug(d.name), taken);
+        taken.add(slug);
+      }
+      return {
+        sourceId: d.sourceId,
+        name: d.name,
+        url: d.url,
+        slug,
+        role: 'director',
+        bio: d.bio ?? null,
+        photoUrl: d.photoUrl ?? null,
+      };
+    });
+
+    const directorChunks = sortAndChunk(directorValues, (d) => d.sourceId);
+    for (const chunk of directorChunks) {
+      await withDeadlockRetry(
+        () =>
+          this.db
+            .insert(schema.directors)
+            .values(chunk)
+            .onConflictDoUpdate({
+              target: schema.directors.sourceId,
+              // Celowo bez `slug` — slug jest zamrożony, regeneracja churnowałaby URL-e.
+              set: {
+                name: sql`excluded."name"`,
+                url: sql`excluded."url"`,
+                bio: sql`COALESCE(excluded."bio", ${schema.directors.bio})`,
+                photoUrl: sql`COALESCE(excluded."photoUrl", ${schema.directors.photoUrl})`,
+                updatedAt: sql`now()`,
+              },
+              setWhere: excludedChanged([
+                schema.directors.name,
+                schema.directors.url,
+                schema.directors.bio,
+                schema.directors.photoUrl,
+              ]),
+            }),
+        { label: 'createBatch:directors' },
+      );
+    }
+
+    const directorRows = await this.db
+      .select({ id: schema.directors.id, sourceId: schema.directors.sourceId })
+      .from(schema.directors)
+      .where(inArray(schema.directors.sourceId, [...directorMap.keys()]));
+    const directorIdMap = new Map(directorRows.map((r) => [r.sourceId, r.id]));
+
+    const junctionValues = junctionPairs
+      .map((pair) => ({
+        movieId: movieIdMap.get(pair.movieSourceId)!,
+        directorId: directorIdMap.get(pair.personSourceId)!,
+      }))
+      .filter((v) => v.movieId != null && v.directorId != null);
+
+    if (junctionValues.length === 0) return;
+
+    const junctionChunks = sortAndChunk(junctionValues, (v) => v.movieId);
+    for (const chunk of junctionChunks) {
+      await withDeadlockRetry(
+        () =>
+          this.db
+            .insert(schema.movies_directors)
+            .values(chunk)
+            .onConflictDoUpdate({
+              target: [
+                schema.movies_directors.movieId,
+                schema.movies_directors.directorId,
+              ],
+              set: { movieId: sql`excluded."movieId"` },
+            }),
+        { label: 'createBatch:movies_directors' },
       );
     }
   }
