@@ -45,6 +45,7 @@ export class ScreeningsService {
       cinemaSlug: params?.cinemaSlug,
       genreId: params?.genreId,
       genreSlug: params?.genreSlug,
+      directorId: params?.directorId,
       limit: params?.limit,
       search: params?.search,
     });

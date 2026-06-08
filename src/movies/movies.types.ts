@@ -7,6 +7,7 @@ export type GetMoviesParams = {
   search?: string;
   genreId?: number;
   genreSlug?: string;
+  directorId?: number;
   page?: number;
   limit?: number;
 };

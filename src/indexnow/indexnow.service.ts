@@ -112,6 +112,7 @@ export class IndexNowService implements OnModuleDestroy {
       ...changed(sitemap.cinemas, 'kina'),
       ...changed(sitemap.cities, 'miasta'),
       ...changed(sitemap.genres, 'gatunki'),
+      ...changed(sitemap.directors, 'rezyserzy'),
     ];
 
     return urls.slice(0, MAX_URLS);
