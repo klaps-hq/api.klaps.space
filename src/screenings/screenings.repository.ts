@@ -30,6 +30,7 @@ export type FindScreeningsParams = {
   cinemaSlug?: string;
   genreId?: number;
   genreSlug?: string;
+  directorId?: number;
   limit?: number;
   search?: string;
 };
@@ -65,6 +66,7 @@ export class ScreeningsRepository {
       locationCondition,
       this.buildSearchFilter(params.search),
       genreCondition,
+      this.buildDirectorCondition(params.directorId),
     );
 
     const query = this.db
@@ -188,7 +190,12 @@ export class ScreeningsRepository {
   async findLastUpdatedAt(
     params: Pick<
       FindScreeningsParams,
-      'cityId' | 'citySlug' | 'voivodeship' | 'cinemaId' | 'cinemaSlug'
+      | 'cityId'
+      | 'citySlug'
+      | 'voivodeship'
+      | 'cinemaId'
+      | 'cinemaSlug'
+      | 'directorId'
     > = {},
   ): Promise<Date | null> {
     const locationCondition = await this.resolveLocationCondition(
@@ -202,7 +209,9 @@ export class ScreeningsRepository {
     const [row] = await this.db
       .select({ updatedAt: max(schema.screenings.updatedAt) })
       .from(schema.screenings)
-      .where(locationCondition);
+      .where(
+        and(locationCondition, this.buildDirectorCondition(params.directorId)),
+      );
 
     return row?.updatedAt ?? null;
   }
@@ -326,6 +335,17 @@ export class ScreeningsRepository {
         .select({ id: schema.movies.id })
         .from(schema.movies)
         .where(ilike(schema.movies.title, `%${search}%`)),
+    );
+  }
+
+  private buildDirectorCondition(directorId?: number) {
+    if (!directorId) return undefined;
+    return inArray(
+      schema.screenings.movieId,
+      this.db
+        .select({ movieId: schema.movies_directors.movieId })
+        .from(schema.movies_directors)
+        .where(eq(schema.movies_directors.directorId, directorId)),
     );
   }
 }

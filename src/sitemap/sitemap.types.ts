@@ -9,4 +9,5 @@ export type SitemapResponse = {
   cinemas: SitemapEntry[];
   cities: SitemapEntry[];
   genres: SitemapEntry[];
+  directors: SitemapEntry[];
 };

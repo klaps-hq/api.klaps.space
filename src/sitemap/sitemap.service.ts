@@ -10,11 +10,12 @@ export class SitemapService {
   // === READ ===
 
   async getSitemap(): Promise<SitemapResponse> {
-    const [movies, cinemas, cities, genres] = await Promise.all([
+    const [movies, cinemas, cities, genres, directors] = await Promise.all([
       this.repo.findMovieEntries(),
       this.repo.findCinemaEntries(),
       this.repo.findCityEntries(),
       this.repo.findGenreEntries(),
+      this.repo.findDirectorEntries(),
     ]);
 
     return {
@@ -22,6 +23,7 @@ export class SitemapService {
       cinemas: cinemas.map(mapSitemapEntry),
       cities: cities.map(mapSitemapEntry),
       genres: genres.map(mapSitemapEntry),
+      directors: directors.map(mapSitemapEntry),
     };
   }
 }

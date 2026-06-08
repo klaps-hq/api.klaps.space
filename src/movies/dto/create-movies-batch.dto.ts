@@ -27,6 +27,17 @@ export class ActorInsertDto {
   url: string;
 }
 
+export class DirectorInsertDto extends ActorInsertDto {
+  @IsOptional()
+  @IsString()
+  bio?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  photoUrl?: string;
+}
+
 export class CountryInsertDto {
   @IsString()
   @IsNotEmpty()
@@ -167,8 +178,8 @@ export class CreateMoviesBatchItemDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ActorInsertDto)
-  directors?: ActorInsertDto[];
+  @Type(() => DirectorInsertDto)
+  directors?: DirectorInsertDto[];
 
   @IsOptional()
   @IsArray()

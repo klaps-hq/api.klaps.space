@@ -2,7 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
-import { eq, sql } from 'drizzle-orm';
+import { eq, isNotNull, sql } from 'drizzle-orm';
+import { DIRECTOR_INDEX_THRESHOLD } from './sitemap.constants';
 
 export type SitemapRow = {
   slug: string;
@@ -83,6 +84,38 @@ export class SitemapRepository {
         eq(schema.screenings.cinemaId, schema.cinemas.sourceId),
       )
       .groupBy(schema.cities.id);
+  }
+
+  /**
+   * Returns slug + effective content `updatedAt` per director, restricted to
+   * directors with at least DIRECTOR_INDEX_THRESHOLD upcoming screenings
+   * (date >= today) — below that the frontend marks the page `noindex`, so it
+   * must not appear in the sitemap. updatedAt is GREATEST(director.updatedAt,
+   * newest screening.updatedAt across their films).
+   */
+  async findDirectorEntries(): Promise<SitemapRow[]> {
+    return this.db
+      .select({
+        slug: sql<string>`${schema.directors.slug}`,
+        updatedAt:
+          sql<Date>`GREATEST(${schema.directors.updatedAt}, max(${schema.screenings.updatedAt}))`.mapWith(
+            schema.directors.updatedAt,
+          ),
+      })
+      .from(schema.directors)
+      .innerJoin(
+        schema.movies_directors,
+        eq(schema.movies_directors.directorId, schema.directors.id),
+      )
+      .innerJoin(
+        schema.screenings,
+        eq(schema.screenings.movieId, schema.movies_directors.movieId),
+      )
+      .where(isNotNull(schema.directors.slug))
+      .groupBy(schema.directors.id)
+      .having(
+        sql`count(*) filter (where ${schema.screenings.date} >= CURRENT_DATE) >= ${DIRECTOR_INDEX_THRESHOLD}`,
+      );
   }
 
   /**

@@ -8,6 +8,9 @@ const mockSitemapResponse = {
   cinemas: [{ slug: 'kino-muranow', updatedAt: '2026-06-01T12:00:00.000Z' }],
   cities: [{ slug: 'warszawa', updatedAt: '2026-06-01T12:00:00.000Z' }],
   genres: [{ slug: 'dramat', updatedAt: '2026-06-01T12:00:00.000Z' }],
+  directors: [
+    { slug: 'pawel-pawlikowski', updatedAt: '2026-06-01T12:00:00.000Z' },
+  ],
 };
 
 describe('SitemapController', () => {
