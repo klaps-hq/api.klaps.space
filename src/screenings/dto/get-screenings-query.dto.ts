@@ -58,6 +58,12 @@ export class GetScreeningsQueryDto {
 
   @IsOptional()
   @Type(() => Number)
+  @IsInt({ message: 'directorId must be an integer' })
+  @Min(1, { message: 'directorId must be a positive integer' })
+  directorId?: number;
+
+  @IsOptional()
+  @Type(() => Number)
   @IsInt({ message: 'cinemaId must be an integer' })
   @Min(1, { message: 'cinemaId must be a positive integer' })
   cinemaId?: number;

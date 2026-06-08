@@ -83,4 +83,23 @@ describe('SitemapRepository', () => {
       expect(leftJoin).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('findDirectorEntries', () => {
+    it('should return director slugs filtered by the upcoming-screenings threshold', async () => {
+      const rows = [{ slug: 'pawel-pawlikowski', updatedAt }];
+      // from → innerJoin → innerJoin → where → groupBy → having (resolves rows).
+      const having = jest.fn().mockResolvedValue(rows);
+      const groupBy = jest.fn().mockReturnValue({ having });
+      const where = jest.fn().mockReturnValue({ groupBy });
+      const innerJoin2 = jest.fn().mockReturnValue({ where });
+      const innerJoin1 = jest.fn().mockReturnValue({ innerJoin: innerJoin2 });
+      const from = jest.fn().mockReturnValue({ innerJoin: innerJoin1 });
+      mockDb.select.mockReturnValue({ from });
+
+      const result = await repository.findDirectorEntries();
+
+      expect(result).toEqual(rows);
+      expect(having).toHaveBeenCalled();
+    });
+  });
 });
