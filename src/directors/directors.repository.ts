@@ -4,6 +4,7 @@ import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
 import { and, asc, eq, gte, ilike, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { Director, DirectorStats } from './directors.types';
+import type { UpdateDirectorDto } from './dto/update-director.dto';
 
 @Injectable()
 export class DirectorsRepository {
@@ -123,6 +124,28 @@ export class DirectorsRepository {
       .groupBy(schema.directors.id);
 
     return new Map(rows.map((r) => [r.directorId, r.updatedAt]));
+  }
+
+  // === WRITE ===
+
+  async updateBySlug(
+    slug: string,
+    data: UpdateDirectorDto,
+  ): Promise<Director | null> {
+    const condition = eq(schema.directors.slug, slug);
+
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.name != null) updateData.name = data.name;
+    if (data.role != null) updateData.role = data.role;
+    if (data.bio !== undefined) updateData.bio = data.bio;
+    if (data.photoUrl !== undefined) updateData.photoUrl = data.photoUrl;
+
+    await this.db.update(schema.directors).set(updateData).where(condition);
+
+    const director = await this.db.query.directors.findFirst({
+      where: condition,
+    });
+    return director ?? null;
   }
 
   // === PRIVATE ===

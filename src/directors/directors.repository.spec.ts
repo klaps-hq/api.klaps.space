@@ -37,10 +37,13 @@ describe('DirectorsRepository', () => {
       directors: { findMany: jest.Mock; findFirst: jest.Mock };
     };
     select: jest.Mock;
+    update: jest.Mock;
   };
 
   beforeEach(async () => {
     selectChain = createChain();
+    const where = jest.fn().mockResolvedValue(undefined);
+    const set = jest.fn().mockReturnValue({ where });
     mockDb = {
       query: {
         directors: {
@@ -49,6 +52,7 @@ describe('DirectorsRepository', () => {
         },
       },
       select: jest.fn().mockReturnValue(selectChain),
+      update: jest.fn().mockReturnValue({ set }),
     };
 
     const module = await Test.createTestingModule({
@@ -134,6 +138,32 @@ describe('DirectorsRepository', () => {
         moviesCount: 0,
         upcomingScreeningsCount: 0,
       });
+    });
+  });
+
+  describe('updateBySlug', () => {
+    it('updates and returns the re-fetched director', async () => {
+      const updated = {
+        id: 1,
+        slug: 'pawel-pawlikowski',
+        bio: 'Polski reżyser.',
+      };
+      mockDb.query.directors.findFirst.mockResolvedValue(updated);
+
+      const result = await repository.updateBySlug('pawel-pawlikowski', {
+        bio: 'Polski reżyser.',
+      });
+
+      expect(mockDb.update).toHaveBeenCalled();
+      expect(result).toEqual(updated);
+    });
+
+    it('returns null when the director is not found after update', async () => {
+      mockDb.query.directors.findFirst.mockResolvedValue(undefined);
+
+      const result = await repository.updateBySlug('nieistnieje', { bio: 'x' });
+
+      expect(result).toBeNull();
     });
   });
 

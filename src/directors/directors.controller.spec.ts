@@ -37,6 +37,7 @@ describe('DirectorsController', () => {
           useValue: {
             getDirectors: jest.fn(),
             getDirectorBySlug: jest.fn(),
+            updateDirectorBySlug: jest.fn(),
           },
         },
         {
@@ -82,6 +83,34 @@ describe('DirectorsController', () => {
       await expect(controller.getDirectorBySlug('nieistnieje')).rejects.toThrow(
         'Director "nieistnieje" not found',
       );
+    });
+  });
+
+  describe('updateDirectorBySlug', () => {
+    it('returns the updated director', async () => {
+      const updated = { ...mockDirector, bio: 'Polski reżyser i scenarzysta.' };
+      service.updateDirectorBySlug.mockResolvedValue(updated);
+
+      const result = await controller.updateDirectorBySlug(
+        'pawel-pawlikowski',
+        {
+          bio: 'Polski reżyser i scenarzysta.',
+        },
+      );
+
+      expect(result).toEqual(updated);
+      expect(service.updateDirectorBySlug).toHaveBeenCalledWith(
+        'pawel-pawlikowski',
+        { bio: 'Polski reżyser i scenarzysta.' },
+      );
+    });
+
+    it('throws NotFoundException when the director is missing', async () => {
+      service.updateDirectorBySlug.mockResolvedValue(null);
+
+      await expect(
+        controller.updateDirectorBySlug('nieistnieje', { bio: 'x' }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });
