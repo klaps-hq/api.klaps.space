@@ -32,7 +32,11 @@ const mockDbMovie = {
   updatedAt: new Date('2025-01-01'),
   movies_genres: [{ genre: { id: 1, slug: 'action', name: 'Action' } }],
   movies_actors: [{ actor: { id: 1, name: 'Leonardo DiCaprio' } }],
-  movies_directors: [{ director: { id: 1, name: 'Christopher Nolan' } }],
+  movies_directors: [
+    {
+      director: { id: 1, slug: 'christopher-nolan', name: 'Christopher Nolan' },
+    },
+  ],
   movies_scriptwriters: [
     { scriptwriter: { id: 1, name: 'Christopher Nolan' } },
   ],
@@ -162,6 +166,11 @@ describe('MoviesService', () => {
       expect(result).not.toBeNull();
       expect(result!.slug).toBe('inception-2010');
       expect(result!.filmwebUrl).toBe('https://filmweb.pl/inception');
+      expect(result!.directors[0]).toEqual({
+        id: 1,
+        slug: 'christopher-nolan',
+        name: 'Christopher Nolan',
+      });
       expect(repo.findBySlug).toHaveBeenCalledWith('inception-2010');
     });
 

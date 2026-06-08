@@ -42,7 +42,7 @@ const mockMovieDetail: MovieResponse = {
   polishPremiereDate: '2010-07-30',
   genres: [{ id: 1, slug: 'action', name: 'Action', description: null }],
   actors: [{ id: 1, name: 'Leonardo DiCaprio' }],
-  directors: [{ id: 1, name: 'Christopher Nolan' }],
+  directors: [{ id: 1, slug: 'christopher-nolan', name: 'Christopher Nolan' }],
   scriptwriters: [{ id: 1, name: 'Christopher Nolan' }],
   countries: [{ id: 1, name: 'USA' }],
   ratings: {

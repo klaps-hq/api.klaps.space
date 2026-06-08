@@ -30,7 +30,9 @@ type DbMovieWithGenres = {
 
 type DbMovieWithRelations = DbMovieWithGenres & {
   movies_actors: Array<{ actor: { id: number; name: string } }>;
-  movies_directors: Array<{ director: { id: number; name: string } }>;
+  movies_directors: Array<{
+    director: { id: number; slug: string | null; name: string };
+  }>;
   movies_scriptwriters: Array<{ scriptwriter: { id: number; name: string } }>;
   movies_countries: Array<{ country: { id: number; name: string } }>;
 };
@@ -83,8 +85,9 @@ export const mapMovieDetail = (movie: DbMovieWithRelations): MovieResponse => ({
   polishPremiereDate: formatDateField(movie.polishPremiereDate),
   genres: movie.movies_genres.map((mg) => mapGenre(mg.genre)),
   actors: movie.movies_actors.map(({ actor: { id, name } }) => ({ id, name })),
-  directors: movie.movies_directors.map(({ director: { id, name } }) => ({
+  directors: movie.movies_directors.map(({ director: { id, slug, name } }) => ({
     id,
+    slug: slug ?? null,
     name,
   })),
   scriptwriters: movie.movies_scriptwriters.map(
