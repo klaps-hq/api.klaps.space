@@ -39,6 +39,15 @@ export const movieSlug = (title: string, productionYear: number): string =>
   toSlug(`${title}-${productionYear}`);
 
 /**
+ * Builds a director slug from the name. Names with no transliterable
+ * [a-z0-9] characters (CJK, Cyrillic, Arabic, Greek, …) would otherwise
+ * collapse to an empty slug, so they fall back to a stable, unique
+ * `rezyser-<sourceId>` derived from the TMDB id.
+ */
+export const directorSlug = (name: string, sourceId: number): string =>
+  toSlug(name) || `rezyser-${sourceId}`;
+
+/**
  * Builds a cinema slug from name and city, e.g. "Multikino" + "Gdańsk" →
  * "multikino-gdansk". Sieciówki (Helios, Multikino, Cinema City) mają
  * identyczne nazwy w wielu miastach — miasto w slugu daje czytelne,

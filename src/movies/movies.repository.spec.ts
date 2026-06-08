@@ -4,7 +4,7 @@ import { DRIZZLE } from '../database/constants';
 import type { CreateMoviesBatchItemDto } from './dto/create-movies-batch.dto';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
-import { movieSlug, toSlug, uniqueSlug } from '../lib/slug';
+import { directorSlug, movieSlug, toSlug, uniqueSlug } from '../lib/slug';
 
 jest.mock('../lib/chunked-upsert', () => ({
   sortAndChunk: jest.fn((items) => [items]),
@@ -17,6 +17,9 @@ jest.mock('../lib/slug', () => ({
   movieSlug: jest.fn(
     (title: string, year: number) =>
       `${title.toLowerCase().replace(/\s+/g, '-')}-${year}`,
+  ),
+  directorSlug: jest.fn((name: string) =>
+    name.toLowerCase().replace(/\s+/g, '-'),
   ),
   uniqueSlug: jest.fn((slug: string) => slug),
 }));
@@ -472,7 +475,7 @@ describe('MoviesRepository', () => {
       await repository.upsertBatch([movieWithDirector]);
 
       // Slug is generated from the director name (frozen on conflict).
-      expect(toSlug).toHaveBeenCalledWith('Lana Wachowski');
+      expect(directorSlug).toHaveBeenCalledWith('Lana Wachowski', 20);
       expect(uniqueSlug).toHaveBeenCalled();
       expect(withDeadlockRetry).toHaveBeenCalled();
     });
@@ -498,7 +501,7 @@ describe('MoviesRepository', () => {
       await repository.upsertBatch([movieWithDirector]);
 
       // Existing slug reused → no slug regeneration for the renamed director.
-      expect(toSlug).not.toHaveBeenCalledWith('Lana Wachowski Renamed');
+      expect(directorSlug).not.toHaveBeenCalled();
     });
 
     it('should handle multiple movies in batch', async () => {
