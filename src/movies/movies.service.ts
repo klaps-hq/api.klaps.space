@@ -33,7 +33,11 @@ export class MoviesService {
       genreId = genre?.id;
     }
 
-    const filter = { search: params?.search, genreId };
+    const filter = {
+      search: params?.search,
+      genreId,
+      directorId: params?.directorId,
+    };
 
     if (!params?.limit) {
       const data = await this.repo.findAll(filter);

@@ -60,6 +60,7 @@ describe('IndexNowService', () => {
       cinemas: [],
       cities: [],
       genres: [],
+      directors: [],
     });
 
     service.notifyContentChanged();
@@ -84,6 +85,7 @@ describe('IndexNowService', () => {
       cinemas: [{ slug: 'kino-pod-baranami', updatedAt: recent }],
       cities: [{ slug: 'krakow', updatedAt: recent }],
       genres: [{ slug: 'dramat', updatedAt: stale }],
+      directors: [{ slug: 'pawel-pawlikowski', updatedAt: recent }],
     });
 
     service.notifyContentChanged();
@@ -103,6 +105,7 @@ describe('IndexNowService', () => {
       `${FRONTEND_URL}/filmy/nowy-film`,
       `${FRONTEND_URL}/kina/kino-pod-baranami`,
       `${FRONTEND_URL}/miasta/krakow`,
+      `${FRONTEND_URL}/rezyserzy/pawel-pawlikowski`,
     ]);
   });
 
