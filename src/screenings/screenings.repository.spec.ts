@@ -265,6 +265,20 @@ describe('ScreeningsRepository', () => {
 
       expect(result).toEqual([3]);
     });
+
+    it('should resolve director condition when directorId provided', async () => {
+      selectDistinctChain = createChain([{ movieId: 30 }]);
+      mockSelectDistinct.mockReturnValue(selectDistinctChain);
+
+      const result = await repo.findFilteredMovieIds({
+        ...baseParams,
+        directorId: 12,
+      });
+
+      expect(result).toEqual([30]);
+      // Director subquery is built via the plain select() builder.
+      expect(mockSelect).toHaveBeenCalled();
+    });
   });
 
   describe('findMoviesWithScreenings', () => {
@@ -436,6 +450,17 @@ describe('ScreeningsRepository', () => {
       const result = await repo.findLastUpdatedAt({ citySlug: 'nowhere' });
 
       expect(result).toBeNull();
+    });
+
+    it('should filter by directorId when provided', async () => {
+      const updatedAt = new Date('2026-06-07T10:00:00.000Z');
+      selectChain = createChain([{ updatedAt }]);
+      mockSelect.mockReturnValue(selectChain);
+
+      const result = await repo.findLastUpdatedAt({ directorId: 12 });
+
+      expect(result).toEqual(updatedAt);
+      expect(mockSelect).toHaveBeenCalled();
     });
   });
 

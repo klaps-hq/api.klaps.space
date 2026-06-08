@@ -4,7 +4,7 @@ import { DRIZZLE } from '../database/constants';
 import type { CreateMoviesBatchItemDto } from './dto/create-movies-batch.dto';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
-import { movieSlug, toSlug, uniqueSlug } from '../lib/slug';
+import { directorSlug, movieSlug, toSlug, uniqueSlug } from '../lib/slug';
 
 jest.mock('../lib/chunked-upsert', () => ({
   sortAndChunk: jest.fn((items) => [items]),
@@ -17,6 +17,9 @@ jest.mock('../lib/slug', () => ({
   movieSlug: jest.fn(
     (title: string, year: number) =>
       `${title.toLowerCase().replace(/\s+/g, '-')}-${year}`,
+  ),
+  directorSlug: jest.fn((name: string) =>
+    name.toLowerCase().replace(/\s+/g, '-'),
   ),
   uniqueSlug: jest.fn((slug: string) => slug),
 }));
@@ -138,6 +141,22 @@ describe('MoviesRepository', () => {
       );
     });
 
+    it('should apply director filter when directorId provided', async () => {
+      mockDb.query.movies.findMany.mockResolvedValue([]);
+
+      await repository.findAll({
+        directorId: 12,
+        limit: 20,
+        offset: 0,
+      });
+
+      expect(mockDb.query.movies.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.anything(),
+        }),
+      );
+    });
+
     it('should call findMany without params when none provided', async () => {
       mockDb.query.movies.findMany.mockResolvedValue([]);
 
@@ -197,6 +216,15 @@ describe('MoviesRepository', () => {
 
       expect(selectChain.where).toHaveBeenCalled();
       expect(result).toBe(10);
+    });
+
+    it('should apply director filter when directorId provided', async () => {
+      selectChain._enqueue([{ count: 7 }]);
+
+      const result = await repository.count({ directorId: 12 });
+
+      expect(selectChain.where).toHaveBeenCalled();
+      expect(result).toBe(7);
     });
   });
 
@@ -417,6 +445,63 @@ describe('MoviesRepository', () => {
       await repository.upsertBatch([movieWithCrew]);
 
       expect(withDeadlockRetry).toHaveBeenCalled();
+    });
+
+    it('should upsert directors with generated slug, role and junction', async () => {
+      const movieWithDirector: CreateMoviesBatchItemDto = {
+        ...baseMovie,
+        directors: [
+          {
+            sourceId: 20,
+            name: 'Lana Wachowski',
+            url: '/person/lana',
+            bio: 'A director',
+            photoUrl: 'https://img/lana.jpg',
+          },
+        ],
+      };
+
+      // findExistingSlugs (movies)
+      selectChain._enqueue([]);
+      // insert movies
+      insertChain.onConflictDoUpdate.mockResolvedValue(undefined);
+      // findIdsBySourceIds (movies)
+      selectChain._enqueue([{ id: 1, sourceId: 100 }]);
+      // upsertDirectors: existing director slugs (none yet)
+      selectChain._enqueue([]);
+      // upsertDirectors: directorId map after insert
+      selectChain._enqueue([{ id: 60, sourceId: 20 }]);
+
+      await repository.upsertBatch([movieWithDirector]);
+
+      // Slug is generated from the director name (frozen on conflict).
+      expect(directorSlug).toHaveBeenCalledWith('Lana Wachowski', 20);
+      expect(uniqueSlug).toHaveBeenCalled();
+      expect(withDeadlockRetry).toHaveBeenCalled();
+    });
+
+    it('should reuse the existing slug for a known director (frozen slug)', async () => {
+      const movieWithDirector: CreateMoviesBatchItemDto = {
+        ...baseMovie,
+        directors: [
+          { sourceId: 20, name: 'Lana Wachowski Renamed', url: '/person/lana' },
+        ],
+      };
+
+      // findExistingSlugs (movies)
+      selectChain._enqueue([]);
+      insertChain.onConflictDoUpdate.mockResolvedValue(undefined);
+      // findIdsBySourceIds (movies)
+      selectChain._enqueue([{ id: 1, sourceId: 100 }]);
+      // upsertDirectors: existing director already has a slug for sourceId 20
+      selectChain._enqueue([{ sourceId: 20, slug: 'lana-wachowski' }]);
+      // upsertDirectors: directorId map
+      selectChain._enqueue([{ id: 60, sourceId: 20 }]);
+
+      await repository.upsertBatch([movieWithDirector]);
+
+      // Existing slug reused → no slug regeneration for the renamed director.
+      expect(directorSlug).not.toHaveBeenCalled();
     });
 
     it('should handle multiple movies in batch', async () => {

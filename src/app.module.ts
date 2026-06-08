@@ -6,6 +6,7 @@ import { CitiesModule } from './cities/cities.module';
 import { DatabaseModule } from './database/database.module';
 import { MoviesModule } from './movies/movies.module';
 import { GenresModule } from './genres/genres.module';
+import { DirectorsModule } from './directors/directors.module';
 import { ScreeningsModule } from './screenings/screenings.module';
 import { CinemasModule } from './cinemas/cinemas.module';
 import { SocialsModule } from './socials/socials.module';
@@ -26,6 +27,7 @@ import { HealthModule } from './health/health.module';
     CitiesModule,
     CinemasModule,
     GenresModule,
+    DirectorsModule,
     SocialsModule,
     ScreeningsModule,
     ShowtimesModule,

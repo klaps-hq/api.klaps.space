@@ -16,6 +16,7 @@ export type GetScreeningsParams = {
   voivodeship?: string;
   genreId?: number;
   genreSlug?: string;
+  directorId?: number;
   cinemaId?: number;
   cinemaSlug?: string;
   limit?: number;
@@ -55,6 +56,7 @@ export type GetLastUpdatedParams = {
   voivodeship?: string;
   cinemaId?: number;
   cinemaSlug?: string;
+  directorId?: number;
 };
 
 export type LastUpdatedResponse = {

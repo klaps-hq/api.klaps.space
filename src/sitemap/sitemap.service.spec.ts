@@ -17,6 +17,7 @@ describe('SitemapService', () => {
             findCinemaEntries: jest.fn().mockResolvedValue([]),
             findCityEntries: jest.fn().mockResolvedValue([]),
             findGenreEntries: jest.fn().mockResolvedValue([]),
+            findDirectorEntries: jest.fn().mockResolvedValue([]),
           },
         },
       ],
@@ -41,6 +42,9 @@ describe('SitemapService', () => {
       repo.findGenreEntries.mockResolvedValue([
         { slug: 'dramat', updatedAt: date },
       ]);
+      repo.findDirectorEntries.mockResolvedValue([
+        { slug: 'pawel-pawlikowski', updatedAt: date },
+      ]);
 
       const result = await service.getSitemap();
 
@@ -51,6 +55,9 @@ describe('SitemapService', () => {
         ],
         cities: [{ slug: 'warszawa', updatedAt: '2026-06-01T12:00:00.000Z' }],
         genres: [{ slug: 'dramat', updatedAt: '2026-06-01T12:00:00.000Z' }],
+        directors: [
+          { slug: 'pawel-pawlikowski', updatedAt: '2026-06-01T12:00:00.000Z' },
+        ],
       });
     });
 
@@ -73,6 +80,7 @@ describe('SitemapService', () => {
         cinemas: [],
         cities: [],
         genres: [],
+        directors: [],
       });
     });
   });
