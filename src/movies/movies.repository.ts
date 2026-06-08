@@ -11,7 +11,7 @@ import type {
 } from './dto/create-movies-batch.dto';
 import type { UpdateMovieDto } from './dto/update-movie.dto';
 import { and, desc, eq, gte, ilike, inArray, sql } from 'drizzle-orm';
-import { movieSlug, toSlug, uniqueSlug } from '../lib/slug';
+import { directorSlug, movieSlug, toSlug, uniqueSlug } from '../lib/slug';
 import { excludedChanged } from '../lib/upsert';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
@@ -468,7 +468,7 @@ export class MoviesRepository {
     const directorValues = [...directorMap.values()].map((d) => {
       let slug = slugBySourceId.get(d.sourceId);
       if (!slug) {
-        slug = uniqueSlug(toSlug(d.name), taken);
+        slug = uniqueSlug(directorSlug(d.name, d.sourceId), taken);
         taken.add(slug);
       }
       return {
