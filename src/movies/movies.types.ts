@@ -53,7 +53,7 @@ export type MovieResponse = {
   polishPremiereDate: string | null;
   genres: GenreResponse[];
   actors: { id: number; name: string }[];
-  directors: { id: number; name: string }[];
+  directors: { id: number; slug: string | null; name: string }[];
   scriptwriters: { id: number; name: string }[];
   countries: { id: number; name: string }[];
   ratings: {
