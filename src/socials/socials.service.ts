@@ -13,6 +13,7 @@ import {
 import {
   CLASSIC_YEAR_THRESHOLD,
   DEEP_CLASSIC_YEAR_THRESHOLD,
+  REPEAT_COOLDOWN_DAYS,
   SCORE,
 } from './socials.constants';
 import type {
@@ -66,10 +67,23 @@ export class SocialsService {
       dateToNextDay,
     );
 
+    // Movies posted on this platform within the cooldown window are not
+    // eligible again - prevents the same movie appearing in back-to-back
+    // posts when its screenings span multiple date ranges.
+    const cooldownStart = getDatePlusDays(
+      getTodayInPoland(),
+      -REPEAT_COOLDOWN_DAYS,
+    );
+    const recentPosts = await this.repo.findRecentPostsByPlatform(
+      platform,
+      cooldownStart,
+    );
+    const recentMovieIds = new Set(recentPosts.map((post) => post.movieId));
+
     const scoredCandidates = this.computeScoredCandidates(
       screenings,
       numberOfCandidates,
-    );
+    ).filter((candidate) => !recentMovieIds.has(candidate.movieId));
 
     if (screenings.length === 0) {
       return {
@@ -160,6 +174,21 @@ export class SocialsService {
       published: false,
       reason: 'RESERVED',
     });
+  }
+
+  async storeImage(
+    data: Buffer,
+    contentType: string,
+  ): Promise<{ id: string }> {
+    return this.repo.insertImage(data, contentType);
+  }
+
+  async getImage(id: string) {
+    const image = await this.repo.findImageById(id);
+    if (!image) {
+      throw new NotFoundException('Image not found');
+    }
+    return image;
   }
 
   async publishCandidate(dto: SocialsActionDto): Promise<void> {
