@@ -4,6 +4,7 @@ import {
   IsDateString,
   IsIn,
   IsInt,
+  IsOptional,
   IsString,
   Matches,
   Max,
@@ -44,6 +45,15 @@ export class GetSocialCandidateQueryDto {
   @Min(0)
   @Max(100, { message: 'numberOfCandidates must be at most 100' })
   numberOfCandidates: number;
+
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    value === undefined ? undefined : Number(value),
+  )
+  @IsInt()
+  @Min(1)
+  @Max(10, { message: 'maxPosts must be at most 10' })
+  maxPosts?: number;
 
   @IsString()
   @Transform(({ value }: { value: unknown }) =>
