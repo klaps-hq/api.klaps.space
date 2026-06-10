@@ -39,6 +39,10 @@ export class SocialsService {
     const minScore = query.minScore;
     const platform = query.platform;
     const numberOfCandidates = query.numberOfCandidates ?? 10;
+    // How many posts may already exist in the range before publishing stops.
+    // Lets a platform run several slots per day (e.g. two stories) while the
+    // movie cooldown below keeps the slots from repeating the same movie.
+    const maxPosts = query.maxPosts ?? 1;
 
     const socialsPosts = await this.repo.findPostsByDateAndPlatform(
       dateFrom,
@@ -46,7 +50,7 @@ export class SocialsService {
       platform,
     );
 
-    if (socialsPosts.length > 0) {
+    if (socialsPosts.length >= maxPosts) {
       return {
         publish: false,
         date: { from: dateFrom, to: dateTo },
