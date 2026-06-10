@@ -116,6 +116,43 @@ describe('SocialsService', () => {
       expect(repo.findScreeningsInRange).not.toHaveBeenCalled();
     });
 
+    it('should allow another post when fewer posts exist than maxPosts', async () => {
+      repo.findPostsByDateAndPlatform.mockResolvedValue([{ id: 1 }] as any);
+      repo.findScreeningsInRange.mockResolvedValue([]);
+
+      const result = await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 20,
+        platform: 'instagram',
+        numberOfCandidates: 10,
+        maxPosts: 2,
+      });
+
+      expect(result.reason).not.toBe('ALREADY_PUBLISHED');
+      expect(repo.findScreeningsInRange).toHaveBeenCalled();
+    });
+
+    it('should return ALREADY_PUBLISHED when posts reach maxPosts', async () => {
+      repo.findPostsByDateAndPlatform.mockResolvedValue([
+        { id: 1 },
+        { id: 2 },
+      ] as any);
+
+      const result = await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 20,
+        platform: 'instagram',
+        numberOfCandidates: 10,
+        maxPosts: 2,
+      });
+
+      expect(result.publish).toBe(false);
+      expect(result.reason).toBe('ALREADY_PUBLISHED');
+      expect(repo.findScreeningsInRange).not.toHaveBeenCalled();
+    });
+
     it('should skip movies posted on the platform within the cooldown window', async () => {
       const recentMovie = makeScreening({
         id: 5,
