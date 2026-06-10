@@ -80,6 +80,7 @@ describe('SocialsService', () => {
           provide: SocialsRepository,
           useValue: {
             findPostsByDateAndPlatform: jest.fn(),
+            findRecentPostsByPlatform: jest.fn(),
             findScreeningsInRange: jest.fn(),
             findScreeningsByIds: jest.fn(),
             findScreeningById: jest.fn(),
@@ -93,6 +94,7 @@ describe('SocialsService', () => {
 
     service = module.get(SocialsService);
     repo = module.get(SocialsRepository);
+    repo.findRecentPostsByPlatform.mockResolvedValue([]);
   });
 
   describe('getCandidate', () => {
@@ -112,6 +114,40 @@ describe('SocialsService', () => {
       expect(result.candidates).toEqual([]);
       expect(result.meta.bestScore).toBeNull();
       expect(repo.findScreeningsInRange).not.toHaveBeenCalled();
+    });
+
+    it('should skip movies posted on the platform within the cooldown window', async () => {
+      const recentMovie = makeScreening({
+        id: 5,
+        movieId: 1,
+        movie: makeMovie({ id: 1, productionYear: 1975 }),
+      });
+      const freshMovie = makeScreening({
+        id: 6,
+        movieId: 2,
+        movie: makeMovie({ id: 2, productionYear: 1976 }),
+      });
+
+      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findRecentPostsByPlatform.mockResolvedValue([
+        { id: 99, movieId: 1 },
+      ] as any);
+      repo.findScreeningsInRange.mockResolvedValue([
+        recentMovie,
+        freshMovie,
+      ] as any);
+      repo.findScreeningsByIds.mockResolvedValue([freshMovie] as any);
+
+      const result = await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 20,
+        platform: 'instagram',
+        numberOfCandidates: 10,
+      });
+
+      expect(result.candidates).toHaveLength(1);
+      expect(result.candidates[0].movieId).toBe(2);
     });
 
     it('should return NO_SCREENINGS_IN_RANGE when no screenings found', async () => {

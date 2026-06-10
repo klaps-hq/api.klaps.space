@@ -5,6 +5,8 @@ import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
 import { and, asc, eq, gte, inArray, lt, lte } from 'drizzle-orm';
 
+const IMAGE_RETENTION_MS = 48 * 60 * 60 * 1000;
+
 type FullSchema = typeof schema & typeof relations;
 
 @Injectable()
@@ -25,6 +27,15 @@ export class SocialsRepository {
       where: and(
         gte(schema.socials_posts.postDate, dateFrom),
         lte(schema.socials_posts.postDate, dateTo),
+        eq(schema.socials_posts.platform, platform),
+      ),
+    });
+  }
+
+  async findRecentPostsByPlatform(platform: string, sincePostDate: string) {
+    return this.db.query.socials_posts.findMany({
+      where: and(
+        gte(schema.socials_posts.postDate, sincePostDate),
         eq(schema.socials_posts.platform, platform),
       ),
     });
@@ -85,7 +96,36 @@ export class SocialsRepository {
     });
   }
 
+  async findImageById(id: string) {
+    return this.db.query.socials_images.findFirst({
+      where: eq(schema.socials_images.id, id),
+    });
+  }
+
   // === WRITE ===
+
+  async insertImage(
+    data: Buffer,
+    contentType: string,
+  ): Promise<{ id: string }> {
+    // Images are only needed until Instagram ingests them - prune stale
+    // rows on every insert so the table never grows.
+    await this.db
+      .delete(schema.socials_images)
+      .where(
+        lt(
+          schema.socials_images.createdAt,
+          new Date(Date.now() - IMAGE_RETENTION_MS),
+        ),
+      );
+
+    const [row] = await this.db
+      .insert(schema.socials_images)
+      .values({ data, contentType })
+      .returning({ id: schema.socials_images.id });
+
+    return row;
+  }
 
   async upsertPost(values: {
     postDate: string;
