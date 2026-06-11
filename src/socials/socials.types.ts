@@ -1,10 +1,21 @@
 import type { Screening } from '../screenings/screenings.types';
 import type { Movie } from '../movies/movies.types';
 
+// Per-signal score breakdown, exposed in the response meta so scoring can be
+// tuned against real data instead of guessing.
+export type ScoreBreakdown = {
+  year: number;
+  multiCity: number;
+  multiGenre: number;
+  rating: number;
+  critics: number;
+};
+
 export type ScoredCandidate = {
   movieId: number;
   screeningId: number;
   score: number;
+  breakdown: ScoreBreakdown;
 };
 
 export type ScreeningWithCinemaCity = Screening & {
@@ -18,6 +29,7 @@ export type CandidateByMovieSet = {
   screeningId: number;
   movieId: number;
   score: number;
+  breakdown: ScoreBreakdown;
 };
 
 export type SocialsGetCandidateResponse = {
@@ -32,6 +44,7 @@ export type SocialsGetCandidateResponse = {
     candidatesChecked: number;
     bestScore: number | null;
     minScore: number;
+    scoring?: ScoredCandidate[];
   };
   candidates: ScreeningWithCinemaCity[];
 };

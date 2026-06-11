@@ -12,7 +12,12 @@ import {
 } from '../lib/date';
 import {
   CLASSIC_YEAR_THRESHOLD,
+  CRITICS_BONUS_MIN_RATING,
+  CRITICS_BONUS_MIN_VOTES,
   DEEP_CLASSIC_YEAR_THRESHOLD,
+  RATING_QUALITY_BASELINE,
+  RATING_QUALITY_CEILING,
+  RATING_VOTES_CEILING_LOG10,
   REPEAT_COOLDOWN_DAYS,
   SCORE,
 } from './socials.constants';
@@ -108,11 +113,12 @@ export class SocialsService {
     const bestScore = bestCandidate?.score ?? null;
     const hasHighQualityCandidate = bestScore !== null && bestScore >= minScore;
 
-    const candidates = sortedCandidates.map(
-      ({ movieId, screeningId, score }) => ({
+    const candidates: ScoredCandidate[] = sortedCandidates.map(
+      ({ movieId, screeningId, score, breakdown }) => ({
         movieId,
         screeningId,
         score,
+        breakdown,
       }),
     );
 
@@ -140,6 +146,7 @@ export class SocialsService {
         candidatesChecked: scoredCandidates.length,
         bestScore,
         minScore,
+        scoring: candidates,
       },
       candidates: orderedCandidates,
     };
@@ -243,30 +250,44 @@ export class SocialsService {
       const { movieId, movie, id: screeningId } = screening;
       if (!movie) continue;
 
-      let score = 0;
-      const year = movie.productionYear;
+      // Posts are image-first: without a backdrop there is nothing to render,
+      // so the movie cannot be a candidate at all.
+      if (!movie.backdropUrl) continue;
 
-      if (year <= DEEP_CLASSIC_YEAR_THRESHOLD) {
-        score += SCORE.DEEP_CLASSIC;
-      } else if (year <= CLASSIC_YEAR_THRESHOLD) {
-        score += SCORE.CLASSIC;
-      } else {
-        score += SCORE.NORMAL_YEAR;
-      }
+      const year = movie.productionYear;
+      const yearScore =
+        year <= DEEP_CLASSIC_YEAR_THRESHOLD
+          ? SCORE.DEEP_CLASSIC
+          : year <= CLASSIC_YEAR_THRESHOLD
+            ? SCORE.CLASSIC
+            : SCORE.NORMAL_YEAR;
 
       const genreCount = movie.movies_genres?.length ?? 0;
-      if (genreCount > 1) {
-        score += SCORE.MULTI_GENRE;
-      }
+      const multiGenreScore = genreCount > 1 ? SCORE.MULTI_GENRE : 0;
 
       const cityCount = cityIdsByMovieId.get(movieId)?.size ?? 0;
-      if (cityCount > 1) {
-        score += SCORE.MULTI_CITY;
-      }
+      const multiCityScore = cityCount > 1 ? SCORE.MULTI_CITY : 0;
+
+      const { rating, critics } = this.computeRatingScore(movie);
+
+      const breakdown = {
+        year: yearScore,
+        multiCity: multiCityScore,
+        multiGenre: multiGenreScore,
+        rating,
+        critics,
+      };
+      const score =
+        yearScore + multiCityScore + multiGenreScore + rating + critics;
 
       const existing = candidatesByMovie.get(movieId);
       if (!existing || score > existing.score) {
-        candidatesByMovie.set(movieId, { movieId, screeningId, score });
+        candidatesByMovie.set(movieId, {
+          movieId,
+          screeningId,
+          score,
+          breakdown,
+        });
       }
     }
 
@@ -276,10 +297,50 @@ export class SocialsService {
 
     return sortedCandidates
       .slice(0, numberOfCandidates)
-      .map(([movieId, { screeningId, score }]) => ({
+      .map(([movieId, { screeningId, score, breakdown }]) => ({
         movieId,
         screeningId,
         score,
+        breakdown,
       }));
+  }
+
+  // Users rating contributes up to SCORE.RATING_MAX points: a quality factor
+  // (how far the rating sits above the baseline) scaled by a confidence
+  // factor (log of the vote count), so a widely rated classic beats an
+  // obscure movie with the same rating. Well-reviewed movies with enough
+  // critic votes get a small flat bonus on top.
+  private computeRatingScore(movie: {
+    usersRating: number | null;
+    usersRatingVotes: number | null;
+    criticsRating: number | null;
+    criticsRatingVotes: number | null;
+  }): { rating: number; critics: number } {
+    let rating = 0;
+
+    if (movie.usersRating !== null && (movie.usersRatingVotes ?? 0) > 0) {
+      const quality = Math.min(
+        1,
+        Math.max(
+          0,
+          (movie.usersRating - RATING_QUALITY_BASELINE) /
+            (RATING_QUALITY_CEILING - RATING_QUALITY_BASELINE),
+        ),
+      );
+      const confidence = Math.min(
+        1,
+        Math.log10(movie.usersRatingVotes!) / RATING_VOTES_CEILING_LOG10,
+      );
+      rating = Math.round(SCORE.RATING_MAX * quality * confidence);
+    }
+
+    const critics =
+      movie.criticsRating !== null &&
+      movie.criticsRating >= CRITICS_BONUS_MIN_RATING &&
+      (movie.criticsRatingVotes ?? 0) >= CRITICS_BONUS_MIN_VOTES
+        ? SCORE.CRITICS_BONUS
+        : 0;
+
+    return { rating, critics };
   }
 }
