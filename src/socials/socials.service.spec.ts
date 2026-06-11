@@ -16,6 +16,11 @@ const makeMovie = (
     id: number;
     productionYear: number;
     movies_genres: { id: number; genreId: number }[];
+    backdropUrl: string | null;
+    usersRating: number | null;
+    usersRatingVotes: number | null;
+    criticsRating: number | null;
+    criticsRatingVotes: number | null;
   }> = {},
 ) => ({
   id: overrides.id ?? 1,
@@ -28,15 +33,18 @@ const makeMovie = (
   duration: 120,
   language: 'pl',
   posterUrl: null,
-  backdropUrl: null,
+  backdropUrl:
+    overrides.backdropUrl === undefined
+      ? 'https://example.com/backdrop.jpg'
+      : overrides.backdropUrl,
   videoUrl: null,
   url: 'https://example.com/movie',
   worldPremiereDate: null,
   polishPremiereDate: null,
-  usersRating: null,
-  usersRatingVotes: null,
-  criticsRating: null,
-  criticsRatingVotes: null,
+  usersRating: overrides.usersRating ?? null,
+  usersRatingVotes: overrides.usersRatingVotes ?? null,
+  criticsRating: overrides.criticsRating ?? null,
+  criticsRatingVotes: overrides.criticsRatingVotes ?? null,
   boxoffice: null,
   budget: null,
   distribution: null,
@@ -375,6 +383,140 @@ describe('SocialsService', () => {
 
       const result = await runScoring([screening]);
       expect(result.meta.bestScore).toBe(30);
+    });
+
+    it('should exclude movies without a backdrop image', async () => {
+      const noBackdrop = makeScreening({
+        id: 1,
+        movieId: 1,
+        movie: makeMovie({ id: 1, productionYear: 1975, backdropUrl: null }),
+      });
+      const withBackdrop = makeScreening({
+        id: 2,
+        movieId: 2,
+        movie: makeMovie({ id: 2, productionYear: 2020 }),
+      });
+
+      const result = await runScoring([noBackdrop, withBackdrop]);
+
+      // The deep classic would win, but without artwork it is not a
+      // candidate at all - the modern movie is the only one left.
+      expect(result.meta.candidatesChecked).toBe(1);
+      expect(result.meta.bestScore).toBe(10);
+    });
+
+    it('should award up to 25 rating points scaled by votes', async () => {
+      const screening = makeScreening({
+        id: 1,
+        movieId: 1,
+        movie: makeMovie({
+          id: 1,
+          productionYear: 1975,
+          usersRating: 8.0,
+          usersRatingVotes: 100000,
+        }),
+      });
+
+      const result = await runScoring([screening]);
+      // 30 (deep classic) + 25 (rating 8.0 at full vote confidence)
+      expect(result.meta.bestScore).toBe(55);
+    });
+
+    it('should scale rating points down for few votes', async () => {
+      const screening = makeScreening({
+        id: 1,
+        movieId: 1,
+        movie: makeMovie({
+          id: 1,
+          productionYear: 1975,
+          usersRating: 8.0,
+          usersRatingVotes: 100,
+        }),
+      });
+
+      const result = await runScoring([screening]);
+      // 30 + round(25 * 1.0 * (log10(100) / 5)) = 30 + 10
+      expect(result.meta.bestScore).toBe(40);
+    });
+
+    it('should award no rating points at or below the quality baseline', async () => {
+      const screening = makeScreening({
+        id: 1,
+        movieId: 1,
+        movie: makeMovie({
+          id: 1,
+          productionYear: 1975,
+          usersRating: 5.0,
+          usersRatingVotes: 100000,
+        }),
+      });
+
+      const result = await runScoring([screening]);
+      expect(result.meta.bestScore).toBe(30);
+    });
+
+    it('should award the critics bonus only for well-reviewed movies', async () => {
+      const wellReviewed = makeScreening({
+        id: 1,
+        movieId: 1,
+        movie: makeMovie({
+          id: 1,
+          productionYear: 1975,
+          criticsRating: 7.5,
+          criticsRatingVotes: 10,
+        }),
+      });
+      const fewReviews = makeScreening({
+        id: 2,
+        movieId: 2,
+        movie: makeMovie({
+          id: 2,
+          productionYear: 1975,
+          criticsRating: 9.0,
+          criticsRatingVotes: 2,
+        }),
+      });
+
+      const result = await runScoring([wellReviewed, fewReviews]);
+
+      const scoring = result.meta.scoring!;
+      const byMovie = new Map(scoring.map((s) => [s.movieId, s]));
+      expect(byMovie.get(1)!.score).toBe(35);
+      expect(byMovie.get(1)!.breakdown.critics).toBe(5);
+      expect(byMovie.get(2)!.score).toBe(30);
+      expect(byMovie.get(2)!.breakdown.critics).toBe(0);
+    });
+
+    it('should expose the score breakdown in meta.scoring', async () => {
+      const screening = makeScreening({
+        id: 1,
+        movieId: 1,
+        movie: makeMovie({
+          id: 1,
+          productionYear: 1975,
+          usersRating: 8.0,
+          usersRatingVotes: 100000,
+          movies_genres: [
+            { id: 1, genreId: 1 },
+            { id: 2, genreId: 2 },
+          ],
+        }),
+      });
+
+      const result = await runScoring([screening]);
+
+      expect(result.meta.scoring![0]).toEqual({
+        movieId: 1,
+        screeningId: 1,
+        score: 65,
+        breakdown: {
+          year: 30,
+          multiCity: 0,
+          multiGenre: 10,
+          rating: 25,
+          critics: 0,
+        },
+      });
     });
 
     it('should award 30 points for year exactly 1980', async () => {
