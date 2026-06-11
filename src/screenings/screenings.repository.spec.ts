@@ -410,6 +410,7 @@ describe('ScreeningsRepository', () => {
         where: expect.anything(),
         with: {
           movies_genres: { with: { genre: true } },
+          movies_directors: { with: { director: true } },
           screenings: {
             where: expect.anything(),
             with: { cinema: { with: { city: true } } },
