@@ -10,7 +10,7 @@ const run = async () => {
 
   if (BLOCKED_ENVS.includes(nodeEnv)) {
     console.error(
-      `Aborted — db:wipe is not allowed when NODE_ENV="${process.env.NODE_ENV}".`,
+      `Aborted - db:wipe is not allowed when NODE_ENV="${process.env.NODE_ENV}".`,
     );
     process.exit(1);
   }
@@ -47,7 +47,7 @@ const run = async () => {
 
   await db.execute(sql`SET session_replication_role = 'origin'`);
 
-  console.log('\nDone — all tables wiped.');
+  console.log('\nDone - all tables wiped.');
   process.exit(0);
 };
 

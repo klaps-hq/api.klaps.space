@@ -1,5 +1,5 @@
 /**
- * Backfill of `cities.voivodeship` — safe to re-run as new cities appear.
+ * Backfill of `cities.voivodeship` - safe to re-run as new cities appear.
  *
  * Resolution order per city:
  *   1. exact name match against the CITY_VOIVODESHIPS dictionary,
@@ -9,7 +9,7 @@
  *
  * When the dictionary and areacode disagree the dictionary wins (numbering
  * zones follow pre-1999 borders, e.g. Janów Lubelski has areacode 15 of the
- * Tarnobrzeg zone but lies in lubelskie) — the conflict is logged for review.
+ * Tarnobrzeg zone but lies in lubelskie) - the conflict is logged for review.
  * Cities resolved by no source are reported as unmatched and can be fixed
  * manually via POST /cities/:slug.
  *
@@ -98,7 +98,7 @@ const run = async (dryRun: boolean) => {
       }
 
       // OSM only for cities missing from the dictionary that have a cinema
-      // centroid — new scraper cities; one request per city at 1 req/s.
+      // centroid - new scraper cities; one request per city at 1 req/s.
       const fromOsm =
         !fromName && row.lat !== null && row.lon !== null
           ? await voivodeshipFromOsm(row.lat, row.lon)
@@ -134,7 +134,7 @@ const run = async (dryRun: boolean) => {
     );
     if (unmatched.length > 0) {
       console.log(
-        `Unmatched (${unmatched.length}) — fix manually via POST /cities/:slug:\n  ${unmatched.join('\n  ')}`,
+        `Unmatched (${unmatched.length}) - fix manually via POST /cities/:slug:\n  ${unmatched.join('\n  ')}`,
       );
     }
   } finally {

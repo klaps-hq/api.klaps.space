@@ -194,7 +194,7 @@ describe('ScreeningsRepository', () => {
 
       expect(result).toEqual([11]);
       expect(mockDb.query.cities.findFirst).toHaveBeenCalled();
-      // City condition wins — the voivodeship subquery (with innerJoin) is never built
+      // City condition wins - the voivodeship subquery (with innerJoin) is never built
       expect(selectChain.innerJoin).not.toHaveBeenCalled();
     });
 

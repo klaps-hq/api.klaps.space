@@ -2,7 +2,7 @@
  * One-time backfill / repair script for the `slug` column on `directors`.
  * Fills NULL/empty slugs created before the column existed, and repairs
  * "broken" slugs that came from names with no transliterable [a-z0-9]
- * characters (CJK / Cyrillic / Arabic / Greek …) — those collapse to an empty
+ * characters (CJK / Cyrillic / Arabic / Greek …) - those collapse to an empty
  * base and end up as '' or '-2', '-3', …. directorSlug() falls back to a
  * stable `rezyser-<sourceId>` for them.
  *

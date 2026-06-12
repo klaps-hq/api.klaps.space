@@ -1,5 +1,5 @@
 /**
- * Canonical list of Polish voivodeships (lowercase, with diacritics) —
+ * Canonical list of Polish voivodeships (lowercase, with diacritics) -
  * the exact values stored in `cities.voivodeship` and accepted by
  * the `?voivodeship=` query param.
  */
@@ -29,7 +29,7 @@ export type Voivodeship = (typeof VOIVODESHIPS)[number];
  * voivodeship of the zone's seat. Zones follow the pre-1999 voivodeship
  * borders, so a handful of border towns belong to a different voivodeship
  * than their zone seat (e.g. Janów Lubelski has areacode 15 but lies in
- * lubelskie) — use this map only as a fallback, never as ground truth.
+ * lubelskie) - use this map only as a fallback, never as ground truth.
  */
 export const AREACODE_TO_VOIVODESHIP: Record<number, Voivodeship> = {
   12: 'małopolskie', // Kraków
