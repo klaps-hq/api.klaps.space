@@ -56,9 +56,28 @@ export const mapMovieSummary = (
   ...(updatedAt !== undefined && { updatedAt: updatedAt.toISOString() }),
 });
 
-export const mapMovieHero = (movie: DbMovieWithGenres): MovieHeroResponse => ({
+type DbMovieWithDirectors = DbMovieWithGenres & {
+  movies_directors?: Array<{
+    director: { id: number; slug: string | null; name: string };
+  }>;
+};
+
+export const mapMovieHero = (
+  movie: DbMovieWithDirectors,
+): MovieHeroResponse => ({
   ...mapMovieSummary(movie),
   backdropUrl: movie.backdropUrl ?? null,
+  // Directors are optional: only callers that load the relation get them
+  // (the home hero links the director like the cinema and city).
+  ...(movie.movies_directors && {
+    directors: movie.movies_directors.map(
+      ({ director: { id, slug, name } }) => ({
+        id,
+        slug: slug ?? null,
+        name,
+      }),
+    ),
+  }),
 });
 
 const formatDateField = (

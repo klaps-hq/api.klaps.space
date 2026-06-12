@@ -168,6 +168,8 @@ export class ScreeningsRepository {
       where: eq(schema.movies.id, movieId),
       with: {
         movies_genres: { with: { genre: true } },
+        // Directors feed the home hero meta line (linked like city/cinema).
+        movies_directors: { with: { director: true } },
         screenings: {
           where: and(
             gte(schema.screenings.date, startDay),
