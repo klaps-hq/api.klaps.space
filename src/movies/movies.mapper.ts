@@ -17,6 +17,8 @@ type DbMovieWithGenres = {
   language: string | null;
   posterUrl: string | null;
   backdropUrl?: string | null;
+  posterBlurDataUrl?: string | null;
+  backdropBlurDataUrl?: string | null;
   videoUrl?: string | null;
   url: string;
   worldPremiereDate?: Date | string | null;
@@ -67,6 +69,8 @@ export const mapMovieHero = (
 ): MovieHeroResponse => ({
   ...mapMovieSummary(movie),
   backdropUrl: movie.backdropUrl ?? null,
+  posterBlurDataUrl: movie.posterBlurDataUrl ?? null,
+  backdropBlurDataUrl: movie.backdropBlurDataUrl ?? null,
   // Directors are optional: only callers that load the relation get them
   // (the home hero links the director like the cinema and city).
   ...(movie.movies_directors && {
@@ -99,6 +103,8 @@ export const mapMovieDetail = (movie: DbMovieWithRelations): MovieResponse => ({
   language: movie.language || null,
   posterUrl: movie.posterUrl,
   backdropUrl: movie.backdropUrl ?? null,
+  posterBlurDataUrl: movie.posterBlurDataUrl ?? null,
+  backdropBlurDataUrl: movie.backdropBlurDataUrl ?? null,
   videoUrl: movie.videoUrl ?? null,
   worldPremiereDate: formatDateField(movie.worldPremiereDate),
   polishPremiereDate: formatDateField(movie.polishPremiereDate),

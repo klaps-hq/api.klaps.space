@@ -149,6 +149,18 @@ export class CreateMoviesBatchItemDto {
   @MaxLength(512)
   backdropUrl?: string;
 
+  // Tiny base64 webp previews for next/image placeholder="blur"; a few
+  // hundred bytes each, capped well above that to leave headroom.
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  posterBlurDataUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  backdropBlurDataUrl?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(255)

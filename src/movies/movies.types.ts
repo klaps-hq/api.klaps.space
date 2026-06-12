@@ -35,6 +35,8 @@ export type MovieSummaryResponse = {
 
 export type MovieHeroResponse = MovieSummaryResponse & {
   backdropUrl: string | null;
+  posterBlurDataUrl: string | null;
+  backdropBlurDataUrl: string | null;
   /** Present only when the caller loaded the directors relation. */
   directors?: { id: number; slug: string | null; name: string }[];
 };
@@ -50,6 +52,8 @@ export type MovieResponse = {
   language: string | null;
   posterUrl: string | null;
   backdropUrl: string | null;
+  posterBlurDataUrl: string | null;
+  backdropBlurDataUrl: string | null;
   videoUrl: string | null;
   worldPremiereDate: string | null;
   polishPremiereDate: string | null;
