@@ -37,6 +37,8 @@ const makeMovie = (
     overrides.backdropUrl === undefined
       ? 'https://example.com/backdrop.jpg'
       : overrides.backdropUrl,
+  posterBlurDataUrl: null,
+  backdropBlurDataUrl: null,
   videoUrl: null,
   url: 'https://example.com/movie',
   worldPremiereDate: null,
