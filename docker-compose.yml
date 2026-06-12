@@ -23,6 +23,9 @@ services:
       start_period: 10s
     labels:
       - "traefik.enable=true"
+      # The container sits on two networks now; without this hint Traefik
+      # may pick the database network IP, which it cannot reach (504s).
+      - "traefik.docker.network=traefik_public"
       # HTTPS
       - "traefik.http.routers.${CONTAINER_NAME}.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.${CONTAINER_NAME}.entrypoints=websecure"
