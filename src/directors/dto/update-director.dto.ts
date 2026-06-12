@@ -3,7 +3,7 @@ import type { DirectorRole } from '../directors.types';
 
 const ROLES: DirectorRole[] = ['director', 'actor', 'screenwriter'];
 
-// Note: `slug` is intentionally not updatable — director slugs are frozen so
+// Note: `slug` is intentionally not updatable - director slugs are frozen so
 // public URLs stay stable. Only content fields can be patched here.
 export class UpdateDirectorDto {
   @IsOptional()

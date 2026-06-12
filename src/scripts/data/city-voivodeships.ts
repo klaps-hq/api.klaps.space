@@ -4,7 +4,7 @@ import type { Voivodeship } from '../../lib/voivodeships';
  * City name → voivodeship dictionary used by the voivodeship backfill.
  * Keys are EXACT `cities.name` values from the database (including
  * abbreviations like "Środa Wlkp." and source typos like
- * "Sakrżysko-Kamienna") — lookup is a plain exact match.
+ * "Sakrżysko-Kamienna") - lookup is a plain exact match.
  *
  * Generated from the full city list as of 2026-06-07; new cities that
  * appear later fall back to the areacode map or get reported as unmatched.

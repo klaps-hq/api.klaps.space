@@ -89,7 +89,7 @@ export class SitemapRepository {
   /**
    * Returns slug + effective content `updatedAt` per director, restricted to
    * directors with at least DIRECTOR_INDEX_THRESHOLD upcoming screenings
-   * (date >= today) — below that the frontend marks the page `noindex`, so it
+   * (date >= today) - below that the frontend marks the page `noindex`, so it
    * must not appear in the sitemap. updatedAt is GREATEST(director.updatedAt,
    * newest screening.updatedAt across their films).
    */

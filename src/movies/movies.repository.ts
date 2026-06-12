@@ -499,7 +499,7 @@ export class MoviesRepository {
             .values(chunk)
             .onConflictDoUpdate({
               target: schema.directors.sourceId,
-              // Celowo bez `slug` — slug jest zamrożony, regeneracja churnowałaby URL-e.
+              // Celowo bez `slug` - slug jest zamrożony, regeneracja churnowałaby URL-e.
               set: {
                 name: sql`excluded."name"`,
                 url: sql`excluded."url"`,
@@ -671,7 +671,7 @@ export class MoviesRepository {
             .values(chunk)
             .onConflictDoUpdate({
               target: schema.genres.sourceId,
-              // Celowo bez `slug` — regenerowany slug zawsze koliduje
+              // Celowo bez `slug` - regenerowany slug zawsze koliduje
               // z własnym slugiem encji i churnowałby URL-e przy każdym batchu.
               set: {
                 name: sql`excluded."name"`,
