@@ -133,7 +133,8 @@ jobs:
 
             echo "Backing up database '$DB_NAME' to $BACKUP_DIR..."
 
-            docker run --rm --network traefik_public \
+            # The database is only reachable on its internal docker network.
+            docker run --rm --network "klaps-db-${{ needs.setup.outputs.deploy_dir }}" \
               -e PGPASSWORD="$DB_PASS" \
               postgres:16 \
               pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" \
@@ -172,11 +173,33 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # The database publishes no public port, so the runner reaches it
+      # through an SSH tunnel to the loopback-bound port on the server
+      # (prod: 5432, dev: 5433). The container-network DATABASE_URL from
+      # secrets is rewritten to point at the tunnel for this job only.
+      - name: Open SSH tunnel to database
+        run: |
+          set -eo pipefail
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/db_tunnel_key
+          chmod 600 ~/.ssh/db_tunnel_key
+          if [[ "${{ needs.setup.outputs.deploy_dir }}" == "prod" ]]; then
+            DB_HOST_PORT=5432
+          else
+            DB_HOST_PORT=5433
+          fi
+          ssh -i ~/.ssh/db_tunnel_key \
+            -o StrictHostKeyChecking=accept-new \
+            -o ExitOnForwardFailure=yes \
+            -f -N -L "15432:127.0.0.1:${DB_HOST_PORT}" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}"
+          TUNNEL_URL=$(echo "${{ secrets.DATABASE_URL }}" | sed -E 's#@[^@/]+/#@127.0.0.1:15432/#')
+          echo "::add-mask::$TUNNEL_URL"
+          echo "DATABASE_URL=$TUNNEL_URL" >> "$GITHUB_ENV"
+
       - name: Baseline existing tables (bootstrap only)
         if: ${{ env.RUN_DB_BASELINE == 'true' }}
         run: bun run db:baseline
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Run database migrations (slug-safe)
         run: |
@@ -198,8 +221,6 @@ jobs:
           # Both operations are idempotent and ensure NOT NULL/UNIQUE follow-up migrations can apply.
           bun run db:backfill-slugs
           bun run db:migrate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # ───────────────────────────────────────────────
   # Job 6: Deploy to VPS
