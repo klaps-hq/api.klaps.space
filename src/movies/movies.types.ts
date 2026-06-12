@@ -35,6 +35,8 @@ export type MovieSummaryResponse = {
 
 export type MovieHeroResponse = MovieSummaryResponse & {
   backdropUrl: string | null;
+  /** Present only when the caller loaded the directors relation. */
+  directors?: { id: number; slug: string | null; name: string }[];
 };
 
 export type MovieResponse = {
