@@ -233,6 +233,8 @@ export class MoviesRepository {
         duration: m.duration,
         posterUrl: m.posterUrl,
         backdropUrl: m.backdropUrl,
+        posterBlurDataUrl: m.posterBlurDataUrl,
+        backdropBlurDataUrl: m.backdropBlurDataUrl,
         videoUrl: m.videoUrl,
         boxoffice: m.boxoffice,
         budget: m.budget,
@@ -265,6 +267,12 @@ export class MoviesRepository {
                 duration: sql`excluded."duration"`,
                 posterUrl: sql`excluded."posterUrl"`,
                 backdropUrl: sql`excluded."backdropUrl"`,
+                // COALESCE: a batch without blur fields (older scraper or a
+                // reprocess flow) must not wipe blurs already in the DB.
+                // Intentionally absent from setWhere so blurs alone never
+                // bump updatedAt (a freshness signal for the frontend).
+                posterBlurDataUrl: sql`COALESCE(excluded."posterBlurDataUrl", ${schema.movies.posterBlurDataUrl})`,
+                backdropBlurDataUrl: sql`COALESCE(excluded."backdropBlurDataUrl", ${schema.movies.backdropBlurDataUrl})`,
                 videoUrl: sql`excluded."videoUrl"`,
                 boxoffice: sql`excluded."boxoffice"`,
                 budget: sql`excluded."budget"`,

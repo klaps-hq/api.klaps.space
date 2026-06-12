@@ -37,6 +37,8 @@ const mockMovieDetail: MovieResponse = {
   language: 'English',
   posterUrl: 'https://example.com/poster.jpg',
   backdropUrl: null,
+  posterBlurDataUrl: null,
+  backdropBlurDataUrl: null,
   videoUrl: null,
   worldPremiereDate: '2010-07-16',
   polishPremiereDate: '2010-07-30',
