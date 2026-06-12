@@ -34,7 +34,7 @@ const run = async () => {
   }
 
   if (journal.entries.length === 0) {
-    console.log('No migrations in journal — nothing to baseline.');
+    console.log('No migrations in journal - nothing to baseline.');
     process.exit(0);
   }
 
@@ -79,7 +79,7 @@ const run = async () => {
     }
 
     console.log(
-      `\nDone — ${baselined} migration(s) marked as already applied.`,
+      `\nDone - ${baselined} migration(s) marked as already applied.`,
     );
   } finally {
     await client.end();

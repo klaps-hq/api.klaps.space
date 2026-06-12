@@ -42,15 +42,3 @@ export const getDateRangeUpToMonthFromNow = (
 
   return { startDay: start, endDay: end };
 };
-
-const TIME_START_OF_DAY = ' 00:00:00';
-const TIME_END_OF_DAY = ' 23:59:59';
-export const getDateRange = (
-  dateStr: string,
-): {
-  startOfDay: string;
-  endOfDay: string;
-} => ({
-  startOfDay: dateStr + TIME_START_OF_DAY,
-  endOfDay: dateStr + TIME_END_OF_DAY,
-});

@@ -43,7 +43,7 @@ export class DirectorsRepository {
   }
 
   /**
-   * Per-director aggregate stats in two grouped queries — joining movies and
+   * Per-director aggregate stats in two grouped queries - joining movies and
    * screenings in a single pass would double-count. Directors with no films or
    * no upcoming screenings are absent from the respective result and default
    * to 0 in the returned map.

@@ -187,10 +187,7 @@ export class SocialsService {
     });
   }
 
-  async storeImage(
-    data: Buffer,
-    contentType: string,
-  ): Promise<{ id: string }> {
+  async storeImage(data: Buffer, contentType: string): Promise<{ id: string }> {
     return this.repo.insertImage(data, contentType);
   }
 

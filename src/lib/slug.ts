@@ -50,7 +50,7 @@ export const directorSlug = (name: string, sourceId: number): string =>
 /**
  * Builds a cinema slug from name and city, e.g. "Multikino" + "Gdańsk" →
  * "multikino-gdansk". Sieciówki (Helios, Multikino, Cinema City) mają
- * identyczne nazwy w wielu miastach — miasto w slugu daje czytelne,
+ * identyczne nazwy w wielu miastach - miasto w slugu daje czytelne,
  * deterministyczne URL-e zamiast przypadkowych sufiksów `-N`.
  * Skips the city part when the name already ends with it
  * (e.g. "Kino Nowe Horyzonty Wrocław").
