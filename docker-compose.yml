@@ -35,7 +35,14 @@ services:
       - "traefik.http.services.${CONTAINER_NAME}.loadbalancer.server.port=${PORT}"
     networks:
       - traefik_public
+      - db
 
 networks:
   traefik_public:
     external: true
+  # Internal network shared with the Postgres container. The database
+  # publishes no public port, so this is the only path to it.
+  # DEPLOY_ENV (prod/dev) is written to .env by the deploy workflow.
+  db:
+    external: true
+    name: klaps-db-${DEPLOY_ENV}
