@@ -36,6 +36,10 @@ services:
       - "traefik.http.routers.${CONTAINER_NAME}-web.middlewares=redirect-to-https"
       # Service port
       - "traefik.http.services.${CONTAINER_NAME}.loadbalancer.server.port=${PORT}"
+      # Compression (zstd/brotli/gzip): API responses leave Nest plain,
+      # so Traefik picks the best encoding the client accepts.
+      - "traefik.http.middlewares.${CONTAINER_NAME}-compress.compress=true"
+      - "traefik.http.routers.${CONTAINER_NAME}.middlewares=${CONTAINER_NAME}-compress"
     networks:
       - traefik_public
       - db
