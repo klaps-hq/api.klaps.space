@@ -22,6 +22,8 @@ export const cinemasTable = pgTable('cinemas', {
   latitude: real(),
   street: varchar({ length: 255 }),
   description: text(),
+  email: varchar({ length: 255 }),
+  website: varchar({ length: 255 }),
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp().notNull().defaultNow(),
 });

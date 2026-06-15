@@ -50,6 +50,13 @@
       "when": 1781275548835,
       "tag": "0006_abnormal_crusher_hogan",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781546158955,
+      "tag": "0007_smooth_marvel_zombies",
+      "breakpoints": true
     }
   ]
 }
