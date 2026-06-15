@@ -23,4 +23,6 @@ export type CinemaResponse = {
   latitude: number | null;
   longitude: number | null;
   filmwebUrl: string;
+  /** The cinema's own official website, when known; null otherwise. */
+  website: string | null;
 };

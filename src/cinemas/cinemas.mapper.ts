@@ -20,6 +20,7 @@ type DbCinemaWithCity = {
   street: string | null;
   description?: string | null;
   url: string;
+  website?: string | null;
   latitude: number | null;
   longitude: number | null;
   city?: {
@@ -59,4 +60,5 @@ export const mapCinemaDetail = (cinema: DbCinemaWithCity): CinemaResponse => ({
   latitude: cinema.latitude,
   longitude: cinema.longitude,
   filmwebUrl: cinema.url,
+  website: cinema.website ?? null,
 });
