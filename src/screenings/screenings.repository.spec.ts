@@ -279,6 +279,23 @@ describe('ScreeningsRepository', () => {
       // Director subquery is built via the plain select() builder.
       expect(mockSelect).toHaveBeenCalled();
     });
+
+    it('should build a movies subquery when search provided', async () => {
+      selectDistinctChain = createChain([{ movieId: 42 }]);
+      mockSelectDistinct.mockReturnValue(selectDistinctChain);
+
+      const result = await repo.findFilteredMovieIds({
+        ...baseParams,
+        search: 'fight',
+      });
+
+      expect(result).toEqual([42]);
+      // Search filter matches title OR titleOriginal via a movies subquery:
+      // select → from → where.
+      expect(mockSelect).toHaveBeenCalled();
+      expect(selectChain.from).toHaveBeenCalled();
+      expect(selectChain.where).toHaveBeenCalled();
+    });
   });
 
   describe('findMoviesWithScreenings', () => {
