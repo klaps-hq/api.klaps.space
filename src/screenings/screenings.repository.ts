@@ -13,6 +13,7 @@ import {
   lte,
   max,
   ne,
+  or,
 } from 'drizzle-orm';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
 import type { Screening } from './screenings.types';
@@ -331,12 +332,19 @@ export class ScreeningsRepository {
 
   private buildSearchFilter(search?: string) {
     if (!search) return undefined;
+    // Match both the Polish title and the original title, so e.g. "fight"
+    // surfaces "Podziemny krąg" (Fight Club).
     return inArray(
       schema.screenings.movieId,
       this.db
         .select({ id: schema.movies.id })
         .from(schema.movies)
-        .where(ilike(schema.movies.title, `%${search}%`)),
+        .where(
+          or(
+            ilike(schema.movies.title, `%${search}%`),
+            ilike(schema.movies.titleOriginal, `%${search}%`),
+          ),
+        ),
     );
   }
 

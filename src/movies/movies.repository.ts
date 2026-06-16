@@ -10,7 +10,7 @@ import type {
   DirectorInsertDto,
 } from './dto/create-movies-batch.dto';
 import type { UpdateMovieDto } from './dto/update-movie.dto';
-import { and, desc, eq, gte, ilike, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, inArray, or, sql } from 'drizzle-orm';
 import { directorSlug, movieSlug, toSlug, uniqueSlug } from '../lib/slug';
 import { excludedChanged } from '../lib/upsert';
 import { sortAndChunk } from '../lib/chunked-upsert';
@@ -44,9 +44,7 @@ export class MoviesRepository {
     offset?: number;
   }) {
     const where = and(
-      params?.search
-        ? ilike(schema.movies.title, `%${params.search}%`)
-        : undefined,
+      this.buildSearchCondition(params?.search),
       this.buildGenreCondition(params?.genreId),
       this.buildDirectorCondition(params?.directorId),
     );
@@ -66,9 +64,7 @@ export class MoviesRepository {
     directorId?: number;
   }) {
     const where = and(
-      params?.search
-        ? ilike(schema.movies.title, `%${params.search}%`)
-        : undefined,
+      this.buildSearchCondition(params?.search),
       this.buildGenreCondition(params?.genreId),
       this.buildDirectorCondition(params?.directorId),
     );
@@ -321,6 +317,16 @@ export class MoviesRepository {
       .select({ slug: schema.movies.slug })
       .from(schema.movies);
     return new Set(rows.map((r) => r.slug));
+  }
+
+  private buildSearchCondition(search?: string) {
+    if (!search) return undefined;
+    // Match both the Polish title and the original title, so e.g. "fight"
+    // surfaces "Podziemny krąg" (Fight Club).
+    return or(
+      ilike(schema.movies.title, `%${search}%`),
+      ilike(schema.movies.titleOriginal, `%${search}%`),
+    );
   }
 
   private buildGenreCondition(genreId?: number) {
