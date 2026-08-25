@@ -21,6 +21,7 @@
     "db:backfill-director-photos": "bunx ts-node -r dotenv/config src/scripts/backfill-director-photos.ts",
     "db:backfill-voivodeships": "bunx ts-node -r dotenv/config src/scripts/backfill-voivodeships.ts",
     "db:import-cinema-contacts": "bunx ts-node -r dotenv/config src/scripts/import-cinema-contacts.ts",
+    "db:merge-duplicate-movies": "bunx ts-node -r dotenv/config src/scripts/merge-duplicate-movies.ts",
     "db:wipe": "node -r ts-node/register src/scripts/db-wipe.ts",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
