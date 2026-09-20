@@ -345,6 +345,19 @@ const LOCATIVE_BY_NAME: Record<string, string> = {
   Żyrardów: 'Żyrardowie',
 };
 
+/**
+ * Forms Filmweb did decline, but incorrectly.
+ *
+ * Keyed by name, with the exact wrong value as the guard: the row is only
+ * touched when it still holds that value, so a later correction by hand is
+ * never clobbered and re-running changes nothing. Kept separate from the
+ * map above, which covers rows still holding the plain nominative.
+ */
+const CORRECTIONS: Record<string, { from: string; to: string }> = {
+  // "Złotoryji" doubles the j; the locative of Złotoryja is Złotoryi.
+  Złotoryja: { from: 'Złotoryji', to: 'Złotoryi' },
+};
+
 interface CityRow {
   id: number;
   slug: string;
@@ -387,8 +400,21 @@ const main = async (): Promise<void> => {
       updated += 1;
     }
 
+    let corrected = 0;
+    for (const [name, { from, to }] of Object.entries(CORRECTIONS)) {
+      const { rowCount } = await client.query(
+        `UPDATE cities SET "nameDeclinated" = $1
+         WHERE name = $2 AND "nameDeclinated" = $3`,
+        [to, name, from],
+      );
+      if (rowCount && rowCount > 0) {
+        console.log(`  w ${from}  ->  w ${to}  (correction)`);
+        corrected += rowCount;
+      }
+    }
+
     console.log(
-      `\nUndeclined rows: ${rows.length} | updated: ${updated} | unmapped: ${missing.length}`,
+      `\nUndeclined rows: ${rows.length} | filled: ${updated} | corrected: ${corrected} | unmapped: ${missing.length}`,
     );
     if (missing.length > 0) {
       console.log(`Unmapped names: ${missing.join(', ')}`);
