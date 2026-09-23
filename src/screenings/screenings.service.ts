@@ -112,10 +112,11 @@ export class ScreeningsService {
     const since = new Date(until);
     since.setDate(since.getDate() - days);
 
+    // Over-fetch so that dropping duplicates below still fills the limit.
     const stats = await this.repo.findRecentMovieStats({
       since,
       until,
-      limit,
+      limit: limit * 2,
       cinemaId: params.cinemaId,
       cinemaSlug: params.cinemaSlug,
       cityId: params.cityId,
@@ -133,24 +134,36 @@ export class ScreeningsService {
     ]);
     const moviesById = new Map(movies.map((m) => [m.id, m]));
 
-    return stats.flatMap((stat) => {
+    // The scraper sometimes creates a second row for a film it already has
+    // (same title and year, slug suffixed "-2"), and both rows then carry
+    // the same screenings. Grouping by movie id would list that film twice
+    // with identical dates and counts. Keep the first occurrence, which is
+    // the most recent because stats arrive sorted. Becomes a no-op once
+    // duplicate movie rows are merged at the source.
+    const seen = new Set<string>();
+    const results: RecentScreeningResponse[] = [];
+    for (const stat of stats) {
+      if (results.length >= limit) break;
       const movie = moviesById.get(stat.movieId);
-      if (!movie || !stat.lastScreeningDate) return [];
+      if (!movie || !stat.lastScreeningDate) continue;
+      const key = `${movie.title.trim().toLowerCase()}|${movie.productionYear}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
       // ISO slice, not a Warsaw-zone conversion: the stored value is the
       // wall-clock time labelled UTC, and converting it would move a
       // 23:30 screening onto the next day. Matches screenings.mapper.
       const lastScreeningDate = new Date(stat.lastScreeningDate)
         .toISOString()
         .slice(0, 10);
-      return [
-        {
-          movie: mapMovieSummary(movie),
-          lastScreeningDate,
-          screeningsCount: Number(stat.screeningsCount),
-          hasUpcomingScreenings: upcomingIds.has(stat.movieId),
-        },
-      ];
-    });
+      results.push({
+        movie: mapMovieSummary(movie),
+        lastScreeningDate,
+        screeningsCount: Number(stat.screeningsCount),
+        hasUpcomingScreenings: upcomingIds.has(stat.movieId),
+      });
+    }
+    return results;
   }
 
   async getRandomRetroScreening(): Promise<RandomScreeningResponse | null> {
