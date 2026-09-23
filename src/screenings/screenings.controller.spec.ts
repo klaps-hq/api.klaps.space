@@ -17,6 +17,7 @@ describe('ScreeningsController', () => {
           useValue: {
             getScreenings: jest.fn(),
             getLastUpdatedAt: jest.fn(),
+            getRecentScreenings: jest.fn(),
             getRandomRetroScreening: jest.fn(),
             createScreening: jest.fn(),
           },
@@ -66,6 +67,26 @@ describe('ScreeningsController', () => {
 
       expect(result).toEqual(expected);
       expect(service.getLastUpdatedAt).toHaveBeenCalledWith(query);
+    });
+  });
+
+  describe('getRecentScreenings', () => {
+    it('should delegate to service with query params', async () => {
+      const query = { cinemaSlug: 'kino-muzeum', days: 60 } as any;
+      const expected = [
+        {
+          movie: { id: 7, slug: 'kes-1969' },
+          lastScreeningDate: '2026-09-20',
+          screeningsCount: 2,
+          hasUpcomingScreenings: false,
+        },
+      ];
+      service.getRecentScreenings.mockResolvedValue(expected as any);
+
+      const result = await controller.getRecentScreenings(query);
+
+      expect(result).toEqual(expected);
+      expect(service.getRecentScreenings).toHaveBeenCalledWith(query);
     });
   });
 
