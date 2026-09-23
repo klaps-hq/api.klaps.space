@@ -177,7 +177,8 @@ describe('ScreeningsService', () => {
       const spanDays =
         (call.until.getTime() - call.since.getTime()) / 86_400_000;
       expect(Math.round(spanDays)).toBe(90);
-      expect(call.limit).toBe(12);
+      // Twice the page size, so dropping duplicates still fills 12.
+      expect(call.limit).toBe(24);
       expect(call.citySlug).toBe('krakow');
       // The window ends at midnight today, so only past screenings count.
       expect(call.until.getHours()).toBe(0);
@@ -193,7 +194,7 @@ describe('ScreeningsService', () => {
       const spanDays =
         (call.until.getTime() - call.since.getTime()) / 86_400_000;
       expect(Math.round(spanDays)).toBe(30);
-      expect(call.limit).toBe(6);
+      expect(call.limit).toBe(12);
       expect(call.cinemaId).toBe(5);
     });
 
@@ -211,8 +212,8 @@ describe('ScreeningsService', () => {
         },
       ]);
       repo.findMovieSummariesByIds.mockResolvedValue([
-        { id: 7, slug: 'b' },
-        { id: 9, slug: 'a' },
+        { id: 7, slug: 'b', title: 'Kes', productionYear: 1969 },
+        { id: 9, slug: 'a', title: 'Dekalog', productionYear: 1989 },
       ] as any);
       repo.findMovieIdsWithScreeningsBetween.mockResolvedValue(new Set([9]));
 
@@ -250,6 +251,37 @@ describe('ScreeningsService', () => {
       const result = await service.getRecentScreenings({ cinemaId: 5 });
 
       expect(result).toEqual([]);
+    });
+
+    it('should collapse duplicate movie rows and still honour the limit', async () => {
+      // Two rows for the same film (as the scraper sometimes creates) come
+      // back as separate stats with identical dates and counts.
+      const date = new Date('2026-09-20T19:00:00.000Z');
+      repo.findRecentMovieStats.mockResolvedValue([
+        { movieId: 984, lastScreeningDate: date, screeningsCount: 7 },
+        { movieId: 985, lastScreeningDate: date, screeningsCount: 7 },
+        { movieId: 3, lastScreeningDate: date, screeningsCount: 2 },
+        { movieId: 4, lastScreeningDate: date, screeningsCount: 1 },
+      ]);
+      repo.findMovieSummariesByIds.mockResolvedValue([
+        { id: 984, slug: 'zmierzch', title: 'Zmierzch', productionYear: 2011 },
+        {
+          id: 985,
+          slug: 'zmierzch-2',
+          title: 'Zmierzch ',
+          productionYear: 2011,
+        },
+        { id: 3, slug: 'kes', title: 'Kes', productionYear: 1969 },
+        { id: 4, slug: 'pi', title: 'Pi', productionYear: 1998 },
+      ] as any);
+      repo.findMovieIdsWithScreeningsBetween.mockResolvedValue(new Set());
+
+      const result = await service.getRecentScreenings({
+        citySlug: 'warszawa',
+        limit: 2,
+      });
+
+      expect(result.map((r) => r.movie.id)).toEqual([984, 3]);
     });
   });
 
