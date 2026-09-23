@@ -482,6 +482,110 @@ describe('ScreeningsRepository', () => {
     });
   });
 
+  describe('findRecentMovieStats', () => {
+    const window = {
+      since: new Date('2026-06-25T00:00:00.000Z'),
+      until: new Date('2026-09-23T00:00:00.000Z'),
+      limit: 12,
+    };
+
+    it('should return grouped rows, newest first, capped at the limit', async () => {
+      const rows = [
+        {
+          movieId: 7,
+          lastScreeningDate: new Date('2026-09-20T19:00:00.000Z'),
+          screeningsCount: 3,
+        },
+      ];
+      mockDb.query.cinemas.findFirst.mockResolvedValue({ sourceId: 55 });
+      selectChain = createChain(rows);
+      mockSelect.mockReturnValue(selectChain);
+
+      const result = await repo.findRecentMovieStats({
+        ...window,
+        cinemaSlug: 'kino-muzeum',
+      });
+
+      expect(result).toEqual(rows);
+      expect(selectChain.groupBy).toHaveBeenCalled();
+      expect(selectChain.orderBy).toHaveBeenCalled();
+      expect(selectChain.limit).toHaveBeenCalledWith(12);
+    });
+
+    it('should return nothing when the requested scope does not exist', async () => {
+      // An unresolved scope must not widen to nationwide results.
+      mockDb.query.cinemas.findFirst.mockResolvedValue(undefined);
+
+      const result = await repo.findRecentMovieStats({
+        ...window,
+        cinemaSlug: 'no-such-cinema',
+      });
+
+      expect(result).toEqual([]);
+      expect(mockSelect).not.toHaveBeenCalled();
+    });
+
+    it('should query nationwide when no scope is given', async () => {
+      selectChain = createChain([]);
+      mockSelect.mockReturnValue(selectChain);
+
+      await repo.findRecentMovieStats(window);
+
+      expect(mockSelect).toHaveBeenCalled();
+      expect(mockDb.query.cinemas.findFirst).not.toHaveBeenCalled();
+      expect(mockDb.query.cities.findFirst).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findMovieSummariesByIds', () => {
+    it('should skip the query for an empty id list', async () => {
+      const result = await repo.findMovieSummariesByIds([]);
+
+      expect(result).toEqual([]);
+      expect(mockDb.query.movies.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should load movies with their genres', async () => {
+      const movies = [{ id: 7, movies_genres: [] }];
+      mockDb.query.movies.findMany.mockResolvedValue(movies);
+
+      const result = await repo.findMovieSummariesByIds([7]);
+
+      expect(result).toEqual(movies);
+      expect(mockDb.query.movies.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          with: { movies_genres: { with: { genre: true } } },
+        }),
+      );
+    });
+  });
+
+  describe('findMovieIdsWithScreeningsBetween', () => {
+    it('should skip the query for an empty id list', async () => {
+      const result = await repo.findMovieIdsWithScreeningsBetween(
+        [],
+        new Date(),
+        new Date(),
+      );
+
+      expect(result).toEqual(new Set());
+      expect(mockSelectDistinct).not.toHaveBeenCalled();
+    });
+
+    it('should return the ids that have a screening in the window', async () => {
+      selectDistinctChain = createChain([{ movieId: 7 }, { movieId: 9 }]);
+      mockSelectDistinct.mockReturnValue(selectDistinctChain);
+
+      const result = await repo.findMovieIdsWithScreeningsBetween(
+        [7, 8, 9],
+        new Date('2026-09-23'),
+        new Date('2026-10-23'),
+      );
+
+      expect(result).toEqual(new Set([7, 9]));
+    });
+  });
+
   describe('insert', () => {
     const dto = {
       url: 'https://kino.pl/tickets/99',
