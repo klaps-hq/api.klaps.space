@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { MoviesRepository } from './movies.repository';
 import { DRIZZLE } from '../database/constants';
@@ -342,6 +343,41 @@ describe('MoviesRepository', () => {
 
       expect(movieSlug).toHaveBeenCalledWith('Matrix', 1999);
       expect(uniqueSlug).toHaveBeenCalledWith('matrix-1999', expect.any(Set));
+    });
+
+    it('should warn when an unknown sourceId lands on a taken slug', async () => {
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      // The slug is already held by a different movie, so it gets suffixed.
+      (uniqueSlug as jest.Mock).mockReturnValueOnce('matrix-1999-2');
+      // findExistingKeys: same title/year stored under another sourceId
+      selectChain._enqueue([{ slug: 'matrix-1999', sourceId: 999 }]);
+      insertChain.onConflictDoUpdate.mockResolvedValueOnce(undefined);
+      selectChain._enqueue([{ id: 1, sourceId: 100 }]);
+
+      await repository.upsertBatch([baseMovie]);
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Possible duplicate movie'),
+      );
+      warn.mockRestore();
+    });
+
+    it('should not warn when the suffixed slug belongs to a known sourceId', async () => {
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      (uniqueSlug as jest.Mock).mockReturnValueOnce('matrix-1999-2');
+      // findExistingKeys: this very movie - an update, not a new duplicate
+      selectChain._enqueue([{ slug: 'matrix-1999', sourceId: 100 }]);
+      insertChain.onConflictDoUpdate.mockResolvedValueOnce(undefined);
+      selectChain._enqueue([{ id: 1, sourceId: 100 }]);
+
+      await repository.upsertBatch([baseMovie]);
+
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
     });
 
     it('should upsert actors when provided', async () => {

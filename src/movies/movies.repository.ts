@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
@@ -18,6 +18,8 @@ import { withDeadlockRetry } from '../lib/with-deadlock-retry';
 import { MULTI_CITY } from './movies.constants';
 
 type FullSchema = typeof schema & typeof relations;
+
+const logger = new Logger('MoviesRepository');
 
 const MOVIE_RELATIONS = {
   movies_genres: { with: { genre: true } },
@@ -202,11 +204,25 @@ export class MoviesRepository {
   private async upsertMovies(
     movies: CreateMoviesBatchItemDto[],
   ): Promise<void> {
-    const taken = await this.findExistingSlugs();
+    const { slugs: taken, sourceIds: known } = await this.findExistingKeys();
 
     const values = movies.map((m) => {
-      const slug = uniqueSlug(movieSlug(m.title, m.productionYear), taken);
+      const base = movieSlug(m.title, m.productionYear);
+      const slug = uniqueSlug(base, taken);
       taken.add(slug);
+      // A film that is new to us (unknown sourceId) yet whose slug is already
+      // taken is nearly always the same film arriving under a second Filmweb
+      // id. Upserts key on sourceId, so it cannot collide - it lands as a
+      // duplicate row with a `-2` slug instead of updating the existing one.
+      // Inserting it anyway (remakes do share title and year) and flagging it
+      // keeps the scraper unblocked; merge-duplicate-movies.ts cleans up.
+      if (slug !== base && !known.has(m.sourceId)) {
+        logger.warn(
+          `Possible duplicate movie: "${m.title}" (${m.productionYear}) ` +
+            `sourceId=${m.sourceId} inserted as "${slug}" because "${base}" ` +
+            `is taken - verify with src/scripts/merge-duplicate-movies.ts`,
+        );
+      }
       return {
         sourceId: m.sourceId,
         url: m.url,
@@ -312,11 +328,22 @@ export class MoviesRepository {
     return new Map(rows.map((r) => [r.sourceId, r.id]));
   }
 
-  private async findExistingSlugs(): Promise<Set<string>> {
+  /**
+   * Slugs and sourceIds of every stored movie: slugs feed uniqueSlug(), while
+   * sourceIds tell an insert apart from an update - the pair is what makes a
+   * duplicate row recognisable while it is being written.
+   */
+  private async findExistingKeys(): Promise<{
+    slugs: Set<string>;
+    sourceIds: Set<number>;
+  }> {
     const rows = await this.db
-      .select({ slug: schema.movies.slug })
+      .select({ slug: schema.movies.slug, sourceId: schema.movies.sourceId })
       .from(schema.movies);
-    return new Set(rows.map((r) => r.slug));
+    return {
+      slugs: new Set(rows.map((r) => r.slug)),
+      sourceIds: new Set(rows.map((r) => r.sourceId)),
+    };
   }
 
   private buildSearchCondition(search?: string) {
