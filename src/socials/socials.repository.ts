@@ -41,10 +41,19 @@ export class SocialsRepository {
     });
   }
 
-  async findScreeningsInRange(dateFrom: string, dateToNextDay: string) {
+  // `notBefore` cuts off screenings earlier on the first day of the range
+  // (already started or starting too soon to be worth a post).
+  async findScreeningsInRange(
+    dateFrom: string,
+    dateToNextDay: string,
+    notBefore: Date,
+  ) {
+    const rangeStart = new Date(dateFrom);
+    const lowerBound = notBefore > rangeStart ? notBefore : rangeStart;
+
     return this.db.query.screenings.findMany({
       where: and(
-        gte(schema.screenings.date, new Date(dateFrom)),
+        gte(schema.screenings.date, lowerBound),
         lt(schema.screenings.date, new Date(dateToNextDay)),
       ),
       orderBy: asc(schema.screenings.date),
