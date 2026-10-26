@@ -16,6 +16,7 @@ import {
   CRITICS_BONUS_MIN_RATING,
   CRITICS_BONUS_MIN_VOTES,
   DEEP_CLASSIC_YEAR_THRESHOLD,
+  getCooldownPlatforms,
   MIN_SCREENING_LEAD_MINUTES,
   RATING_QUALITY_BASELINE,
   RATING_QUALITY_CEILING,
@@ -83,15 +84,16 @@ export class SocialsService {
       notBefore,
     );
 
-    // Movies posted on this platform within the cooldown window are not
-    // eligible again - prevents the same movie appearing in back-to-back
-    // posts when its screenings span multiple date ranges.
+    // Movies posted on this platform (or a feed format sharing its grid)
+    // within the cooldown window are not eligible again - prevents the same
+    // movie appearing in back-to-back posts when its screenings span
+    // multiple date ranges.
     const cooldownStart = getDatePlusDays(
       getTodayInPoland(),
       -REPEAT_COOLDOWN_DAYS,
     );
     const recentPosts = await this.repo.findRecentPostsByPlatform(
-      platform,
+      getCooldownPlatforms(platform),
       cooldownStart,
     );
     const recentMovieIds = new Set(recentPosts.map((post) => post.movieId));

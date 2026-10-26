@@ -32,11 +32,11 @@ export class SocialsRepository {
     });
   }
 
-  async findRecentPostsByPlatform(platform: string, sincePostDate: string) {
+  async findRecentPostsByPlatform(platforms: string[], sincePostDate: string) {
     return this.db.query.socials_posts.findMany({
       where: and(
         gte(schema.socials_posts.postDate, sincePostDate),
-        eq(schema.socials_posts.platform, platform),
+        inArray(schema.socials_posts.platform, platforms),
       ),
     });
   }

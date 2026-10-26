@@ -218,6 +218,42 @@ describe('SocialsService', () => {
       expect(result.candidates[0].movieId).toBe(2);
     });
 
+    it('should share the movie cooldown across Instagram feed formats', async () => {
+      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findScreeningsInRange.mockResolvedValue([]);
+
+      await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 20,
+        platform: 'instagram_reel',
+        numberOfCandidates: 10,
+      });
+
+      expect(repo.findRecentPostsByPlatform).toHaveBeenCalledWith(
+        ['instagram_post', 'instagram_reel', 'instagram_carousel'],
+        expect.any(String),
+      );
+    });
+
+    it('should keep the cooldown per platform outside the feed group', async () => {
+      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findScreeningsInRange.mockResolvedValue([]);
+
+      await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 20,
+        platform: 'instagram_story',
+        numberOfCandidates: 10,
+      });
+
+      expect(repo.findRecentPostsByPlatform).toHaveBeenCalledWith(
+        ['instagram_story'],
+        expect.any(String),
+      );
+    });
+
     it('should return NO_SCREENINGS_IN_RANGE when no screenings found', async () => {
       repo.findPostsByDateAndPlatform.mockResolvedValue([]);
       repo.findScreeningsInRange.mockResolvedValue([]);
