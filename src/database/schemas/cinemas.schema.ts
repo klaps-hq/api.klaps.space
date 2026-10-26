@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   pgTable,
   real,
@@ -24,6 +25,12 @@ export const cinemasTable = pgTable('cinemas', {
   description: text(),
   email: varchar({ length: 255 }),
   website: varchar({ length: 255 }),
+  // Social publishing (klaps.radar): the cinema's Instagram account is tagged
+  // on posts, and invited as a collaborator only when it agreed to it.
+  instagramUsername: varchar({ length: 64 }),
+  instagramCollab: boolean().notNull().default(false),
+  // Facebook Page ID of the cinema's place, used as the post location.
+  facebookPlaceId: varchar({ length: 32 }),
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp().notNull().defaultNow(),
 });
