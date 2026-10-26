@@ -5,6 +5,17 @@ export const DEEP_CLASSIC_YEAR_THRESHOLD = 1980;
 // new candidates, so consecutive posts never repeat the same movie.
 export const REPEAT_COOLDOWN_DAYS = 30;
 
+// Instagram feed formats share one profile grid, so the cooldown spans all
+// of them: a movie posted as an image is not repeated as a reel days later.
+export const FEED_COOLDOWN_GROUP = [
+  'instagram_post',
+  'instagram_reel',
+  'instagram_carousel',
+];
+
+export const getCooldownPlatforms = (platform: string): string[] =>
+  FEED_COOLDOWN_GROUP.includes(platform) ? FEED_COOLDOWN_GROUP : [platform];
+
 // Screenings starting sooner than this are not candidates: a post about a
 // screening that already started (or is about to) is useless to the viewer.
 export const MIN_SCREENING_LEAD_MINUTES = 120;
