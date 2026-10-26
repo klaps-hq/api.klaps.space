@@ -3,7 +3,19 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
 import { eq, isNotNull, sql } from 'drizzle-orm';
-import { DIRECTOR_INDEX_THRESHOLD } from './sitemap.constants';
+import {
+  DIRECTOR_INDEX_THRESHOLD,
+  VENUE_ACTIVITY_WINDOW_DAYS,
+} from './sitemap.constants';
+
+/**
+ * HAVING clause for venue rows: at least one screening dated within the last
+ * VENUE_ACTIVITY_WINDOW_DAYS days or later. Venues outside it render no
+ * repertoire and no recent programme, so the frontend marks them `noindex`
+ * and they must not be advertised here. Screenings are never deleted, so a
+ * venue that starts screening again comes back on its own.
+ */
+const hasRecentOrUpcomingScreening = sql`count(${schema.screenings.id}) filter (where ${schema.screenings.date} >= CURRENT_DATE - ${VENUE_ACTIVITY_WINDOW_DAYS}::int) > 0`;
 
 export type SitemapRow = {
   slug: string;
@@ -43,6 +55,7 @@ export class SitemapRepository {
   /**
    * Returns slug + effective content `updatedAt` per cinema:
    * max(cinema.updatedAt, newest screening.updatedAt in that cinema).
+   * Only cinemas with a recent or upcoming screening (see above).
    */
   async findCinemaEntries(): Promise<SitemapRow[]> {
     return this.db
@@ -58,12 +71,14 @@ export class SitemapRepository {
         schema.screenings,
         eq(schema.screenings.cinemaId, schema.cinemas.sourceId),
       )
-      .groupBy(schema.cinemas.id);
+      .groupBy(schema.cinemas.id)
+      .having(hasRecentOrUpcomingScreening);
   }
 
   /**
    * Returns slug + effective content `updatedAt` per city with at least one cinema:
-   * max over the city's cinemas and their screenings.
+   * max over the city's cinemas and their screenings. Only cities with a
+   * recent or upcoming screening in any of their cinemas (see above).
    */
   async findCityEntries(): Promise<SitemapRow[]> {
     return this.db
@@ -83,7 +98,8 @@ export class SitemapRepository {
         schema.screenings,
         eq(schema.screenings.cinemaId, schema.cinemas.sourceId),
       )
-      .groupBy(schema.cities.id);
+      .groupBy(schema.cities.id)
+      .having(hasRecentOrUpcomingScreening);
   }
 
   /**
