@@ -7,6 +7,7 @@ import type { SocialsGetCandidateResponse } from './socials.types';
 import {
   getDate,
   getDatePlusDays,
+  getNowInPolandWallClock,
   getTodayInPoland,
   toDateOnlyString,
 } from '../lib/date';
@@ -15,6 +16,7 @@ import {
   CRITICS_BONUS_MIN_RATING,
   CRITICS_BONUS_MIN_VOTES,
   DEEP_CLASSIC_YEAR_THRESHOLD,
+  MIN_SCREENING_LEAD_MINUTES,
   RATING_QUALITY_BASELINE,
   RATING_QUALITY_CEILING,
   RATING_VOTES_CEILING_LOG10,
@@ -71,9 +73,14 @@ export class SocialsService {
 
     const dateToNextDay = getDatePlusDays(dateTo, 1);
 
+    const notBefore = new Date(
+      getNowInPolandWallClock().getTime() + MIN_SCREENING_LEAD_MINUTES * 60000,
+    );
+
     const screenings = await this.repo.findScreeningsInRange(
       dateFrom,
       dateToNextDay,
+      notBefore,
     );
 
     // Movies posted on this platform within the cooldown window are not

@@ -8,6 +8,7 @@ jest.mock('../lib/date', () => ({
   getDate: jest.fn((d: string) => d),
   getDatePlusDays: jest.fn((d: string, n: number) => `${d}+${n}`),
   getTodayInPoland: jest.fn(() => '2025-03-11'),
+  getNowInPolandWallClock: jest.fn(() => new Date('2025-03-11T10:00:00Z')),
   toDateOnlyString: jest.fn((d: Date) => d.toISOString().slice(0, 10)),
 }));
 
@@ -141,6 +142,26 @@ describe('SocialsService', () => {
 
       expect(result.reason).not.toBe('ALREADY_PUBLISHED');
       expect(repo.findScreeningsInRange).toHaveBeenCalled();
+    });
+
+    it('should skip screenings starting within the minimum lead time', async () => {
+      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findScreeningsInRange.mockResolvedValue([]);
+
+      await service.getCandidate({
+        dateFrom: '2025-03-11',
+        dateTo: '2025-03-11',
+        minScore: 20,
+        platform: 'instagram',
+        numberOfCandidates: 10,
+      });
+
+      // Mocked wall clock is 10:00, lead time is 2h.
+      expect(repo.findScreeningsInRange).toHaveBeenCalledWith(
+        '2025-03-11',
+        '2025-03-11+1',
+        new Date('2025-03-11T12:00:00Z'),
+      );
     });
 
     it('should return ALREADY_PUBLISHED when posts reach maxPosts', async () => {

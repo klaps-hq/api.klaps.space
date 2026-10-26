@@ -143,6 +143,7 @@ describe('SocialsRepository', () => {
       const result = await repository.findScreeningsInRange(
         '2024-03-10',
         '2024-03-11',
+        new Date('2024-03-10T00:00:00Z'),
       );
 
       expect(result).toEqual([mockScreening, mockScreeningB]);
@@ -170,6 +171,7 @@ describe('SocialsRepository', () => {
       const result = await repository.findScreeningsInRange(
         '2025-01-01',
         '2025-01-02',
+        new Date('2025-01-01T00:00:00Z'),
       );
 
       expect(result).toEqual([]);
