@@ -4,7 +4,9 @@ import { randomInt } from 'node:crypto';
 import type {
   GetScreeningsParams,
   GetLastUpdatedParams,
+  GetRecentScreeningsParams,
   LastUpdatedResponse,
+  RecentScreeningResponse,
   Screening,
   ScreeningResponse,
   ScreeningGroupResponse,
@@ -12,9 +14,13 @@ import type {
 } from './screenings.types';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
 import { mapScreening, mapScreeningGroup } from './screenings.mapper';
-import { mapMovieHero } from '../movies/movies.mapper';
+import { mapMovieHero, mapMovieSummary } from '../movies/movies.mapper';
 import { ScreeningsRepository } from './screenings.repository';
-import { RETRO_YEAR_THRESHOLD } from './screenings.constants';
+import {
+  RECENT_SCREENINGS_DEFAULT_DAYS,
+  RECENT_SCREENINGS_DEFAULT_LIMIT,
+  RETRO_YEAR_THRESHOLD,
+} from './screenings.constants';
 import { IndexNowService } from '../indexnow/indexnow.service';
 
 @Injectable()
@@ -81,6 +87,83 @@ export class ScreeningsService {
   ): Promise<LastUpdatedResponse> {
     const updatedAt = await this.repo.findLastUpdatedAt(params);
     return { updatedAt: updatedAt ? updatedAt.toISOString() : null };
+  }
+
+  /**
+   * Films recently screened in a cinema or city and no longer scheduled
+   * there, newest first.
+   *
+   * Backs the "Ostatnio w repertuarze" section: about two thirds of cinema
+   * pages have no upcoming screenings at any given time and rendered as a
+   * name, an address and boilerplate. The venue's recent programme is real,
+   * per-page content that already sits in the database, because screenings
+   * are upserted and never deleted.
+   */
+  async getRecentScreenings(
+    params: GetRecentScreeningsParams = {},
+  ): Promise<RecentScreeningResponse[]> {
+    const days = params.days ?? RECENT_SCREENINGS_DEFAULT_DAYS;
+    const limit = params.limit ?? RECENT_SCREENINGS_DEFAULT_LIMIT;
+
+    // Day boundaries follow getDateRangeUpToMonthFromNow (server midnight):
+    // screenings store wall-clock time as UTC, so this is local midnight.
+    const until = new Date();
+    until.setHours(0, 0, 0, 0);
+    const since = new Date(until);
+    since.setDate(since.getDate() - days);
+
+    // Over-fetch so that dropping duplicates below still fills the limit.
+    const stats = await this.repo.findRecentMovieStats({
+      since,
+      until,
+      limit: limit * 2,
+      cinemaId: params.cinemaId,
+      cinemaSlug: params.cinemaSlug,
+      cityId: params.cityId,
+      citySlug: params.citySlug,
+    });
+    if (stats.length === 0) return [];
+
+    const movieIds = stats.map((s) => s.movieId);
+    // The default range is the one the movie page uses to decide noindex,
+    // so hasUpcomingScreenings agrees with it by construction.
+    const { startDay, endDay } = getDateRangeUpToMonthFromNow();
+    const [movies, upcomingIds] = await Promise.all([
+      this.repo.findMovieSummariesByIds(movieIds),
+      this.repo.findMovieIdsWithScreeningsBetween(movieIds, startDay, endDay),
+    ]);
+    const moviesById = new Map(movies.map((m) => [m.id, m]));
+
+    // The scraper sometimes creates a second row for a film it already has
+    // (same title and year, slug suffixed "-2"), and both rows then carry
+    // the same screenings. Grouping by movie id would list that film twice
+    // with identical dates and counts. Keep the first occurrence, which is
+    // the most recent because stats arrive sorted. Becomes a no-op once
+    // duplicate movie rows are merged at the source.
+    const seen = new Set<string>();
+    const results: RecentScreeningResponse[] = [];
+    for (const stat of stats) {
+      if (results.length >= limit) break;
+      const movie = moviesById.get(stat.movieId);
+      if (!movie || !stat.lastScreeningDate) continue;
+      const key = `${movie.title.trim().toLowerCase()}|${movie.productionYear}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      // ISO slice, not a Warsaw-zone conversion: the stored value is the
+      // wall-clock time labelled UTC, and converting it would move a
+      // 23:30 screening onto the next day. Matches screenings.mapper.
+      const lastScreeningDate = new Date(stat.lastScreeningDate)
+        .toISOString()
+        .slice(0, 10);
+      results.push({
+        movie: mapMovieSummary(movie),
+        lastScreeningDate,
+        screeningsCount: Number(stat.screeningsCount),
+        hasUpcomingScreenings: upcomingIds.has(stat.movieId),
+      });
+    }
+    return results;
   }
 
   async getRandomRetroScreening(): Promise<RandomScreeningResponse | null> {

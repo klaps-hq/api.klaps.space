@@ -126,17 +126,22 @@ export class CitiesRepository {
           this.db
             .insert(schema.cities)
             .values(chunk)
+            // nameDeclinated is set on insert only, like voivodeship above.
+            // Filmweb returns the nominative instead of the locative for
+            // roughly half of the smaller towns, which put "Kina studyjne w
+            // Jarocin" and "w Szydłowiec" in the title and H1 of 152 of 316
+            // city pages. Those forms are corrected by hand, so keeping the
+            // column in the conflict set would undo every fix on the next
+            // scrape.
             .onConflictDoUpdate({
               target: schema.cities.sourceId,
               set: {
                 name: sql`excluded."name"`,
-                nameDeclinated: sql`excluded."nameDeclinated"`,
                 areacode: sql`excluded."areacode"`,
                 population: sql`excluded."population"`,
               },
               setWhere: excludedChanged([
                 schema.cities.name,
-                schema.cities.nameDeclinated,
                 schema.cities.areacode,
                 schema.cities.population,
               ]),

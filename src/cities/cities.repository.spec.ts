@@ -238,11 +238,26 @@ describe('CitiesRepository', () => {
         target: expect.anything(),
         set: expect.objectContaining({
           name: expect.anything(),
-          nameDeclinated: expect.anything(),
           areacode: expect.anything(),
         }),
         setWhere: expect.anything(),
       });
+    });
+
+    it('should not overwrite nameDeclinated on conflict', async () => {
+      // Filmweb sends the nominative instead of the locative for many of the
+      // smaller towns, so those forms are corrected by hand in the database.
+      // Keeping the column out of the conflict set is what makes those fixes
+      // survive the next scrape - same rule as voivodeship.
+      await repository.upsertBatch([
+        { sourceId: 1, name: 'Jarocin', nameDeclinated: 'Jarocin' },
+      ]);
+
+      const { set } = mockOnDuplicateKeyUpdate.mock.calls[0][0] as {
+        set: Record<string, unknown>;
+      };
+
+      expect(set).not.toHaveProperty('nameDeclinated');
     });
   });
 

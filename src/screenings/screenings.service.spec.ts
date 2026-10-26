@@ -13,6 +13,7 @@ jest.mock('./screenings.mapper', () => ({
 }));
 jest.mock('../movies/movies.mapper', () => ({
   mapMovieHero: jest.fn((m: any) => ({ id: m.id, title: m.title })),
+  mapMovieSummary: jest.fn((m: any) => ({ id: m.id, slug: m.slug })),
 }));
 
 import { Test } from '@nestjs/testing';
@@ -43,6 +44,9 @@ describe('ScreeningsService', () => {
             findCandidateRetroMovieIds: jest.fn(),
             findMovieWithScreeningsById: jest.fn(),
             findLastUpdatedAt: jest.fn(),
+            findRecentMovieStats: jest.fn(),
+            findMovieSummariesByIds: jest.fn(),
+            findMovieIdsWithScreeningsBetween: jest.fn(),
             insert: jest.fn(),
           },
         },
@@ -150,6 +154,134 @@ describe('ScreeningsService', () => {
       const result = await service.getLastUpdatedAt();
 
       expect(result).toEqual({ updatedAt: null });
+    });
+  });
+
+  describe('getRecentScreenings', () => {
+    it('should return an empty list without loading movies', async () => {
+      repo.findRecentMovieStats.mockResolvedValue([]);
+
+      const result = await service.getRecentScreenings({ cinemaId: 5 });
+
+      expect(result).toEqual([]);
+      expect(repo.findMovieSummariesByIds).not.toHaveBeenCalled();
+      expect(repo.findMovieIdsWithScreeningsBetween).not.toHaveBeenCalled();
+    });
+
+    it('should look back 90 days and return 12 films by default', async () => {
+      repo.findRecentMovieStats.mockResolvedValue([]);
+
+      await service.getRecentScreenings({ citySlug: 'krakow' });
+
+      const call = repo.findRecentMovieStats.mock.calls[0][0];
+      const spanDays =
+        (call.until.getTime() - call.since.getTime()) / 86_400_000;
+      expect(Math.round(spanDays)).toBe(90);
+      // Twice the page size, so dropping duplicates still fills 12.
+      expect(call.limit).toBe(24);
+      expect(call.citySlug).toBe('krakow');
+      // The window ends at midnight today, so only past screenings count.
+      expect(call.until.getHours()).toBe(0);
+      expect(call.until.getMinutes()).toBe(0);
+    });
+
+    it('should pass a custom window and limit through', async () => {
+      repo.findRecentMovieStats.mockResolvedValue([]);
+
+      await service.getRecentScreenings({ cinemaId: 5, days: 30, limit: 6 });
+
+      const call = repo.findRecentMovieStats.mock.calls[0][0];
+      const spanDays =
+        (call.until.getTime() - call.since.getTime()) / 86_400_000;
+      expect(Math.round(spanDays)).toBe(30);
+      expect(call.limit).toBe(12);
+      expect(call.cinemaId).toBe(5);
+    });
+
+    it('should map films in the order the repository returned them', async () => {
+      repo.findRecentMovieStats.mockResolvedValue([
+        {
+          movieId: 9,
+          lastScreeningDate: new Date('2026-09-20T23:30:00.000Z'),
+          screeningsCount: 4,
+        },
+        {
+          movieId: 7,
+          lastScreeningDate: new Date('2026-08-02T18:00:00.000Z'),
+          screeningsCount: 1,
+        },
+      ]);
+      repo.findMovieSummariesByIds.mockResolvedValue([
+        { id: 7, slug: 'b', title: 'Kes', productionYear: 1969 },
+        { id: 9, slug: 'a', title: 'Dekalog', productionYear: 1989 },
+      ] as any);
+      repo.findMovieIdsWithScreeningsBetween.mockResolvedValue(new Set([9]));
+
+      const result = await service.getRecentScreenings({ cinemaId: 5 });
+
+      expect(result).toEqual([
+        {
+          movie: { id: 9, slug: 'a' },
+          // 23:30 wall clock stays on the 20th; a Warsaw-zone conversion
+          // would have moved it to the 21st.
+          lastScreeningDate: '2026-09-20',
+          screeningsCount: 4,
+          hasUpcomingScreenings: true,
+        },
+        {
+          movie: { id: 7, slug: 'b' },
+          lastScreeningDate: '2026-08-02',
+          screeningsCount: 1,
+          hasUpcomingScreenings: false,
+        },
+      ]);
+    });
+
+    it('should drop rows whose movie no longer exists', async () => {
+      repo.findRecentMovieStats.mockResolvedValue([
+        {
+          movieId: 9,
+          lastScreeningDate: new Date('2026-09-20T19:00:00.000Z'),
+          screeningsCount: 2,
+        },
+      ]);
+      repo.findMovieSummariesByIds.mockResolvedValue([]);
+      repo.findMovieIdsWithScreeningsBetween.mockResolvedValue(new Set());
+
+      const result = await service.getRecentScreenings({ cinemaId: 5 });
+
+      expect(result).toEqual([]);
+    });
+
+    it('should collapse duplicate movie rows and still honour the limit', async () => {
+      // Two rows for the same film (as the scraper sometimes creates) come
+      // back as separate stats with identical dates and counts.
+      const date = new Date('2026-09-20T19:00:00.000Z');
+      repo.findRecentMovieStats.mockResolvedValue([
+        { movieId: 984, lastScreeningDate: date, screeningsCount: 7 },
+        { movieId: 985, lastScreeningDate: date, screeningsCount: 7 },
+        { movieId: 3, lastScreeningDate: date, screeningsCount: 2 },
+        { movieId: 4, lastScreeningDate: date, screeningsCount: 1 },
+      ]);
+      repo.findMovieSummariesByIds.mockResolvedValue([
+        { id: 984, slug: 'zmierzch', title: 'Zmierzch', productionYear: 2011 },
+        {
+          id: 985,
+          slug: 'zmierzch-2',
+          title: 'Zmierzch ',
+          productionYear: 2011,
+        },
+        { id: 3, slug: 'kes', title: 'Kes', productionYear: 1969 },
+        { id: 4, slug: 'pi', title: 'Pi', productionYear: 1998 },
+      ] as any);
+      repo.findMovieIdsWithScreeningsBetween.mockResolvedValue(new Set());
+
+      const result = await service.getRecentScreenings({
+        citySlug: 'warszawa',
+        limit: 2,
+      });
+
+      expect(result.map((r) => r.movie.id)).toEqual([984, 3]);
     });
   });
 

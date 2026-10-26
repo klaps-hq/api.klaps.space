@@ -6,6 +6,15 @@ const DATE_ONLY_OPTIONS: Intl.DateTimeFormatOptions = {
 export const getTodayInPoland = (): string =>
   new Date().toLocaleDateString('sv-SE', DATE_ONLY_OPTIONS);
 
+/**
+ * Current Europe/Warsaw wall-clock time labelled as UTC. Screening timestamps
+ * are stored the same way, so this is the "now" to compare them against.
+ */
+export const getNowInPolandWallClock = (): Date =>
+  new Date(
+    `${new Date().toLocaleString('sv-SE', DATE_ONLY_OPTIONS).replace(' ', 'T')}Z`,
+  );
+
 /** Converts a Date or ISO date string to YYYY-MM-DD (Europe/Warsaw). For PostgreSQL DATE columns. */
 export const toDateOnlyString = (value: Date | string): string =>
   value instanceof Date

@@ -21,6 +21,9 @@ describe('CinemasService', () => {
     longitude: 21.0027,
     email: null,
     website: null,
+    instagramUsername: null,
+    instagramCollab: false,
+    facebookPlaceId: null,
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
   };

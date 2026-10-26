@@ -32,19 +32,28 @@ export class SocialsRepository {
     });
   }
 
-  async findRecentPostsByPlatform(platform: string, sincePostDate: string) {
+  async findRecentPostsByPlatform(platforms: string[], sincePostDate: string) {
     return this.db.query.socials_posts.findMany({
       where: and(
         gte(schema.socials_posts.postDate, sincePostDate),
-        eq(schema.socials_posts.platform, platform),
+        inArray(schema.socials_posts.platform, platforms),
       ),
     });
   }
 
-  async findScreeningsInRange(dateFrom: string, dateToNextDay: string) {
+  // `notBefore` cuts off screenings earlier on the first day of the range
+  // (already started or starting too soon to be worth a post).
+  async findScreeningsInRange(
+    dateFrom: string,
+    dateToNextDay: string,
+    notBefore: Date,
+  ) {
+    const rangeStart = new Date(dateFrom);
+    const lowerBound = notBefore > rangeStart ? notBefore : rangeStart;
+
     return this.db.query.screenings.findMany({
       where: and(
-        gte(schema.screenings.date, new Date(dateFrom)),
+        gte(schema.screenings.date, lowerBound),
         lt(schema.screenings.date, new Date(dateToNextDay)),
       ),
       orderBy: asc(schema.screenings.date),

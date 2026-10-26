@@ -5,14 +5,18 @@ import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
 import {
   and,
+  count,
+  desc,
   eq,
   gte,
   ilike,
   inArray,
   isNotNull,
+  lt,
   lte,
   max,
   ne,
+  notInArray,
   or,
 } from 'drizzle-orm';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
@@ -217,6 +221,114 @@ export class ScreeningsRepository {
       );
 
     return row?.updatedAt ?? null;
+  }
+
+  /**
+   * Films screened in the scope between `since` (inclusive) and `until`
+   * (exclusive), newest last screening first, one row per film.
+   *
+   * Films still scheduled in the same scope from `until` onwards are left
+   * out: they already appear in the live repertoire listing, and repeating
+   * them here would push genuinely past titles off the end of the list.
+   *
+   * A scope that was requested but does not resolve returns nothing instead
+   * of silently widening to nationwide results, which is what an undefined
+   * location condition would otherwise mean.
+   */
+  async findRecentMovieStats(params: {
+    since: Date;
+    until: Date;
+    limit: number;
+    cityId?: number;
+    citySlug?: string;
+    cinemaId?: number;
+    cinemaSlug?: string;
+  }): Promise<
+    {
+      movieId: number;
+      lastScreeningDate: Date | null;
+      screeningsCount: number;
+    }[]
+  > {
+    const hasScope = Boolean(
+      params.cinemaId || params.cinemaSlug || params.cityId || params.citySlug,
+    );
+    const locationCondition = await this.resolveLocationCondition(
+      params.cityId,
+      params.citySlug,
+      params.cinemaId,
+      params.cinemaSlug,
+    );
+    if (hasScope && !locationCondition) return [];
+
+    // Same inner join as the listings: a screening without a showtime never
+    // shows up in the repertoire, so it must not show up as "recent" either.
+    const scheduledHere = this.db
+      .selectDistinct({ movieId: schema.screenings.movieId })
+      .from(schema.screenings)
+      .innerJoin(
+        schema.showtimes,
+        eq(schema.screenings.showtimeId, schema.showtimes.id),
+      )
+      .where(and(gte(schema.screenings.date, params.until), locationCondition));
+
+    const lastScreeningDate = max(schema.screenings.date);
+
+    return this.db
+      .select({
+        movieId: schema.screenings.movieId,
+        lastScreeningDate,
+        screeningsCount: count(),
+      })
+      .from(schema.screenings)
+      .innerJoin(
+        schema.showtimes,
+        eq(schema.screenings.showtimeId, schema.showtimes.id),
+      )
+      .where(
+        and(
+          gte(schema.screenings.date, params.since),
+          lt(schema.screenings.date, params.until),
+          locationCondition,
+          notInArray(schema.screenings.movieId, scheduledHere),
+        ),
+      )
+      .groupBy(schema.screenings.movieId)
+      .orderBy(desc(lastScreeningDate))
+      .limit(params.limit);
+  }
+
+  /** Movies with their genres, the shape `mapMovieSummary` expects. */
+  async findMovieSummariesByIds(movieIds: number[]) {
+    if (movieIds.length === 0) return [];
+    return this.db.query.movies.findMany({
+      where: inArray(schema.movies.id, movieIds),
+      with: { movies_genres: { with: { genre: true } } },
+    });
+  }
+
+  /** Which of the given movies have a screening anywhere in the window. */
+  async findMovieIdsWithScreeningsBetween(
+    movieIds: number[],
+    startDay: Date,
+    endDay: Date,
+  ): Promise<Set<number>> {
+    if (movieIds.length === 0) return new Set();
+    const rows = await this.db
+      .selectDistinct({ movieId: schema.screenings.movieId })
+      .from(schema.screenings)
+      .innerJoin(
+        schema.showtimes,
+        eq(schema.screenings.showtimeId, schema.showtimes.id),
+      )
+      .where(
+        and(
+          inArray(schema.screenings.movieId, movieIds),
+          gte(schema.screenings.date, startDay),
+          lte(schema.screenings.date, endDay),
+        ),
+      );
+    return new Set(rows.map((r) => r.movieId));
   }
 
   // === WRITE ===
