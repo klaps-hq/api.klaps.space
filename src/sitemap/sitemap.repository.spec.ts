@@ -8,9 +8,18 @@ const mockDb = {
   select: jest.fn(),
 };
 
-/** Builds a select().from().leftJoin()...groupBy() chain resolving to rows. */
-const mockSelectChain = (rows: unknown[], { innerJoin = false } = {}) => {
-  const groupBy = jest.fn().mockResolvedValue(rows);
+/**
+ * Builds a select().from().leftJoin()...groupBy() chain resolving to rows.
+ * With `having`, groupBy returns { having } and having resolves instead.
+ */
+const mockSelectChain = (
+  rows: unknown[],
+  { innerJoin = false, having: withHaving = false } = {},
+) => {
+  const having = jest.fn().mockResolvedValue(rows);
+  const groupBy = withHaving
+    ? jest.fn().mockReturnValue({ having })
+    : jest.fn().mockResolvedValue(rows);
   const leftJoin = jest.fn();
   // Allow chained leftJoin calls (genres uses two) ending with groupBy.
   leftJoin.mockReturnValue({ leftJoin, groupBy });
@@ -20,7 +29,7 @@ const mockSelectChain = (rows: unknown[], { innerJoin = false } = {}) => {
       })
     : jest.fn().mockReturnValue({ leftJoin });
   mockDb.select.mockReturnValue({ from });
-  return { from, leftJoin, groupBy };
+  return { from, leftJoin, groupBy, having };
 };
 
 describe('SitemapRepository', () => {
@@ -50,24 +59,29 @@ describe('SitemapRepository', () => {
   });
 
   describe('findCinemaEntries', () => {
-    it('should return cinema slugs with effective updatedAt', async () => {
+    it('should return only cinemas with a recent or upcoming screening', async () => {
       const rows = [{ slug: 'kino-muranow', updatedAt }];
-      mockSelectChain(rows);
+      const { having } = mockSelectChain(rows, { having: true });
 
       const result = await repository.findCinemaEntries();
 
       expect(result).toEqual(rows);
+      expect(having).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('findCityEntries', () => {
-    it('should return only cities joined with cinemas', async () => {
+    it('should return only cities with cinemas and a recent or upcoming screening', async () => {
       const rows = [{ slug: 'warszawa', updatedAt }];
-      mockSelectChain(rows, { innerJoin: true });
+      const { having } = mockSelectChain(rows, {
+        innerJoin: true,
+        having: true,
+      });
 
       const result = await repository.findCityEntries();
 
       expect(result).toEqual(rows);
+      expect(having).toHaveBeenCalledTimes(1);
     });
   });
 
