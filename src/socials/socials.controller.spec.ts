@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { SocialsController } from './socials.controller';
 import { SocialsService } from './socials.service';
+import { SocialsSeriesService } from './socials-series.service';
 
 describe('SocialsController', () => {
   let controller: SocialsController;
@@ -17,6 +18,14 @@ describe('SocialsController', () => {
             getCandidate: jest.fn(),
             reserveCandidate: jest.fn(),
             publishCandidate: jest.fn(),
+          },
+        },
+        {
+          provide: SocialsSeriesService,
+          useValue: {
+            getMonthStats: jest.fn(),
+            getRetrospectives: jest.fn(),
+            recordSeriesPost: jest.fn(),
           },
         },
         {
