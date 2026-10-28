@@ -17,6 +17,23 @@ import {
  */
 const hasRecentOrUpcomingScreening = sql`count(${schema.screenings.id}) filter (where ${schema.screenings.date} >= CURRENT_DATE - ${VENUE_ACTIVITY_WINDOW_DAYS}::int) > 0`;
 
+/**
+ * Multiplex-chain venues, matched by name the same way the frontend does
+ * (lib/cinema-chains.ts): chains brand every location with the chain name.
+ * Keep the two pattern lists in sync.
+ */
+const isChainCinema = sql`${schema.cinemas.name} ~* '\\m(cinema\\s?city|helios|multikino|cinepolis|cinema\\s?3d|imax)\\M'`;
+
+/**
+ * Extra HAVING clause for cinema rows: a chain venue stays in the sitemap
+ * only while it has an upcoming screening. Its recent history alone is not
+ * worth indexing - October 2026 GSC: chain pages drew ~80% of impressions
+ * (people looking for the chain's own repertoire) and zero clicks. The
+ * frontend marks the same pages `noindex`. `name` is usable in HAVING
+ * because rows are grouped by the cinema primary key.
+ */
+const isIndependentOrHasUpcoming = sql`(not ${isChainCinema} or count(${schema.screenings.id}) filter (where ${schema.screenings.date} >= CURRENT_DATE) > 0)`;
+
 export type SitemapRow = {
   slug: string;
   updatedAt: Date | null;
@@ -55,7 +72,8 @@ export class SitemapRepository {
   /**
    * Returns slug + effective content `updatedAt` per cinema:
    * max(cinema.updatedAt, newest screening.updatedAt in that cinema).
-   * Only cinemas with a recent or upcoming screening (see above).
+   * Only cinemas with a recent or upcoming screening, and chain venues only
+   * with an upcoming one (see above).
    */
   async findCinemaEntries(): Promise<SitemapRow[]> {
     return this.db
@@ -72,7 +90,9 @@ export class SitemapRepository {
         eq(schema.screenings.cinemaId, schema.cinemas.sourceId),
       )
       .groupBy(schema.cinemas.id)
-      .having(hasRecentOrUpcomingScreening);
+      .having(
+        sql`${hasRecentOrUpcomingScreening} and ${isIndependentOrHasUpcoming}`,
+      );
   }
 
   /**
