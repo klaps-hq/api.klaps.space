@@ -27,6 +27,7 @@ describe('SearchService', () => {
     street: 'ul. Andersa 1',
     description: null,
     city: mockCityResponse,
+    isOpenAir: false,
   };
 
   beforeEach(async () => {

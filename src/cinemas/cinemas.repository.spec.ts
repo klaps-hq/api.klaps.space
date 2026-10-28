@@ -140,7 +140,7 @@ describe('CinemasRepository', () => {
         expect.any(Set),
       );
       expect(sortAndChunk).toHaveBeenCalledWith(
-        [{ ...cinemas[0], slug: 'kino-muranow-warszawa' }],
+        [{ ...cinemas[0], slug: 'kino-muranow-warszawa', isOpenAir: false }],
         expect.any(Function),
       );
       expect(withDeadlockRetry).toHaveBeenCalledWith(expect.any(Function), {
@@ -148,7 +148,7 @@ describe('CinemasRepository', () => {
       });
       expect(mockDb.insert).toHaveBeenCalled();
       expect(mockValues).toHaveBeenCalledWith([
-        { ...cinemas[0], slug: 'kino-muranow-warszawa' },
+        { ...cinemas[0], slug: 'kino-muranow-warszawa', isOpenAir: false },
       ]);
       expect(mockOnDuplicateKeyUpdate).toHaveBeenCalledWith({
         target: expect.anything(),
@@ -163,6 +163,24 @@ describe('CinemasRepository', () => {
         }),
         setWhere: expect.anything(),
       });
+      // The open-air flag is set on insert only, never on conflict update.
+      const [{ set }] = mockOnDuplicateKeyUpdate.mock.calls[0];
+      expect(set).not.toHaveProperty('isOpenAir');
+    });
+
+    it('should flag open-air venues by name on insert', async () => {
+      await repository.upsertBatch([
+        {
+          sourceId: 102,
+          name: 'TME Polówka: Park Julianowski',
+          url: 'https://filmweb.pl/cinema/polowka',
+          sourceCityId: 10,
+        },
+      ]);
+
+      expect(mockValues).toHaveBeenCalledWith([
+        expect.objectContaining({ isOpenAir: true }),
+      ]);
     });
 
     it('should accumulate slugs across batch items', async () => {

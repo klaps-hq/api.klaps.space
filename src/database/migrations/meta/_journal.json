@@ -64,6 +64,13 @@
       "when": 1793013612110,
       "tag": "0008_cinema_social_handles",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793216894006,
+      "tag": "0009_long_tail_landing_pages",
+      "breakpoints": true
     }
   ]
 }

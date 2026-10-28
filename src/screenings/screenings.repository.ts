@@ -38,6 +38,9 @@ export type FindScreeningsParams = {
   directorId?: number;
   limit?: number;
   search?: string;
+  openAir?: boolean;
+  /** Newest production year that still counts as a classic. */
+  classicMaxYear?: number;
 };
 
 @Injectable()
@@ -72,6 +75,8 @@ export class ScreeningsRepository {
       this.buildSearchFilter(params.search),
       genreCondition,
       this.buildDirectorCondition(params.directorId),
+      this.buildOpenAirCondition(params.openAir),
+      this.buildClassicCondition(params.classicMaxYear),
     );
 
     const query = this.db
@@ -102,6 +107,7 @@ export class ScreeningsRepository {
       voivodeship?: string;
       cinemaId?: number;
       cinemaSlug?: string;
+      openAir?: boolean;
     },
   ) {
     const locationCondition = locationFilter
@@ -124,6 +130,7 @@ export class ScreeningsRepository {
             gte(schema.screenings.date, startDay),
             lte(schema.screenings.date, endDay),
             locationCondition,
+            this.buildOpenAirCondition(locationFilter?.openAir),
           ),
         },
       },
@@ -243,6 +250,8 @@ export class ScreeningsRepository {
     citySlug?: string;
     cinemaId?: number;
     cinemaSlug?: string;
+    openAir?: boolean;
+    classicMaxYear?: number;
   }): Promise<
     {
       movieId: number;
@@ -260,6 +269,10 @@ export class ScreeningsRepository {
       params.cinemaSlug,
     );
     if (hasScope && !locationCondition) return [];
+    const venueCondition = and(
+      locationCondition,
+      this.buildOpenAirCondition(params.openAir),
+    );
 
     // Same inner join as the listings: a screening without a showtime never
     // shows up in the repertoire, so it must not show up as "recent" either.
@@ -270,7 +283,7 @@ export class ScreeningsRepository {
         schema.showtimes,
         eq(schema.screenings.showtimeId, schema.showtimes.id),
       )
-      .where(and(gte(schema.screenings.date, params.until), locationCondition));
+      .where(and(gte(schema.screenings.date, params.until), venueCondition));
 
     const lastScreeningDate = max(schema.screenings.date);
 
@@ -289,7 +302,8 @@ export class ScreeningsRepository {
         and(
           gte(schema.screenings.date, params.since),
           lt(schema.screenings.date, params.until),
-          locationCondition,
+          venueCondition,
+          this.buildClassicCondition(params.classicMaxYear),
           notInArray(schema.screenings.movieId, scheduledHere),
         ),
       )
@@ -457,6 +471,28 @@ export class ScreeningsRepository {
             ilike(schema.movies.titleOriginal, `%${search}%`),
           ),
         ),
+    );
+  }
+
+  private buildOpenAirCondition(openAir?: boolean) {
+    if (!openAir) return undefined;
+    return inArray(
+      schema.screenings.cinemaId,
+      this.db
+        .select({ sourceId: schema.cinemas.sourceId })
+        .from(schema.cinemas)
+        .where(eq(schema.cinemas.isOpenAir, true)),
+    );
+  }
+
+  private buildClassicCondition(classicMaxYear?: number) {
+    if (classicMaxYear === undefined) return undefined;
+    return inArray(
+      schema.screenings.movieId,
+      this.db
+        .select({ id: schema.movies.id })
+        .from(schema.movies)
+        .where(lte(schema.movies.productionYear, classicMaxYear)),
     );
   }
 

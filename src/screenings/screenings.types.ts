@@ -21,6 +21,8 @@ export type GetScreeningsParams = {
   cinemaSlug?: string;
   limit?: number;
   search?: string;
+  openAir?: boolean;
+  classic?: boolean;
 };
 
 export type ScreeningResponse = {
@@ -71,6 +73,8 @@ export type GetRecentScreeningsParams = {
   citySlug?: string;
   days?: number;
   limit?: number;
+  openAir?: boolean;
+  classic?: boolean;
 };
 
 /**

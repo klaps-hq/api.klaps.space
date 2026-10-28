@@ -3,7 +3,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
-import { asc, eq, ilike, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import type { Cinema } from '../database/schemas/cinemas.schema';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
@@ -11,6 +11,7 @@ import { cinemaSlug, toSlug, uniqueSlug } from '../lib/slug';
 import { excludedChanged } from '../lib/upsert';
 import type { CreateCinemasBatchItemDto } from './dto/create-cinemas-batch.dto';
 import type { UpdateCinemaDto } from './dto/update-cinema.dto';
+import { isOpenAirCinemaName } from './open-air';
 
 type FullSchema = typeof schema & typeof relations;
 
@@ -23,11 +24,14 @@ export class CinemasRepository {
 
   // === READ ===
 
-  async findAll(sourceCityId?: number, limit?: number) {
+  async findAll(sourceCityId?: number, limit?: number, openAir?: boolean) {
     return this.db.query.cinemas.findMany({
-      where: sourceCityId
-        ? eq(schema.cinemas.sourceCityId, sourceCityId)
-        : undefined,
+      where: and(
+        sourceCityId
+          ? eq(schema.cinemas.sourceCityId, sourceCityId)
+          : undefined,
+        openAir ? eq(schema.cinemas.isOpenAir, true) : undefined,
+      ),
       with: { city: true },
       limit: limit || undefined,
     });
@@ -118,7 +122,9 @@ export class CinemasRepository {
       const base = cityName ? cinemaSlug(c.name, cityName) : toSlug(c.name);
       const slug = uniqueSlug(base, taken);
       taken.add(slug);
-      return { ...c, slug };
+      // Only used on insert: the conflict update below leaves isOpenAir
+      // alone, so a flag corrected by hand survives the next scrape.
+      return { ...c, slug, isOpenAir: isOpenAirCinemaName(c.name) };
     });
 
     const chunks = sortAndChunk(values, (c) => c.sourceId);

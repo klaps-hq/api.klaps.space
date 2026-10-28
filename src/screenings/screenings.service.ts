@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { getDateRangeUpToMonthFromNow } from '../lib/date';
+import { getDateRangeUpToMonthFromNow, getTodayInPoland } from '../lib/date';
 import { randomInt } from 'node:crypto';
 import type {
   GetScreeningsParams,
@@ -17,11 +17,16 @@ import { mapScreening, mapScreeningGroup } from './screenings.mapper';
 import { mapMovieHero, mapMovieSummary } from '../movies/movies.mapper';
 import { ScreeningsRepository } from './screenings.repository';
 import {
+  CLASSIC_MIN_AGE_YEARS,
   RECENT_SCREENINGS_DEFAULT_DAYS,
   RECENT_SCREENINGS_DEFAULT_LIMIT,
   RETRO_YEAR_THRESHOLD,
 } from './screenings.constants';
 import { IndexNowService } from '../indexnow/indexnow.service';
+
+/** Newest production year that counts as a classic this (Polish) year. */
+const getClassicMaxYear = (): number =>
+  Number(getTodayInPoland().slice(0, 4)) - CLASSIC_MIN_AGE_YEARS;
 
 @Injectable()
 export class ScreeningsService {
@@ -54,6 +59,8 @@ export class ScreeningsService {
       directorId: params?.directorId,
       limit: params?.limit,
       search: params?.search,
+      openAir: params?.openAir,
+      classicMaxYear: params?.classic ? getClassicMaxYear() : undefined,
     });
 
     if (movieIds.length === 0) return [];
@@ -68,6 +75,7 @@ export class ScreeningsService {
         voivodeship: params?.voivodeship,
         cinemaId: params?.cinemaId,
         cinemaSlug: params?.cinemaSlug,
+        openAir: params?.openAir,
       },
     );
 
@@ -121,6 +129,8 @@ export class ScreeningsService {
       cinemaSlug: params.cinemaSlug,
       cityId: params.cityId,
       citySlug: params.citySlug,
+      openAir: params.openAir,
+      classicMaxYear: params.classic ? getClassicMaxYear() : undefined,
     });
     if (stats.length === 0) return [];
 
