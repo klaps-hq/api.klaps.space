@@ -31,6 +31,10 @@ export const cinemasTable = pgTable('cinemas', {
   instagramCollab: boolean().notNull().default(false),
   // Facebook Page ID of the cinema's place, used as the post location.
   facebookPlaceId: varchar({ length: 32 }),
+  // Open-air venue (summer cinema series such as TME Polówka or Filmowa
+  // Stolica Lata). Set from the name when the cinema is first created and
+  // never overwritten by the scraper, so manual corrections stick.
+  isOpenAir: boolean().notNull().default(false),
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp().notNull().defaultNow(),
 });

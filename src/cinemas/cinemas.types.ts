@@ -8,6 +8,7 @@ export type CinemaSummaryResponse = {
   street: string | null;
   description: string | null;
   city: CityResponse;
+  isOpenAir: boolean;
   /** ISO 8601 UTC; ostatnia zauważalna zmiana treści (kino lub jego seanse). */
   updatedAt?: string;
 };
@@ -20,6 +21,7 @@ export type CinemaResponse = {
   street: string | null;
   description: string | null;
   city: CityResponse;
+  isOpenAir: boolean;
   latitude: number | null;
   longitude: number | null;
   filmwebUrl: string;

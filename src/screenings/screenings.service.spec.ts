@@ -3,6 +3,7 @@ jest.mock('../lib/date', () => ({
   getDateRangeUpToMonthFromNow: jest
     .fn()
     .mockReturnValue({ startDay: '2025-01-01', endDay: '2025-02-01' }),
+  getTodayInPoland: jest.fn().mockReturnValue('2026-10-28'),
 }));
 jest.mock('./screenings.mapper', () => ({
   mapScreening: jest.fn((s: any) => ({ id: s.id, mapped: true })),
@@ -75,6 +76,40 @@ describe('ScreeningsService', () => {
 
       expect(result).toEqual([]);
       expect(repo.findMoviesWithScreenings).not.toHaveBeenCalled();
+    });
+
+    it('should translate classic into a production-year cap of 25 years', async () => {
+      repo.findFilteredMovieIds.mockResolvedValue([]);
+
+      await service.getScreenings({ classic: true, openAir: true });
+
+      expect(repo.findFilteredMovieIds).toHaveBeenCalledWith(
+        expect.objectContaining({ classicMaxYear: 2001, openAir: true }),
+      );
+    });
+
+    it('should not cap the production year without classic', async () => {
+      repo.findFilteredMovieIds.mockResolvedValue([]);
+
+      await service.getScreenings({});
+
+      expect(repo.findFilteredMovieIds).toHaveBeenCalledWith(
+        expect.objectContaining({ classicMaxYear: undefined }),
+      );
+    });
+
+    it('should keep only open-air screenings inside each movie', async () => {
+      repo.findFilteredMovieIds.mockResolvedValue([1]);
+      repo.findMoviesWithScreenings.mockResolvedValue([]);
+
+      await service.getScreenings({ openAir: true, citySlug: 'lodz' });
+
+      expect(repo.findMoviesWithScreenings).toHaveBeenCalledWith(
+        [1],
+        expect.anything(),
+        expect.anything(),
+        expect.objectContaining({ openAir: true, citySlug: 'lodz' }),
+      );
     });
 
     it('should return flat mapped screenings when movieId param is provided', async () => {
@@ -249,6 +284,20 @@ describe('ScreeningsService', () => {
       expect(Math.round(spanDays)).toBe(30);
       expect(call.limit).toBe(12);
       expect(call.cinemaId).toBe(5);
+    });
+
+    it('should pass the open-air and classic filters through', async () => {
+      repo.findRecentMovieStats.mockResolvedValue([]);
+
+      await service.getRecentScreenings({
+        openAir: true,
+        classic: true,
+        days: 365,
+      });
+
+      const call = repo.findRecentMovieStats.mock.calls[0][0];
+      expect(call.openAir).toBe(true);
+      expect(call.classicMaxYear).toBe(2001);
     });
 
     it('should map films in the order the repository returned them', async () => {

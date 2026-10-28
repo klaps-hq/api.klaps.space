@@ -23,7 +23,11 @@ export class CinemasService {
       query.cityId,
       query.citySlug,
     );
-    const cinemas = await this.repo.findAll(sourceCityId, query.limit);
+    const cinemas = await this.repo.findAll(
+      sourceCityId,
+      query.limit,
+      query.openAir,
+    );
     if (cinemas.length === 0) return [];
 
     const [updatedAtBySourceId, updatedAtBySourceCityId] = await Promise.all([

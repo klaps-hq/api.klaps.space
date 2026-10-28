@@ -1,14 +1,22 @@
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import {
   RECENT_SCREENINGS_MAX_DAYS,
   RECENT_SCREENINGS_MAX_LIMIT,
 } from '../screenings.constants';
+import { QueryBoolean } from '../../lib/query-boolean';
 
 /**
  * Query for GET /screenings/recent.
  *
- * Scope by one cinema or one city. With no scope the listing is nationwide,
+ * Scope by one cinema, one city or open-air venues (combinable with a city). With no scope the listing is nationwide,
  * which is valid but rarely useful; a scope that does not resolve to an
  * existing cinema or city yields an empty list rather than falling back to
  * nationwide results.
@@ -51,4 +59,14 @@ export class GetRecentScreeningsQueryDto {
     message: `limit must be at most ${RECENT_SCREENINGS_MAX_LIMIT}`,
   })
   limit?: number;
+
+  @IsOptional()
+  @QueryBoolean()
+  @IsBoolean()
+  openAir?: boolean;
+
+  @IsOptional()
+  @QueryBoolean()
+  @IsBoolean()
+  classic?: boolean;
 }

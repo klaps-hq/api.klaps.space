@@ -13,6 +13,7 @@ import { SocialsModule } from './socials/socials.module';
 import { ShowtimesModule } from './showtimes/showtimes.module';
 import { SearchModule } from './search/search.module';
 import { SitemapModule } from './sitemap/sitemap.module';
+import { LandingIntrosModule } from './landing-intros/landing-intros.module';
 import { InternalBypassThrottlerGuard } from './guards/internal-bypass-throttler.guard';
 import { AppLoggerModule } from './logger/logger.module';
 import { HealthModule } from './health/health.module';
@@ -32,6 +33,7 @@ import { HealthModule } from './health/health.module';
     ScreeningsModule,
     ShowtimesModule,
     SearchModule,
+    LandingIntrosModule,
     SitemapModule,
     ThrottlerModule.forRoot([
       { name: 'short', ttl: 10_000, limit: 30 },

@@ -20,6 +20,7 @@
     "db:backfill-director-slugs": "bunx ts-node -r dotenv/config src/scripts/backfill-director-slugs.ts",
     "db:backfill-director-photos": "bunx ts-node -r dotenv/config src/scripts/backfill-director-photos.ts",
     "db:backfill-voivodeships": "bunx ts-node -r dotenv/config src/scripts/backfill-voivodeships.ts",
+    "db:backfill-open-air-cinemas": "bunx ts-node -r dotenv/config src/scripts/backfill-open-air-cinemas.ts",
     "db:import-cinema-contacts": "bunx ts-node -r dotenv/config src/scripts/import-cinema-contacts.ts",
     "db:import-cinema-socials": "bunx ts-node -r dotenv/config src/scripts/import-cinema-socials.ts",
     "db:merge-duplicate-movies": "bunx ts-node -r dotenv/config src/scripts/merge-duplicate-movies.ts",

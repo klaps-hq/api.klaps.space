@@ -24,6 +24,7 @@ describe('CinemasService', () => {
     instagramUsername: null,
     instagramCollab: false,
     facebookPlaceId: null,
+    isOpenAir: false,
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
   };
@@ -99,6 +100,7 @@ describe('CinemasService', () => {
       description: null,
       voivodeship: null,
     },
+    isOpenAir: false,
   };
 
   describe('getCinemas', () => {
@@ -107,7 +109,11 @@ describe('CinemasService', () => {
 
       const result = await service.getCinemas({});
 
-      expect(repo.findAll).toHaveBeenCalledWith(undefined, undefined);
+      expect(repo.findAll).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+        undefined,
+      );
       expect(result).toEqual([mockCinemaSummaryResponse]);
     });
 
@@ -118,7 +124,7 @@ describe('CinemasService', () => {
       const result = await service.getCinemas({ citySlug: 'warszawa' });
 
       expect(citiesService.findBySlug).toHaveBeenCalledWith('warszawa');
-      expect(repo.findAll).toHaveBeenCalledWith(10, undefined);
+      expect(repo.findAll).toHaveBeenCalledWith(10, undefined, undefined);
       expect(result).toEqual([mockCinemaSummaryResponse]);
     });
 
@@ -139,6 +145,14 @@ describe('CinemasService', () => {
       expect(result[0].city.updatedAt).toBe('2026-06-03T10:00:00.000Z');
     });
 
+    it('should pass the openAir filter to the repository', async () => {
+      repo.findAll.mockResolvedValue([]);
+
+      await service.getCinemas({ openAir: true });
+
+      expect(repo.findAll).toHaveBeenCalledWith(undefined, undefined, true);
+    });
+
     it('should pass undefined sourceCityId when city not found by slug', async () => {
       citiesService.findBySlug.mockResolvedValue(null);
       repo.findAll.mockResolvedValue([]);
@@ -146,7 +160,11 @@ describe('CinemasService', () => {
       const result = await service.getCinemas({ citySlug: 'nieistniejace' });
 
       expect(citiesService.findBySlug).toHaveBeenCalledWith('nieistniejace');
-      expect(repo.findAll).toHaveBeenCalledWith(undefined, undefined);
+      expect(repo.findAll).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+        undefined,
+      );
       expect(result).toEqual([]);
     });
   });
@@ -174,6 +192,7 @@ describe('CinemasService', () => {
           description: null,
           voivodeship: null,
         },
+        isOpenAir: false,
         latitude: 52.2463,
         longitude: 21.0027,
         filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
@@ -236,6 +255,7 @@ describe('CinemasService', () => {
           description: null,
           voivodeship: null,
         },
+        isOpenAir: false,
         latitude: 52.2463,
         longitude: 21.0027,
         filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
