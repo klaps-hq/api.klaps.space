@@ -28,10 +28,55 @@ import type { SocialsGetCandidateResponse } from './socials.types';
 import { GetSocialCandidateQueryDto } from './dto/get-socials-candidate-query.dto';
 import { SocialsService } from './socials.service';
 import { SocialsActionDto } from './dto/socials-action.dto';
+import { SocialsSeriesService } from './socials-series.service';
+import type {
+  MonthStatsResponse,
+  RetrospectivesResponse,
+} from './socials-series.types';
+import {
+  GetMonthStatsQueryDto,
+  GetRetrospectivesQueryDto,
+  RecordSeriesPostDto,
+} from './dto/socials-series.dto';
 
 @Controller('socials')
 export class SocialsController {
-  constructor(private readonly socialsService: SocialsService) {}
+  constructor(
+    private readonly socialsService: SocialsService,
+    private readonly seriesService: SocialsSeriesService,
+  ) {}
+
+  // Editorial series for klaps.radar: monthly numbers, director retrospectives.
+  @Get('series/stats')
+  @UseGuards(InternalApiKeyGuard)
+  getMonthStats(
+    @Query() query: GetMonthStatsQueryDto,
+  ): Promise<MonthStatsResponse> {
+    return this.seriesService.getMonthStats(query.month);
+  }
+
+  @Get('series/retrospectives')
+  @UseGuards(InternalApiKeyGuard)
+  getRetrospectives(
+    @Query() query: GetRetrospectivesQueryDto,
+  ): Promise<RetrospectivesResponse> {
+    return this.seriesService.getRetrospectives(
+      query.dateFrom,
+      query.dateTo,
+      query.minFilms ?? 3,
+    );
+  }
+
+  @Post('series/publish')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(InternalApiKeyGuard)
+  recordSeriesPost(@Body() body: RecordSeriesPostDto): Promise<void> {
+    return this.seriesService.recordSeriesPost(
+      body.kind,
+      body.key,
+      body.platform,
+    );
+  }
 
   @Get('candidate')
   @UseGuards(InternalApiKeyGuard)
