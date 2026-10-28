@@ -298,6 +298,62 @@ export class ScreeningsRepository {
       .limit(params.limit);
   }
 
+  /**
+   * Venues where the film played between `since` (inclusive) and `until`
+   * (exclusive), newest last screening first, one row per cinema.
+   */
+  async findRecentVenueStats(params: {
+    movieId: number;
+    since: Date;
+    until: Date;
+    limit: number;
+  }): Promise<
+    {
+      cinemaSlug: string;
+      cinemaName: string;
+      cityName: string;
+      citySlug: string;
+      lastScreeningDate: Date | null;
+      screeningsCount: number;
+    }[]
+  > {
+    const lastScreeningDate = max(schema.screenings.date);
+
+    // Same showtime join as the listings, see findRecentMovieStats.
+    return this.db
+      .select({
+        cinemaSlug: schema.cinemas.slug,
+        cinemaName: schema.cinemas.name,
+        cityName: schema.cities.name,
+        citySlug: schema.cities.slug,
+        lastScreeningDate,
+        screeningsCount: count(),
+      })
+      .from(schema.screenings)
+      .innerJoin(
+        schema.showtimes,
+        eq(schema.screenings.showtimeId, schema.showtimes.id),
+      )
+      .innerJoin(
+        schema.cinemas,
+        eq(schema.screenings.cinemaId, schema.cinemas.sourceId),
+      )
+      .innerJoin(
+        schema.cities,
+        eq(schema.cinemas.sourceCityId, schema.cities.sourceId),
+      )
+      .where(
+        and(
+          eq(schema.screenings.movieId, params.movieId),
+          gte(schema.screenings.date, params.since),
+          lt(schema.screenings.date, params.until),
+        ),
+      )
+      .groupBy(schema.cinemas.id, schema.cities.id)
+      .orderBy(desc(lastScreeningDate))
+      .limit(params.limit);
+  }
+
   /** Movies with their genres, the shape `mapMovieSummary` expects. */
   async findMovieSummariesByIds(movieIds: number[]) {
     if (movieIds.length === 0) return [];
