@@ -5,8 +5,10 @@ import type {
   GetScreeningsParams,
   GetLastUpdatedParams,
   GetRecentScreeningsParams,
+  GetRecentVenuesParams,
   LastUpdatedResponse,
   RecentScreeningResponse,
+  RecentVenueResponse,
   Screening,
   ScreeningResponse,
   ScreeningGroupResponse,
@@ -164,6 +166,52 @@ export class ScreeningsService {
       });
     }
     return results;
+  }
+
+  /**
+   * Cinemas where a film played in the look-back window, newest first.
+   *
+   * Backs the movie page between screening runs: a classic that played in
+   * five cinemas last month is still a page worth indexing, and the list of
+   * where it played is the real content that makes it one. The frontend
+   * keeps the page indexable while this list is not empty.
+   */
+  async getRecentVenues(
+    params: GetRecentVenuesParams,
+  ): Promise<RecentVenueResponse[]> {
+    // Same window as getRecentScreenings: ends at midnight today.
+    const until = new Date();
+    until.setHours(0, 0, 0, 0);
+    const since = new Date(until);
+    since.setDate(
+      since.getDate() - (params.days ?? RECENT_SCREENINGS_DEFAULT_DAYS),
+    );
+
+    const stats = await this.repo.findRecentVenueStats({
+      movieId: params.movieId,
+      since,
+      until,
+      limit: params.limit ?? RECENT_SCREENINGS_DEFAULT_LIMIT,
+    });
+
+    return stats.flatMap((stat) =>
+      stat.lastScreeningDate
+        ? [
+            {
+              cinema: {
+                slug: stat.cinemaSlug,
+                name: stat.cinemaName,
+                city: { name: stat.cityName, slug: stat.citySlug },
+              },
+              // ISO slice, not a zone conversion (see getRecentScreenings).
+              lastScreeningDate: new Date(stat.lastScreeningDate)
+                .toISOString()
+                .slice(0, 10),
+              screeningsCount: Number(stat.screeningsCount),
+            },
+          ]
+        : [],
+    );
   }
 
   async getRandomRetroScreening(): Promise<RandomScreeningResponse | null> {

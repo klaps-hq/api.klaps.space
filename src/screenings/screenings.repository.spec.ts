@@ -537,6 +537,37 @@ describe('ScreeningsRepository', () => {
     });
   });
 
+  describe('findRecentVenueStats', () => {
+    it('should group per cinema, newest first, capped at the limit', async () => {
+      const rows = [
+        {
+          cinemaSlug: 'kino-muzeum',
+          cinemaName: 'Kino Muzeum',
+          cityName: 'Toruń',
+          citySlug: 'torun',
+          lastScreeningDate: new Date('2026-09-20T19:00:00.000Z'),
+          screeningsCount: 3,
+        },
+      ];
+      selectChain = createChain(rows);
+      mockSelect.mockReturnValue(selectChain);
+
+      const result = await repo.findRecentVenueStats({
+        movieId: 7,
+        since: new Date('2026-06-25T00:00:00.000Z'),
+        until: new Date('2026-09-23T00:00:00.000Z'),
+        limit: 12,
+      });
+
+      expect(result).toEqual(rows);
+      // showtimes, cinemas and cities.
+      expect(selectChain.innerJoin).toHaveBeenCalledTimes(3);
+      expect(selectChain.groupBy).toHaveBeenCalled();
+      expect(selectChain.orderBy).toHaveBeenCalled();
+      expect(selectChain.limit).toHaveBeenCalledWith(12);
+    });
+  });
+
   describe('findMovieSummariesByIds', () => {
     it('should skip the query for an empty id list', async () => {
       const result = await repo.findMovieSummariesByIds([]);

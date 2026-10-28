@@ -45,6 +45,7 @@ describe('ScreeningsService', () => {
             findMovieWithScreeningsById: jest.fn(),
             findLastUpdatedAt: jest.fn(),
             findRecentMovieStats: jest.fn(),
+            findRecentVenueStats: jest.fn(),
             findMovieSummariesByIds: jest.fn(),
             findMovieIdsWithScreeningsBetween: jest.fn(),
             insert: jest.fn(),
@@ -154,6 +155,58 @@ describe('ScreeningsService', () => {
       const result = await service.getLastUpdatedAt();
 
       expect(result).toEqual({ updatedAt: null });
+    });
+  });
+
+  describe('getRecentVenues', () => {
+    it('should look back 90 days from midnight and cap at 12 venues', async () => {
+      repo.findRecentVenueStats.mockResolvedValue([]);
+
+      await service.getRecentVenues({ movieId: 7 });
+
+      const call = repo.findRecentVenueStats.mock.calls[0][0];
+      const spanDays =
+        (call.until.getTime() - call.since.getTime()) / 86_400_000;
+      expect(Math.round(spanDays)).toBe(90);
+      expect(call.limit).toBe(12);
+      expect(call.movieId).toBe(7);
+      expect(call.until.getHours()).toBe(0);
+    });
+
+    it('should map rows and keep the wall-clock date', async () => {
+      repo.findRecentVenueStats.mockResolvedValue([
+        {
+          cinemaSlug: 'kino-muzeum',
+          cinemaName: 'Kino Muzeum',
+          cityName: 'Toruń',
+          citySlug: 'torun',
+          // A late screening stored as wall time labelled UTC.
+          lastScreeningDate: new Date('2026-09-20T23:30:00.000Z'),
+          screeningsCount: '3' as any,
+        },
+        {
+          cinemaSlug: 'kino-x',
+          cinemaName: 'Kino X',
+          cityName: 'Łódź',
+          citySlug: 'lodz',
+          lastScreeningDate: null,
+          screeningsCount: 1,
+        },
+      ]);
+
+      const result = await service.getRecentVenues({ movieId: 7 });
+
+      expect(result).toEqual([
+        {
+          cinema: {
+            slug: 'kino-muzeum',
+            name: 'Kino Muzeum',
+            city: { name: 'Toruń', slug: 'torun' },
+          },
+          lastScreeningDate: '2026-09-20',
+          screeningsCount: 3,
+        },
+      ]);
     });
   });
 

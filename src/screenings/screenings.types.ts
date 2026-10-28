@@ -64,6 +64,28 @@ export type LastUpdatedResponse = {
   updatedAt: string | null;
 };
 
+export type GetRecentVenuesParams = {
+  movieId: number;
+  days?: number;
+  limit?: number;
+};
+
+/**
+ * One venue where a film played within the look-back window. Backs the
+ * "Ostatnio w kinach" section of a movie page between screening runs.
+ */
+export type RecentVenueResponse = {
+  cinema: {
+    slug: string;
+    name: string;
+    city: { name: string; slug: string };
+  };
+  /** Wall-clock date of the film's most recent screening there, YYYY-MM-DD. */
+  lastScreeningDate: string;
+  /** Screenings of the film there within the look-back window. */
+  screeningsCount: number;
+};
+
 export type GetRecentScreeningsParams = {
   cinemaId?: number;
   cinemaSlug?: string;

@@ -12,6 +12,7 @@ import { InternalApiKeyGuard } from '../guards/internal-api-key.guard';
 import { GetScreeningsQueryDto } from './dto/get-screenings-query.dto';
 import { GetLastUpdatedQueryDto } from './dto/get-last-updated-query.dto';
 import { GetRecentScreeningsQueryDto } from './dto/get-recent-screenings-query.dto';
+import { GetRecentVenuesQueryDto } from './dto/get-recent-venues-query.dto';
 import { CreateScreeningDto } from './dto/create-screening.dto';
 import type {
   Screening,
@@ -20,6 +21,7 @@ import type {
   RandomScreeningResponse,
   LastUpdatedResponse,
   RecentScreeningResponse,
+  RecentVenueResponse,
 } from './screenings.types';
 
 @Controller('screenings')
@@ -48,6 +50,14 @@ export class ScreeningsController {
     @Query() query: GetRecentScreeningsQueryDto,
   ): Promise<RecentScreeningResponse[]> {
     return this.screeningsService.getRecentScreenings(query);
+  }
+
+  @Get('recent-venues')
+  @UseGuards(InternalApiKeyGuard)
+  getRecentVenues(
+    @Query() query: GetRecentVenuesQueryDto,
+  ): Promise<RecentVenueResponse[]> {
+    return this.screeningsService.getRecentVenues(query);
   }
 
   @Get('random-screening')
