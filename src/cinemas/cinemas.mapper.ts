@@ -23,6 +23,7 @@ type DbCinemaWithCity = {
   website?: string | null;
   latitude: number | null;
   longitude: number | null;
+  isOpenAir?: boolean;
   city?: {
     id: number;
     slug: string;
@@ -46,6 +47,7 @@ export const mapCinemaSummary = (
   city: cinema.city
     ? mapCity(cinema.city, undefined, cityUpdatedAt)
     : EMPTY_CITY,
+  isOpenAir: cinema.isOpenAir ?? false,
   ...(updatedAt !== undefined && { updatedAt: updatedAt.toISOString() }),
 });
 
@@ -57,6 +59,7 @@ export const mapCinemaDetail = (cinema: DbCinemaWithCity): CinemaResponse => ({
   street: cinema.street,
   description: cinema.description ?? null,
   city: cinema.city ? mapCity(cinema.city) : EMPTY_CITY,
+  isOpenAir: cinema.isOpenAir ?? false,
   latitude: cinema.latitude,
   longitude: cinema.longitude,
   filmwebUrl: cinema.url,

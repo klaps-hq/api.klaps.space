@@ -30,6 +30,7 @@ const EMPTY_CINEMA = {
     description: null,
     voivodeship: null,
   },
+  isOpenAir: false,
 } as const;
 
 const extractDateTimeParts = (

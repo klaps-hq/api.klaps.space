@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsIn,
   IsInt,
@@ -10,6 +11,7 @@ import {
 import { Transform, Type } from 'class-transformer';
 import { getTodayInPoland } from '../../lib/date';
 import { VOIVODESHIPS, type Voivodeship } from '../../lib/voivodeships';
+import { QueryBoolean } from '../../lib/query-boolean';
 
 export class GetScreeningsQueryDto {
   @IsOptional()
@@ -85,4 +87,16 @@ export class GetScreeningsQueryDto {
     typeof value === 'string' ? value.trim() : undefined,
   )
   search?: string;
+
+  /** Only screenings at open-air venues (`cinemas.isOpenAir`). */
+  @IsOptional()
+  @QueryBoolean()
+  @IsBoolean()
+  openAir?: boolean;
+
+  /** Only classics: films at least CLASSIC_MIN_AGE_YEARS old. */
+  @IsOptional()
+  @QueryBoolean()
+  @IsBoolean()
+  classic?: boolean;
 }

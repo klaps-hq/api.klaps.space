@@ -52,7 +52,7 @@ export class SocialsSeriesRepository {
       )
       .innerJoin(
         schema.cinemas,
-        eq(schema.cinemas.id, schema.screenings.cinemaId),
+        eq(schema.cinemas.sourceId, schema.screenings.cinemaId),
       )
       .innerJoin(
         schema.cities,
@@ -81,11 +81,13 @@ export class SocialsSeriesRepository {
       .where(inArray(schema.movies.id, ids));
   }
 
+  // Screenings reference cinemas by their source (Filmweb) id, so the
+  // lookup and the returned id use sourceId.
   async findCinemasByIds(ids: number[]) {
     if (!ids.length) return [];
     return this.db
       .select({
-        id: schema.cinemas.id,
+        id: schema.cinemas.sourceId,
         name: schema.cinemas.name,
         slug: schema.cinemas.slug,
         latitude: schema.cinemas.latitude,
@@ -100,7 +102,7 @@ export class SocialsSeriesRepository {
         schema.cities,
         eq(schema.cities.sourceId, schema.cinemas.sourceCityId),
       )
-      .where(inArray(schema.cinemas.id, ids));
+      .where(inArray(schema.cinemas.sourceId, ids));
   }
 
   async findDirectorsByIds(ids: number[]) {

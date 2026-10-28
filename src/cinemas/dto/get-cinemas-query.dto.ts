@@ -1,5 +1,6 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { QueryBoolean } from '../../lib/query-boolean';
 
 export class GetCinemasQueryDto {
   @IsOptional()
@@ -17,4 +18,10 @@ export class GetCinemasQueryDto {
   @IsInt()
   @Min(1)
   limit?: number;
+
+  /** Only open-air venues (summer cinema series). */
+  @IsOptional()
+  @QueryBoolean()
+  @IsBoolean()
+  openAir?: boolean;
 }

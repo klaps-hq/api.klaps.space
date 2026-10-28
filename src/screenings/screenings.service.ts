@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { getDateRangeUpToMonthFromNow } from '../lib/date';
+import { getDateRangeUpToMonthFromNow, getTodayInPoland } from '../lib/date';
 import { randomInt } from 'node:crypto';
 import type {
   GetScreeningsParams,
   GetLastUpdatedParams,
   GetRecentScreeningsParams,
+  GetRecentVenuesParams,
   LastUpdatedResponse,
   RecentScreeningResponse,
+  RecentVenueResponse,
   Screening,
   ScreeningResponse,
   ScreeningGroupResponse,
@@ -17,11 +19,16 @@ import { mapScreening, mapScreeningGroup } from './screenings.mapper';
 import { mapMovieHero, mapMovieSummary } from '../movies/movies.mapper';
 import { ScreeningsRepository } from './screenings.repository';
 import {
+  CLASSIC_MIN_AGE_YEARS,
   RECENT_SCREENINGS_DEFAULT_DAYS,
   RECENT_SCREENINGS_DEFAULT_LIMIT,
   RETRO_YEAR_THRESHOLD,
 } from './screenings.constants';
 import { IndexNowService } from '../indexnow/indexnow.service';
+
+/** Newest production year that counts as a classic this (Polish) year. */
+const getClassicMaxYear = (): number =>
+  Number(getTodayInPoland().slice(0, 4)) - CLASSIC_MIN_AGE_YEARS;
 
 @Injectable()
 export class ScreeningsService {
@@ -54,6 +61,8 @@ export class ScreeningsService {
       directorId: params?.directorId,
       limit: params?.limit,
       search: params?.search,
+      openAir: params?.openAir,
+      classicMaxYear: params?.classic ? getClassicMaxYear() : undefined,
     });
 
     if (movieIds.length === 0) return [];
@@ -68,6 +77,7 @@ export class ScreeningsService {
         voivodeship: params?.voivodeship,
         cinemaId: params?.cinemaId,
         cinemaSlug: params?.cinemaSlug,
+        openAir: params?.openAir,
       },
     );
 
@@ -121,6 +131,8 @@ export class ScreeningsService {
       cinemaSlug: params.cinemaSlug,
       cityId: params.cityId,
       citySlug: params.citySlug,
+      openAir: params.openAir,
+      classicMaxYear: params.classic ? getClassicMaxYear() : undefined,
     });
     if (stats.length === 0) return [];
 
@@ -164,6 +176,52 @@ export class ScreeningsService {
       });
     }
     return results;
+  }
+
+  /**
+   * Cinemas where a film played in the look-back window, newest first.
+   *
+   * Backs the movie page between screening runs: a classic that played in
+   * five cinemas last month is still a page worth indexing, and the list of
+   * where it played is the real content that makes it one. The frontend
+   * keeps the page indexable while this list is not empty.
+   */
+  async getRecentVenues(
+    params: GetRecentVenuesParams,
+  ): Promise<RecentVenueResponse[]> {
+    // Same window as getRecentScreenings: ends at midnight today.
+    const until = new Date();
+    until.setHours(0, 0, 0, 0);
+    const since = new Date(until);
+    since.setDate(
+      since.getDate() - (params.days ?? RECENT_SCREENINGS_DEFAULT_DAYS),
+    );
+
+    const stats = await this.repo.findRecentVenueStats({
+      movieId: params.movieId,
+      since,
+      until,
+      limit: params.limit ?? RECENT_SCREENINGS_DEFAULT_LIMIT,
+    });
+
+    return stats.flatMap((stat) =>
+      stat.lastScreeningDate
+        ? [
+            {
+              cinema: {
+                slug: stat.cinemaSlug,
+                name: stat.cinemaName,
+                city: { name: stat.cityName, slug: stat.citySlug },
+              },
+              // ISO slice, not a zone conversion (see getRecentScreenings).
+              lastScreeningDate: new Date(stat.lastScreeningDate)
+                .toISOString()
+                .slice(0, 10),
+              screeningsCount: Number(stat.screeningsCount),
+            },
+          ]
+        : [],
+    );
   }
 
   async getRandomRetroScreening(): Promise<RandomScreeningResponse | null> {
