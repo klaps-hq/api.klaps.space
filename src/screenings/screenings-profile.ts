@@ -40,6 +40,12 @@ export type ProfileInput = {
 
 /** How many entries each ranked list carries. */
 export const PROFILE_TOP_LIMIT = 5;
+/**
+ * Longer list for cinemas: in big cities multiplexes take most of the top
+ * places, and the frontend drops them from studio-cinema copy, so it needs
+ * enough rows left over to name the independent venues.
+ */
+export const PROFILE_TOP_CINEMAS_LIMIT = 20;
 
 const EMPTY_PROFILE: ProgrammeProfileResponse = {
   since: null,
@@ -71,10 +77,11 @@ const toDay = (date: Date): string => date.toISOString().slice(0, 10);
  */
 const rank = <T extends { name: string }>(
   tally: Map<string, T & { count: number }>,
+  limit = PROFILE_TOP_LIMIT,
 ): (T & { count: number })[] =>
   [...tally.values()]
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'pl'))
-    .slice(0, PROFILE_TOP_LIMIT);
+    .slice(0, limit);
 
 const bump = <T extends object>(
   tally: Map<string, T & { count: number }>,
@@ -247,7 +254,7 @@ export const buildProgrammeProfile = (
     })),
     topGenres: rank(topGenres),
     topDirectors: rank(topDirectors),
-    topCinemas: rank(topCinemas),
+    topCinemas: rank(topCinemas, PROFILE_TOP_CINEMAS_LIMIT),
     topCities: rank(topCities),
   };
 };
