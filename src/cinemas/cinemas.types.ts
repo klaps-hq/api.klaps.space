@@ -1,4 +1,9 @@
 import type { CityResponse } from '../cities/cities.types';
+import type {
+  CinemaAccessibility,
+  CinemaPhoto,
+  CinemaRoom,
+} from '../database/schemas/cinemas.schema';
 
 export type CinemaSummaryResponse = {
   id: number;
@@ -32,4 +37,20 @@ export type CinemaResponse = {
   website: string | null;
   /** Contact email, when known; null otherwise. */
   email: string | null;
+  /** Researched venue details; every field null when unknown. */
+  details: CinemaDetailsResponse;
+};
+
+export type CinemaDetailsResponse = {
+  phone: string | null;
+  repertoireUrl: string | null;
+  bookingUrl: string | null;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  operator: { name: string; url: string | null } | null;
+  screens: number | null;
+  rooms: CinemaRoom[];
+  accessibility: CinemaAccessibility | null;
+  logoUrl: string | null;
+  photos: CinemaPhoto[];
 };

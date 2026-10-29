@@ -30,6 +30,19 @@ describe('CinemasController', () => {
     filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
     website: null,
     email: null,
+    details: {
+      phone: null,
+      repertoireUrl: null,
+      bookingUrl: null,
+      facebookUrl: null,
+      instagramUrl: null,
+      operator: null,
+      screens: null,
+      rooms: [],
+      accessibility: null,
+      logoUrl: null,
+      photos: [],
+    },
   };
 
   beforeEach(async () => {
