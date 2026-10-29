@@ -85,6 +85,13 @@
       "when": 1793274913373,
       "tag": "0011_socials_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793278704434,
+      "tag": "0012_socials_posts_daily_limit",
+      "breakpoints": true
     }
   ]
 }

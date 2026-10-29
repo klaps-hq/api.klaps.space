@@ -8,6 +8,7 @@ import {
   getDate,
   getDatePlusDays,
   getNowInPolandWallClock,
+  getPolandDayBounds,
   getTodayInPoland,
   toDateOnlyString,
 } from '../lib/date';
@@ -47,15 +48,19 @@ export class SocialsService {
     const minScore = query.minScore;
     const platform = query.platform;
     const numberOfCandidates = query.numberOfCandidates ?? 10;
-    // How many posts may already exist in the range before publishing stops.
-    // Lets a platform run several slots per day (e.g. two stories) while the
-    // movie cooldown below keeps the slots from repeating the same movie.
+    // How many posts the platform may publish on the publication day before
+    // publishing stops. Lets a platform run several slots per day (e.g. two
+    // stories) while the movie cooldown below keeps the slots from repeating
+    // the same movie. Counted by publication day, not by screening date, so a
+    // post promoting a later screening does not block the following days.
     const maxPosts = query.maxPosts ?? 1;
+    const publishDay = query.publishDay ?? getTodayInPoland();
+    const { start: dayStart, end: dayEnd } = getPolandDayBounds(publishDay);
 
-    const socialsPosts = await this.repo.findPostsByDateAndPlatform(
-      dateFrom,
-      dateTo,
+    const socialsPosts = await this.repo.findFeedPostsCreatedBetween(
       platform,
+      dayStart,
+      dayEnd,
     );
 
     if (socialsPosts.length >= maxPosts) {
@@ -88,9 +93,8 @@ export class SocialsService {
     // within the cooldown window are not eligible again - prevents the same
     // movie appearing in back-to-back posts when its screenings span
     // multiple date ranges.
-    const cooldownStart = getDatePlusDays(
-      getTodayInPoland(),
-      -REPEAT_COOLDOWN_DAYS,
+    const cooldownStart = new Date(
+      dayStart.getTime() - REPEAT_COOLDOWN_DAYS * 24 * 60 * 60 * 1000,
     );
     const recentPosts = await this.repo.findRecentPostsByPlatform(
       getCooldownPlatforms(platform),
@@ -184,7 +188,7 @@ export class SocialsService {
     const score = this.computeScoredCandidates([screening], 1)[0]?.score ?? 0;
     const postDate = toDateOnlyString(screening.date);
 
-    await this.repo.upsertPost({
+    await this.repo.insertPost({
       postDate,
       platform,
       score,
@@ -230,7 +234,7 @@ export class SocialsService {
       });
     }
 
-    await this.repo.markPostPublished(socialsPost.id, getTodayInPoland());
+    await this.repo.markPostPublished(socialsPost.id);
   }
 
   // === PRIVATE ===
