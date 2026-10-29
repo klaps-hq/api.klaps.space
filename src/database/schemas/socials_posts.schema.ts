@@ -1,11 +1,13 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
   date,
+  index,
   integer,
   pgTable,
   serial,
   timestamp,
-  unique,
+  uniqueIndex,
   varchar,
 } from 'drizzle-orm/pg-core';
 import { moviesTable } from './movies.schema';
@@ -26,10 +28,15 @@ export const socialsPostsTable = pgTable(
     createdAt: timestamp().notNull().defaultNow(),
   },
   (table) => [
-    unique('socials_posts_postDate_platform_content_type_unique').on(
-      table.postDate,
+    // One series post per day and kind. Feed posts are limited per
+    // publication day in SocialsService instead, so several slots a day
+    // (e.g. two stories) may promote screenings on the same date.
+    uniqueIndex('socials_posts_series_unique')
+      .on(table.postDate, table.platform, table.contentType)
+      .where(sql`"contentType" <> 'feed_candidate'`),
+    index('socials_posts_platform_created_at_idx').on(
       table.platform,
-      table.contentType,
+      table.createdAt,
     ),
   ],
 );

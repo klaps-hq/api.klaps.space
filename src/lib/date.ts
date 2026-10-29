@@ -21,6 +21,21 @@ export const toDateOnlyString = (value: Date | string): string =>
     ? value.toLocaleDateString('sv-SE', DATE_ONLY_OPTIONS)
     : value.slice(0, 10);
 
+/**
+ * UTC instants bounding a Europe/Warsaw calendar day (YYYY-MM-DD): [start, end).
+ * For comparing timestamps such as createdAt against a Polish day.
+ */
+export const getPolandDayBounds = (day: string): { start: Date; end: Date } => {
+  const midnight = (d: string) => {
+    const utc = new Date(`${d}T00:00:00Z`);
+    const wall = new Date(
+      `${utc.toLocaleString('sv-SE', DATE_ONLY_OPTIONS).replace(' ', 'T')}Z`,
+    );
+    return new Date(utc.getTime() - (wall.getTime() - utc.getTime()));
+  };
+  return { start: midnight(day), end: midnight(getDatePlusDays(day, 1)) };
+};
+
 /** Returns a date as YYYY-MM-DD in the Europe/Warsaw (CET/CEST) timezone. */
 export const getDate = (dateParam?: string): string => {
   return dateParam ?? getTodayInPoland();
