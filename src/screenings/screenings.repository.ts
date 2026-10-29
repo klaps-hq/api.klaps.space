@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
@@ -21,6 +21,8 @@ import {
   sql,
 } from 'drizzle-orm';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
+import type { UpdateScreeningDto } from './dto/update-screening.dto';
+import type { NewScreening } from '../database/schemas/screenings.schema';
 import type { Screening } from './screenings.types';
 import type { ProfileInput } from './screenings-profile';
 
@@ -583,6 +585,67 @@ export class ScreeningsRepository {
     if (!screening)
       throw new Error(`Failed to retrieve inserted screening id=${result.id}`);
     return screening;
+  }
+
+  async update(id: number, dto: UpdateScreeningDto): Promise<Screening | null> {
+    // Pre-checki FK -> czytelne 400 zamiast surowego bledu PG (23503).
+    if (dto.movieId !== undefined) {
+      const movie = await this.db.query.movies.findFirst({
+        where: eq(schema.movies.id, dto.movieId),
+        columns: { id: true },
+      });
+      if (!movie)
+        throw new BadRequestException(`movieId ${dto.movieId} does not exist`);
+    }
+    if (dto.cinemaId !== undefined) {
+      const cinema = await this.db.query.cinemas.findFirst({
+        where: eq(schema.cinemas.sourceId, dto.cinemaId),
+        columns: { sourceId: true },
+      });
+      if (!cinema)
+        throw new BadRequestException(
+          `cinemaId ${dto.cinemaId} does not exist`,
+        );
+    }
+    if (dto.showtimeId !== undefined) {
+      const showtime = await this.db.query.showtimes.findFirst({
+        where: eq(schema.showtimes.id, dto.showtimeId),
+        columns: { id: true },
+      });
+      if (!showtime)
+        throw new BadRequestException(
+          `showtimeId ${dto.showtimeId} does not exist`,
+        );
+    }
+
+    const { date, ...rest } = dto;
+    const values: Partial<NewScreening> = { ...rest, updatedAt: new Date() };
+    if (date !== undefined) values.date = new Date(date);
+
+    await this.db
+      .update(schema.screenings)
+      .set(values)
+      .where(eq(schema.screenings.id, id));
+
+    const row = await this.db.query.screenings.findFirst({
+      where: eq(schema.screenings.id, id),
+    });
+    return row ?? null;
+  }
+
+  async deleteById(id: number): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      // socials_posts moze wskazywac ten seans - czyscimy najpierw, by uniknac
+      // naruszenia klucza obcego.
+      await tx
+        .delete(schema.socials_posts)
+        .where(eq(schema.socials_posts.screeningId, id));
+      const rows = await tx
+        .delete(schema.screenings)
+        .where(eq(schema.screenings.id, id))
+        .returning({ id: schema.screenings.id });
+      return rows.length > 0;
+    });
   }
 
   // === PRIVATE ===

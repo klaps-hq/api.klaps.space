@@ -204,6 +204,7 @@ describe('CinemasService', () => {
         longitude: 21.0027,
         filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
         website: null,
+        email: null,
       });
     });
 
@@ -267,6 +268,7 @@ describe('CinemasService', () => {
         longitude: 21.0027,
         filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
         website: null,
+        email: null,
       });
     });
 

@@ -29,6 +29,7 @@ describe('CinemasController', () => {
     longitude: 21.0027,
     filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
     website: null,
+    email: null,
   };
 
   beforeEach(async () => {
@@ -136,6 +137,29 @@ describe('CinemasController', () => {
         controller.updateCinemaBySlug('nieistniejace', {
           description: 'test',
         } as any),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('patchCinemaBySlug', () => {
+    it('should return updated cinema when found', async () => {
+      service.updateCinemaBySlug.mockResolvedValue(mockCinemaResponse);
+
+      const body = { name: 'Nowa nazwa', email: 'kontakt@kino.pl' } as any;
+      const result = await controller.patchCinemaBySlug('kino-muranow', body);
+
+      expect(service.updateCinemaBySlug).toHaveBeenCalledWith(
+        'kino-muranow',
+        body,
+      );
+      expect(result).toEqual(mockCinemaResponse);
+    });
+
+    it('should throw NotFoundException when cinema not found', async () => {
+      service.updateCinemaBySlug.mockResolvedValue(null);
+
+      await expect(
+        controller.patchCinemaBySlug('nieistniejace', { name: 'x' } as any),
       ).rejects.toThrow(NotFoundException);
     });
   });

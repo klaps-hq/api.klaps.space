@@ -6,6 +6,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -70,6 +71,21 @@ export class MoviesController {
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
   async updateMovieBySlug(
+    @Param('slug') slug: string,
+    @Body() body: UpdateMovieDto,
+  ): Promise<MovieResponse> {
+    const movie = await this.moviesService.updateMovieBySlug(slug, body);
+    if (!movie) {
+      throw new NotFoundException(`Movie "${slug}" not found`);
+    }
+
+    return movie;
+  }
+
+  // REST-owy alias update'u dla panelu admina (wspolistnieje z legacy POST).
+  @Patch(':slug')
+  @UseGuards(InternalApiKeyGuard)
+  async patchMovieBySlug(
     @Param('slug') slug: string,
     @Body() body: UpdateMovieDto,
   ): Promise<MovieResponse> {
