@@ -77,8 +77,8 @@ export class UpdatePlanDto {
   @MaxLength(200)
   slotKey!: string;
 
-  @IsIn(['published', 'failed'])
-  status!: 'published' | 'failed';
+  @IsIn(['published', 'skipped', 'failed'])
+  status!: 'published' | 'skipped' | 'failed';
 
   @IsOptional()
   @IsString()
