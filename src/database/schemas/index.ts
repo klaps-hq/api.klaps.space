@@ -7,6 +7,10 @@ export { genresTable as genres } from './genres.schema';
 export { landingIntrosTable as landing_intros } from './landing_intros.schema';
 export { socialsImagesTable as socials_images } from './socials_images.schema';
 export { socialsPostsTable as socials_posts } from './socials_posts.schema';
+export {
+  socialsPlansTable as socials_plans,
+  socialsPlanMediaTable as socials_plan_media,
+} from './socials_plans.schema';
 export { moviesTable as movies } from './movies.schema';
 export { moviesActorsTable as movies_actors } from './movies_actors.schema';
 export { moviesCountriesTable as movies_countries } from './movies_countries.schema';

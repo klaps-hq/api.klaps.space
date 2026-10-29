@@ -15,6 +15,10 @@ import { scriptwritersTable } from './scriptwriters.schema';
 import { screeningsTable } from './screenings.schema';
 import { showtimesTable } from './showtimes.schema';
 import { socialsPostsTable } from './socials_posts.schema';
+import {
+  socialsPlanMediaTable,
+  socialsPlansTable,
+} from './socials_plans.schema';
 import { scrapersTable } from './scrapers.schema';
 import { scraperRunsTable } from './scraper_runs.schema';
 import { scraperLogsTable } from './scraper_logs.schema';
@@ -195,3 +199,20 @@ export const scraperLogsRelations = relations(scraperLogsTable, ({ one }) => ({
     references: [scraperRunsTable.id],
   }),
 }));
+
+export const socialsPlansRelations = relations(
+  socialsPlansTable,
+  ({ many }) => ({
+    media: many(socialsPlanMediaTable),
+  }),
+);
+
+export const socialsPlanMediaRelations = relations(
+  socialsPlanMediaTable,
+  ({ one }) => ({
+    plan: one(socialsPlansTable, {
+      fields: [socialsPlanMediaTable.planId],
+      references: [socialsPlansTable.id],
+    }),
+  }),
+);

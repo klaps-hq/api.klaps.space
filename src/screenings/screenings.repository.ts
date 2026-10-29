@@ -18,9 +18,11 @@ import {
   ne,
   notInArray,
   or,
+  sql,
 } from 'drizzle-orm';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
 import type { Screening } from './screenings.types';
+import type { ProfileInput } from './screenings-profile';
 
 type FullSchema = typeof schema & typeof relations;
 
@@ -310,6 +312,151 @@ export class ScreeningsRepository {
       .groupBy(schema.screenings.movieId)
       .orderBy(desc(lastScreeningDate))
       .limit(params.limit);
+  }
+
+  /**
+   * Raw data for a programme profile: every screening in the scope before
+   * `until`, plus the film, genre, director and cinema metadata it needs.
+   * Rows are aggregated in buildProgrammeProfile; even a city-wide scope is a
+   * few thousand narrow rows over the whole history.
+   *
+   * Returns null when the requested scope does not resolve, so the caller
+   * can answer with an empty profile instead of a nationwide one.
+   */
+  async findProfileData(params: {
+    until: Date;
+    cinemaSlug?: string;
+    citySlug?: string;
+    genreSlug?: string;
+    directorSlug?: string;
+  }): Promise<ProfileInput | null> {
+    const scope = await this.resolveProfileScope(params);
+    if (!scope) return null;
+
+    // Same inner join as the listings: a screening without a showtime never
+    // appeared on the site, so it does not count towards the profile.
+    const rows = await this.db
+      .select({
+        date: schema.screenings.date,
+        movieId: schema.screenings.movieId,
+        cinemaId: schema.screenings.cinemaId,
+        isDubbing: schema.screenings.isDubbing,
+      })
+      .from(schema.screenings)
+      .innerJoin(
+        schema.showtimes,
+        eq(schema.screenings.showtimeId, schema.showtimes.id),
+      )
+      .where(and(lt(schema.screenings.date, params.until), scope));
+
+    const movieIds = [...new Set(rows.map((r) => r.movieId))];
+    const cinemaIds = [...new Set(rows.map((r) => r.cinemaId))];
+    if (movieIds.length === 0) {
+      return { rows: [], movies: [], genres: [], directors: [], cinemas: [] };
+    }
+
+    const [movies, genres, directors, cinemas] = await Promise.all([
+      this.db
+        .select({
+          id: schema.movies.id,
+          slug: schema.movies.slug,
+          title: schema.movies.title,
+          productionYear: schema.movies.productionYear,
+        })
+        .from(schema.movies)
+        .where(inArray(schema.movies.id, movieIds)),
+      this.db
+        .select({
+          movieId: schema.movies_genres.movieId,
+          slug: schema.genres.slug,
+          name: schema.genres.name,
+        })
+        .from(schema.movies_genres)
+        .innerJoin(
+          schema.genres,
+          eq(schema.genres.id, schema.movies_genres.genreId),
+        )
+        .where(inArray(schema.movies_genres.movieId, movieIds)),
+      // Only directors with a page (a slug) can be named and linked.
+      this.db
+        .select({
+          movieId: schema.movies_directors.movieId,
+          slug: sql<string>`${schema.directors.slug}`,
+          name: schema.directors.name,
+        })
+        .from(schema.movies_directors)
+        .innerJoin(
+          schema.directors,
+          eq(schema.directors.id, schema.movies_directors.directorId),
+        )
+        .where(
+          and(
+            inArray(schema.movies_directors.movieId, movieIds),
+            isNotNull(schema.directors.slug),
+          ),
+        ),
+      this.db
+        .select({
+          sourceId: schema.cinemas.sourceId,
+          slug: schema.cinemas.slug,
+          name: schema.cinemas.name,
+          citySlug: schema.cities.slug,
+          cityName: schema.cities.name,
+        })
+        .from(schema.cinemas)
+        .innerJoin(
+          schema.cities,
+          eq(schema.cities.sourceId, schema.cinemas.sourceCityId),
+        )
+        .where(inArray(schema.cinemas.sourceId, cinemaIds)),
+    ]);
+
+    return { rows, movies, genres, directors, cinemas };
+  }
+
+  /**
+   * WHERE condition on screenings for one profile scope, or null when the
+   * scope is missing or names nothing that exists.
+   */
+  private async resolveProfileScope(params: {
+    cinemaSlug?: string;
+    citySlug?: string;
+    genreSlug?: string;
+    directorSlug?: string;
+  }) {
+    if (params.cinemaSlug || params.citySlug) {
+      return (
+        (await this.resolveLocationCondition(
+          undefined,
+          params.citySlug,
+          undefined,
+          params.cinemaSlug,
+        )) ?? null
+      );
+    }
+    if (params.genreSlug) {
+      const genre = await this.db.query.genres.findFirst({
+        where: eq(schema.genres.slug, params.genreSlug),
+        columns: { id: true },
+      });
+      if (!genre) return null;
+      return inArray(
+        schema.screenings.movieId,
+        this.db
+          .select({ movieId: schema.movies_genres.movieId })
+          .from(schema.movies_genres)
+          .where(eq(schema.movies_genres.genreId, genre.id)),
+      );
+    }
+    if (params.directorSlug) {
+      const director = await this.db.query.directors.findFirst({
+        where: eq(schema.directors.slug, params.directorSlug),
+        columns: { id: true },
+      });
+      if (!director) return null;
+      return this.buildDirectorCondition(director.id) ?? null;
+    }
+    return null;
   }
 
   /**
