@@ -10,6 +10,7 @@ import { DirectorsModule } from './directors/directors.module';
 import { ScreeningsModule } from './screenings/screenings.module';
 import { CinemasModule } from './cinemas/cinemas.module';
 import { SocialsModule } from './socials/socials.module';
+import { ScrapersModule } from './scrapers/scrapers.module';
 import { ShowtimesModule } from './showtimes/showtimes.module';
 import { SearchModule } from './search/search.module';
 import { SitemapModule } from './sitemap/sitemap.module';
@@ -30,6 +31,7 @@ import { HealthModule } from './health/health.module';
     GenresModule,
     DirectorsModule,
     SocialsModule,
+    ScrapersModule,
     ScreeningsModule,
     ShowtimesModule,
     SearchModule,
