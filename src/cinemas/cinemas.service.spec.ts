@@ -104,6 +104,13 @@ describe('CinemasService', () => {
   };
 
   describe('getCinemas', () => {
+    // Unlike search results, the list carries coordinates for the map.
+    const listItem = {
+      ...mockCinemaSummaryResponse,
+      latitude: mockCinemaWithCity.latitude,
+      longitude: mockCinemaWithCity.longitude,
+    };
+
     it('should return mapped cinema summaries', async () => {
       repo.findAll.mockResolvedValue([mockCinemaWithCity as any]);
 
@@ -114,7 +121,7 @@ describe('CinemasService', () => {
         undefined,
         undefined,
       );
-      expect(result).toEqual([mockCinemaSummaryResponse]);
+      expect(result).toEqual([listItem]);
     });
 
     it('should resolve sourceCityId via citiesService when citySlug provided', async () => {
@@ -125,7 +132,7 @@ describe('CinemasService', () => {
 
       expect(citiesService.findBySlug).toHaveBeenCalledWith('warszawa');
       expect(repo.findAll).toHaveBeenCalledWith(10, undefined, undefined);
-      expect(result).toEqual([mockCinemaSummaryResponse]);
+      expect(result).toEqual([listItem]);
     });
 
     it('should include cinema and city updatedAt from content maps', async () => {

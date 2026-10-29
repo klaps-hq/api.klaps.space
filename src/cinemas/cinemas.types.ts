@@ -9,6 +9,9 @@ export type CinemaSummaryResponse = {
   description: string | null;
   city: CityResponse;
   isOpenAir: boolean;
+  /** Only in the GET /cinemas list (map in the admin panel). */
+  latitude?: number | null;
+  longitude?: number | null;
   /** ISO 8601 UTC; ostatnia zauważalna zmiana treści (kino lub jego seanse). */
   updatedAt?: string;
 };
