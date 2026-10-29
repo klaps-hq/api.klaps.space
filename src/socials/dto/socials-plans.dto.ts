@@ -71,7 +71,7 @@ export class ReplacePlansDto {
   plans!: PlanInputDto[];
 }
 
-/** PATCH /socials/plans/by-slot - radar reports the publication outcome. */
+/** PATCH /socials/plans - radar reports the publication outcome of a slot. */
 export class UpdatePlanDto {
   @IsString()
   @MaxLength(200)
