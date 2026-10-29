@@ -1,9 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { getDateRangeUpToMonthFromNow, getTodayInPoland } from '../lib/date';
+import {
+  getDateRangeUpToMonthFromNow,
+  getNowInPolandWallClock,
+  getTodayInPoland,
+} from '../lib/date';
+import { buildProgrammeProfile } from './screenings-profile';
 import { randomInt } from 'node:crypto';
 import type {
   GetScreeningsParams,
   GetLastUpdatedParams,
+  GetProgrammeProfileParams,
+  ProgrammeProfileResponse,
   GetRecentScreeningsParams,
   GetRecentVenuesParams,
   LastUpdatedResponse,
@@ -176,6 +183,24 @@ export class ScreeningsService {
       });
     }
     return results;
+  }
+
+  /**
+   * Programme profile of one cinema, city, genre or director: what has been
+   * screened there so far, aggregated from past screenings. Backs the
+   * "Program w liczbach" sections, which give thin venue and hub pages
+   * facts that exist nowhere else.
+   */
+  async getProgrammeProfile(
+    params: GetProgrammeProfileParams,
+  ): Promise<ProgrammeProfileResponse> {
+    const data = await this.repo.findProfileData({
+      ...params,
+      until: getNowInPolandWallClock(),
+    });
+    return buildProgrammeProfile(
+      data ?? { rows: [], movies: [], genres: [], directors: [], cinemas: [] },
+    );
   }
 
   /**

@@ -117,3 +117,51 @@ export type RecentScreeningResponse = {
    */
   hasUpcomingScreenings: boolean;
 };
+
+export type GetProgrammeProfileParams = {
+  cinemaSlug?: string;
+  citySlug?: string;
+  genreSlug?: string;
+  directorSlug?: string;
+};
+
+/** A ranked entity in a programme profile: a genre, director, city, etc. */
+export type ProfileRanked = { slug: string; name: string; count: number };
+
+/**
+ * What the programme of one cinema, city, genre or director has looked like
+ * so far, from past screenings only (the live repertoire covers the rest).
+ * Counts are screenings, not films, unless the field says otherwise.
+ */
+export type ProgrammeProfileResponse = {
+  /** First and last past screening day in the scope, YYYY-MM-DD. */
+  since: string | null;
+  until: string | null;
+  screenings: number;
+  /** Distinct films, cinemas and cities behind those screenings. */
+  movies: number;
+  cinemas: number;
+  cities: number;
+  /** Calendar months with at least one screening. */
+  monthsActive: number;
+  busiestMonth: { month: string; count: number } | null;
+  /** Screenings per weekday, Monday first. */
+  weekdays: number[];
+  /** Before 12:00, 12:00-16:59, from 17:00 (Polish wall clock). */
+  timeOfDay: { morning: number; afternoon: number; evening: number };
+  /** Screenings with Polish dubbing. */
+  dubbed: number;
+  decades: { decade: number; count: number }[];
+  medianProductionYear: number | null;
+  oldestMovie: { slug: string; title: string; productionYear: number } | null;
+  topMovies: {
+    slug: string;
+    title: string;
+    productionYear: number;
+    count: number;
+  }[];
+  topGenres: ProfileRanked[];
+  topDirectors: ProfileRanked[];
+  topCinemas: (ProfileRanked & { citySlug: string; cityName: string })[];
+  topCities: ProfileRanked[];
+};

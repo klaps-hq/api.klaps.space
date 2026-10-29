@@ -14,6 +14,7 @@ import { GetLastUpdatedQueryDto } from './dto/get-last-updated-query.dto';
 import { GetRecentScreeningsQueryDto } from './dto/get-recent-screenings-query.dto';
 import { GetRecentVenuesQueryDto } from './dto/get-recent-venues-query.dto';
 import { CreateScreeningDto } from './dto/create-screening.dto';
+import { GetProgrammeProfileQueryDto } from './dto/get-programme-profile-query.dto';
 import type {
   Screening,
   ScreeningResponse,
@@ -22,6 +23,7 @@ import type {
   LastUpdatedResponse,
   RecentScreeningResponse,
   RecentVenueResponse,
+  ProgrammeProfileResponse,
 } from './screenings.types';
 
 @Controller('screenings')
@@ -58,6 +60,14 @@ export class ScreeningsController {
     @Query() query: GetRecentVenuesQueryDto,
   ): Promise<RecentVenueResponse[]> {
     return this.screeningsService.getRecentVenues(query);
+  }
+
+  @Get('profile')
+  @UseGuards(InternalApiKeyGuard)
+  getProgrammeProfile(
+    @Query() query: GetProgrammeProfileQueryDto,
+  ): Promise<ProgrammeProfileResponse> {
+    return this.screeningsService.getProgrammeProfile(query);
   }
 
   @Get('random-screening')
