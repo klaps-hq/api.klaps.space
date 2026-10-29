@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { and, eq, gte, inArray, like, lt } from 'drizzle-orm';
+import { and, eq, gte, inArray, like, lt, sql } from 'drizzle-orm';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
@@ -151,6 +151,7 @@ export class SocialsSeriesRepository {
           schema.socials_posts.platform,
           schema.socials_posts.contentType,
         ],
+        targetWhere: sql`"contentType" <> 'feed_candidate'`,
         set: { reason: values.reason, published: true },
       });
   }

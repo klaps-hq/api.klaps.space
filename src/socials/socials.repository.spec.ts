@@ -101,17 +101,17 @@ describe('SocialsRepository', () => {
 
   // === READ ===
 
-  describe('findPostsByDateAndPlatform', () => {
-    it('should return posts matching date range and platform', async () => {
+  describe('findFeedPostsCreatedBetween', () => {
+    it('should return feed posts of the platform created in the window', async () => {
       mockDb.query.socials_posts.findMany.mockResolvedValue([
         mockPost,
         mockPostPublished,
       ]);
 
-      const result = await repository.findPostsByDateAndPlatform(
-        '2024-03-10',
-        '2024-03-11',
+      const result = await repository.findFeedPostsCreatedBetween(
         'instagram',
+        new Date('2024-03-09T23:00:00Z'),
+        new Date('2024-03-10T23:00:00Z'),
       );
 
       expect(result).toEqual([mockPost, mockPostPublished]);
@@ -123,10 +123,10 @@ describe('SocialsRepository', () => {
     it('should return empty array when no posts match', async () => {
       mockDb.query.socials_posts.findMany.mockResolvedValue([]);
 
-      const result = await repository.findPostsByDateAndPlatform(
-        '2024-01-01',
-        '2024-01-02',
+      const result = await repository.findFeedPostsCreatedBetween(
         'twitter',
+        new Date('2023-12-31T23:00:00Z'),
+        new Date('2024-01-01T23:00:00Z'),
       );
 
       expect(result).toEqual([]);
@@ -264,7 +264,7 @@ describe('SocialsRepository', () => {
 
   // === WRITE ===
 
-  describe('upsertPost', () => {
+  describe('insertPost', () => {
     const postValues = {
       postDate: '2024-03-10',
       platform: 'instagram',
@@ -276,48 +276,35 @@ describe('SocialsRepository', () => {
       reason: 'HIGH_SCORE',
     };
 
-    it('should insert a post with onConflictDoUpdate', async () => {
-      await repository.upsertPost(postValues);
+    it('should insert a post', async () => {
+      await repository.insertPost(postValues);
 
       expect(mockDb.insert).toHaveBeenCalled();
       expect(mockValues).toHaveBeenCalledWith(postValues);
-      expect(mockOnDuplicateKeyUpdate).toHaveBeenCalledWith({
-        target: expect.anything(),
-        set: {
-          published: postValues.published,
-          reason: postValues.reason,
-          postDate: postValues.postDate,
-          score: postValues.score,
-          screeningId: postValues.screeningId,
-          platform: postValues.platform,
-          movieId: postValues.movieId,
-          contentType: postValues.contentType,
-        },
-      });
+      expect(mockOnDuplicateKeyUpdate).not.toHaveBeenCalled();
     });
 
     it('should resolve without returning a value', async () => {
-      const result = await repository.upsertPost(postValues);
+      const result = await repository.insertPost(postValues);
 
       expect(result).toBeUndefined();
     });
   });
 
   describe('markPostPublished', () => {
-    it('should update post to published with reason and date', async () => {
-      await repository.markPostPublished(1, '2024-03-10');
+    it('should mark the post published and keep its screening date', async () => {
+      await repository.markPostPublished(1);
 
       expect(mockDb.update).toHaveBeenCalled();
       expect(mockSet).toHaveBeenCalledWith({
         published: true,
         reason: 'PUBLISHED',
-        postDate: '2024-03-10',
       });
       expect(mockWhere).toHaveBeenCalled();
     });
 
     it('should resolve without returning a value', async () => {
-      const result = await repository.markPostPublished(1, '2024-03-10');
+      const result = await repository.markPostPublished(1);
 
       expect(result).toBeUndefined();
     });

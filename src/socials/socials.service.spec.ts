@@ -10,6 +10,9 @@ jest.mock('../lib/date', () => ({
   getTodayInPoland: jest.fn(() => '2025-03-11'),
   getNowInPolandWallClock: jest.fn(() => new Date('2025-03-11T10:00:00Z')),
   toDateOnlyString: jest.fn((d: Date) => d.toISOString().slice(0, 10)),
+  getPolandDayBounds:
+    jest.requireActual<typeof import('../lib/date')>('../lib/date')
+      .getPolandDayBounds,
 }));
 
 const makeMovie = (
@@ -90,13 +93,13 @@ describe('SocialsService', () => {
         {
           provide: SocialsRepository,
           useValue: {
-            findPostsByDateAndPlatform: jest.fn(),
+            findFeedPostsCreatedBetween: jest.fn(),
             findRecentPostsByPlatform: jest.fn(),
             findScreeningsInRange: jest.fn(),
             findScreeningsByIds: jest.fn(),
             findScreeningById: jest.fn(),
             findPostByPlatformAndScreening: jest.fn(),
-            upsertPost: jest.fn(),
+            insertPost: jest.fn(),
             markPostPublished: jest.fn(),
           },
         },
@@ -110,7 +113,7 @@ describe('SocialsService', () => {
 
   describe('getCandidate', () => {
     it('should return ALREADY_PUBLISHED when posts exist for date range and platform', async () => {
-      repo.findPostsByDateAndPlatform.mockResolvedValue([{ id: 1 }] as any);
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([{ id: 1 }] as any);
 
       const result = await service.getCandidate({
         dateFrom: '2025-03-10',
@@ -128,7 +131,7 @@ describe('SocialsService', () => {
     });
 
     it('should allow another post when fewer posts exist than maxPosts', async () => {
-      repo.findPostsByDateAndPlatform.mockResolvedValue([{ id: 1 }] as any);
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([{ id: 1 }] as any);
       repo.findScreeningsInRange.mockResolvedValue([]);
 
       const result = await service.getCandidate({
@@ -145,7 +148,7 @@ describe('SocialsService', () => {
     });
 
     it('should skip screenings starting within the minimum lead time', async () => {
-      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([]);
       repo.findScreeningsInRange.mockResolvedValue([]);
 
       await service.getCandidate({
@@ -165,7 +168,7 @@ describe('SocialsService', () => {
     });
 
     it('should return ALREADY_PUBLISHED when posts reach maxPosts', async () => {
-      repo.findPostsByDateAndPlatform.mockResolvedValue([
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([
         { id: 1 },
         { id: 2 },
       ] as any);
@@ -196,7 +199,7 @@ describe('SocialsService', () => {
         movie: makeMovie({ id: 2, productionYear: 1976 }),
       });
 
-      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([]);
       repo.findRecentPostsByPlatform.mockResolvedValue([
         { id: 99, movieId: 1 },
       ] as any);
@@ -219,7 +222,7 @@ describe('SocialsService', () => {
     });
 
     it('should share the movie cooldown across Instagram feed formats', async () => {
-      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([]);
       repo.findScreeningsInRange.mockResolvedValue([]);
 
       await service.getCandidate({
@@ -232,12 +235,12 @@ describe('SocialsService', () => {
 
       expect(repo.findRecentPostsByPlatform).toHaveBeenCalledWith(
         ['instagram_post', 'instagram_reel', 'instagram_carousel'],
-        expect.any(String),
+        expect.any(Date),
       );
     });
 
     it('should keep the cooldown per platform outside the feed group', async () => {
-      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([]);
       repo.findScreeningsInRange.mockResolvedValue([]);
 
       await service.getCandidate({
@@ -250,12 +253,12 @@ describe('SocialsService', () => {
 
       expect(repo.findRecentPostsByPlatform).toHaveBeenCalledWith(
         ['instagram_story'],
-        expect.any(String),
+        expect.any(Date),
       );
     });
 
     it('should return NO_SCREENINGS_IN_RANGE when no screenings found', async () => {
-      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([]);
       repo.findScreeningsInRange.mockResolvedValue([]);
 
       const result = await service.getCandidate({
@@ -287,7 +290,7 @@ describe('SocialsService', () => {
         cinema: { city: { id: 1 } },
       });
 
-      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([]);
       repo.findScreeningsInRange.mockResolvedValue([screening] as any);
       repo.findScreeningsByIds.mockResolvedValue([screening] as any);
 
@@ -314,7 +317,7 @@ describe('SocialsService', () => {
         cinema: { city: { id: 1 } },
       });
 
-      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([]);
       repo.findScreeningsInRange.mockResolvedValue([screening] as any);
       repo.findScreeningsByIds.mockResolvedValue([screening] as any);
 
@@ -334,7 +337,7 @@ describe('SocialsService', () => {
     });
 
     it('should pass platform directly to repo (DTO handles normalization)', async () => {
-      repo.findPostsByDateAndPlatform.mockResolvedValue([{ id: 1 }] as any);
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([{ id: 1 }] as any);
 
       await service.getCandidate({
         dateFrom: '2025-03-10',
@@ -344,10 +347,31 @@ describe('SocialsService', () => {
         numberOfCandidates: 10,
       });
 
-      expect(repo.findPostsByDateAndPlatform).toHaveBeenCalledWith(
-        '2025-03-10',
-        '2025-03-12',
+      expect(repo.findFeedPostsCreatedBetween).toHaveBeenCalledWith(
         'instagram',
+        expect.any(Date),
+        expect.any(Date),
+      );
+    });
+
+    it('should count posts on the requested publication day', async () => {
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([]);
+      repo.findScreeningsInRange.mockResolvedValue([]);
+
+      await service.getCandidate({
+        dateFrom: '2025-03-10',
+        dateTo: '2025-03-12',
+        minScore: 20,
+        platform: 'instagram_story',
+        numberOfCandidates: 10,
+        publishDay: '2025-03-11',
+      });
+
+      // 2025-03-11 in Warsaw (CET, UTC+1): 2025-03-10T23:00Z .. 2025-03-11T23:00Z.
+      expect(repo.findFeedPostsCreatedBetween).toHaveBeenCalledWith(
+        'instagram_story',
+        new Date('2025-03-10T23:00:00.000Z'),
+        new Date('2025-03-11T23:00:00.000Z'),
       );
     });
 
@@ -361,7 +385,7 @@ describe('SocialsService', () => {
         }),
       );
 
-      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([]);
       repo.findScreeningsInRange.mockResolvedValue(screenings as any);
       repo.findScreeningsByIds.mockResolvedValue(
         screenings.slice(0, 10) as any,
@@ -395,7 +419,7 @@ describe('SocialsService', () => {
         cinema: { city: { id: 2 } },
       });
 
-      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([]);
       repo.findScreeningsInRange.mockResolvedValue([
         screeningLow,
         screeningHigh,
@@ -419,7 +443,7 @@ describe('SocialsService', () => {
 
   describe('scoring logic', () => {
     const runScoring = async (screenings: ScreeningWithCinemaCity[]) => {
-      repo.findPostsByDateAndPlatform.mockResolvedValue([]);
+      repo.findFeedPostsCreatedBetween.mockResolvedValue([]);
       repo.findScreeningsInRange.mockResolvedValue(screenings as any);
       repo.findScreeningsByIds.mockResolvedValue(screenings as any);
 
@@ -772,7 +796,7 @@ describe('SocialsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should call upsertPost with correct data on success', async () => {
+    it('should call insertPost with correct data on success', async () => {
       const screening = makeScreening({
         id: 5,
         movieId: 1,
@@ -781,11 +805,11 @@ describe('SocialsService', () => {
       });
       repo.findScreeningById.mockResolvedValue(screening);
       repo.findPostByPlatformAndScreening.mockResolvedValue(undefined);
-      repo.upsertPost.mockResolvedValue(undefined);
+      repo.insertPost.mockResolvedValue(undefined);
 
       await service.reserveCandidate({ platform: 'instagram', screeningId: 5 });
 
-      expect(repo.upsertPost).toHaveBeenCalledWith({
+      expect(repo.insertPost).toHaveBeenCalledWith({
         postDate: '2025-03-15',
         platform: 'instagram',
         score: 20, // classic year
@@ -841,7 +865,7 @@ describe('SocialsService', () => {
 
       await service.publishCandidate({ platform: 'instagram', screeningId: 5 });
 
-      expect(repo.markPostPublished).toHaveBeenCalledWith(42, '2025-03-11');
+      expect(repo.markPostPublished).toHaveBeenCalledWith(42);
     });
   });
 });

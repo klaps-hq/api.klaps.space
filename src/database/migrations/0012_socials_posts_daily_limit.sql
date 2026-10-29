@@ -1,0 +1,3 @@
+ALTER TABLE "socials_posts" DROP CONSTRAINT "socials_posts_postDate_platform_content_type_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "socials_posts_series_unique" ON "socials_posts" USING btree ("postDate","platform","contentType") WHERE "contentType" <> 'feed_candidate';--> statement-breakpoint
+CREATE INDEX "socials_posts_platform_created_at_idx" ON "socials_posts" USING btree ("platform","createdAt");

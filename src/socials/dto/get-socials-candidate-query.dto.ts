@@ -56,6 +56,14 @@ export class GetSocialCandidateQueryDto {
   @Max(10, { message: 'maxPosts must be at most 10' })
   maxPosts?: number;
 
+  /** Publication day the per-day limit applies to (default: today). The
+   * radar planner passes future days when preparing posts ahead. */
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'publishDay must be in YYYY-MM-DD format',
+  })
+  publishDay?: string;
+
   @IsString()
   @Transform(({ value }: { value: unknown }) =>
     String(value).trim().toLowerCase(),

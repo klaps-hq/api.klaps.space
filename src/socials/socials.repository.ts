@@ -3,7 +3,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
-import { and, asc, eq, gte, inArray, lt, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, lt } from 'drizzle-orm';
 
 const IMAGE_RETENTION_MS = 48 * 60 * 60 * 1000;
 
@@ -18,24 +18,23 @@ export class SocialsRepository {
 
   // === READ ===
 
-  async findPostsByDateAndPlatform(
-    dateFrom: string,
-    dateTo: string,
-    platform: string,
-  ) {
+  // Feed posts of a platform created (reserved, then published) within
+  // [from, to) - the per-day publishing limit counts these.
+  async findFeedPostsCreatedBetween(platform: string, from: Date, to: Date) {
     return this.db.query.socials_posts.findMany({
       where: and(
-        gte(schema.socials_posts.postDate, dateFrom),
-        lte(schema.socials_posts.postDate, dateTo),
         eq(schema.socials_posts.platform, platform),
+        eq(schema.socials_posts.contentType, 'feed_candidate'),
+        gte(schema.socials_posts.createdAt, from),
+        lt(schema.socials_posts.createdAt, to),
       ),
     });
   }
 
-  async findRecentPostsByPlatform(platforms: string[], sincePostDate: string) {
+  async findRecentPostsByPlatform(platforms: string[], since: Date) {
     return this.db.query.socials_posts.findMany({
       where: and(
-        gte(schema.socials_posts.postDate, sincePostDate),
+        gte(schema.socials_posts.createdAt, since),
         inArray(schema.socials_posts.platform, platforms),
       ),
     });
@@ -136,7 +135,7 @@ export class SocialsRepository {
     return row;
   }
 
-  async upsertPost(values: {
+  async insertPost(values: {
     postDate: string;
     platform: string;
     score: number;
@@ -146,35 +145,16 @@ export class SocialsRepository {
     published: boolean;
     reason: string;
   }): Promise<void> {
-    await this.db
-      .insert(schema.socials_posts)
-      .values(values)
-      .onConflictDoUpdate({
-        target: [
-          schema.socials_posts.postDate,
-          schema.socials_posts.platform,
-          schema.socials_posts.contentType,
-        ],
-        set: {
-          published: values.published,
-          reason: values.reason,
-          postDate: values.postDate,
-          score: values.score,
-          screeningId: values.screeningId,
-          platform: values.platform,
-          movieId: values.movieId,
-          contentType: values.contentType,
-        },
-      });
+    await this.db.insert(schema.socials_posts).values(values);
   }
 
-  async markPostPublished(postId: number, postDate: string): Promise<void> {
+  // postDate stays the screening date; the publication day is createdAt.
+  async markPostPublished(postId: number): Promise<void> {
     await this.db
       .update(schema.socials_posts)
       .set({
         published: true,
         reason: 'PUBLISHED',
-        postDate,
       })
       .where(eq(schema.socials_posts.id, postId));
   }
