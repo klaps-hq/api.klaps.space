@@ -15,6 +15,9 @@ import { scriptwritersTable } from './scriptwriters.schema';
 import { screeningsTable } from './screenings.schema';
 import { showtimesTable } from './showtimes.schema';
 import { socialsPostsTable } from './socials_posts.schema';
+import { scrapersTable } from './scrapers.schema';
+import { scraperRunsTable } from './scraper_runs.schema';
+import { scraperLogsTable } from './scraper_logs.schema';
 
 export const cinemasRelations = relations(cinemasTable, ({ one, many }) => ({
   city: one(citiesTable, {
@@ -170,3 +173,25 @@ export const socialsPostsRelations = relations(
     }),
   }),
 );
+
+export const scrapersRelations = relations(scrapersTable, ({ many }) => ({
+  runs: many(scraperRunsTable),
+}));
+
+export const scraperRunsRelations = relations(
+  scraperRunsTable,
+  ({ one, many }) => ({
+    scraper: one(scrapersTable, {
+      fields: [scraperRunsTable.scraperId],
+      references: [scrapersTable.id],
+    }),
+    logs: many(scraperLogsTable),
+  }),
+);
+
+export const scraperLogsRelations = relations(scraperLogsTable, ({ one }) => ({
+  run: one(scraperRunsTable, {
+    fields: [scraperLogsTable.runId],
+    references: [scraperRunsTable.id],
+  }),
+}));
