@@ -37,13 +37,17 @@ export class CinemasService {
       ]),
     ]);
 
-    return cinemas.map((c) =>
-      mapCinemaSummary(
+    // The cinema list also carries coordinates (map in the admin panel);
+    // screenings do not need them.
+    return cinemas.map((c) => ({
+      ...mapCinemaSummary(
         c,
         updatedAtBySourceId.get(c.sourceId),
         updatedAtBySourceCityId.get(c.sourceCityId),
       ),
-    );
+      latitude: c.latitude,
+      longitude: c.longitude,
+    }));
   }
 
   async searchCinemas(

@@ -14,6 +14,9 @@ export { moviesDirectorsTable as movies_directors } from './movies_directors.sch
 export { moviesGenresTable as movies_genres } from './movies_genres.schema';
 export { moviesScriptwritersTable as movies_scriptwriters } from './movies_scriptwriters.schema';
 export { screeningsTable as screenings } from './screenings.schema';
+export { scrapersTable as scrapers } from './scrapers.schema';
+export { scraperRunsTable as scraper_runs } from './scraper_runs.schema';
+export { scraperLogsTable as scraper_logs } from './scraper_logs.schema';
 export { scriptwritersTable as scriptwriters } from './scriptwriters.schema';
 export { showtimesTable as showtimes } from './showtimes.schema';
 
