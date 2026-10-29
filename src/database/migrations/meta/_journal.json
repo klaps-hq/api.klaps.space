@@ -92,6 +92,13 @@
       "when": 1793278704434,
       "tag": "0012_socials_posts_daily_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793310274657,
+      "tag": "0013_cinema_details",
+      "breakpoints": true
     }
   ]
 }

@@ -25,6 +25,19 @@ describe('CinemasService', () => {
     instagramCollab: false,
     facebookPlaceId: null,
     isOpenAir: false,
+    phone: null,
+    repertoireUrl: null,
+    bookingUrl: null,
+    facebookUrl: null,
+    instagramUrl: null,
+    operatorName: null,
+    operatorUrl: null,
+    screens: null,
+    rooms: null,
+    accessibility: null,
+    logoUrl: null,
+    photos: null,
+    detailsUpdatedAt: null,
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
   };
@@ -205,6 +218,19 @@ describe('CinemasService', () => {
         filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
         website: null,
         email: null,
+        details: {
+          phone: null,
+          repertoireUrl: null,
+          bookingUrl: null,
+          facebookUrl: null,
+          instagramUrl: null,
+          operator: null,
+          screens: null,
+          rooms: [],
+          accessibility: null,
+          logoUrl: null,
+          photos: [],
+        },
       });
     });
 
@@ -269,6 +295,19 @@ describe('CinemasService', () => {
         filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
         website: null,
         email: null,
+        details: {
+          phone: null,
+          repertoireUrl: null,
+          bookingUrl: null,
+          facebookUrl: null,
+          instagramUrl: null,
+          operator: null,
+          screens: null,
+          rooms: [],
+          accessibility: null,
+          logoUrl: null,
+          photos: [],
+        },
       });
     });
 
