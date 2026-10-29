@@ -9,6 +9,7 @@ type ScreeningInput = {
   id: number;
   url: string | null;
   date: Date;
+  type: string;
   isDubbing: boolean | number;
   isSubtitled: boolean | number;
   cinema?: Parameters<typeof mapCinemaSummary>[0] | null;
@@ -53,6 +54,7 @@ export const mapScreening = (screening: ScreeningInput): ScreeningResponse => {
     date,
     time,
     dateTime,
+    type: screening.type,
     ticketUrl: screening.url ?? null,
     isDubbing: Boolean(screening.isDubbing),
     isSubtitled: Boolean(screening.isSubtitled),

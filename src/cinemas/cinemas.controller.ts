@@ -6,6 +6,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -49,6 +50,20 @@ export class CinemasController {
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
   async updateCinemaBySlug(
+    @Param('slug') slug: string,
+    @Body() body: UpdateCinemaDto,
+  ): Promise<CinemaResponse> {
+    const cinema = await this.cinemasService.updateCinemaBySlug(slug, body);
+
+    if (!cinema) throw new NotFoundException(`Cinema "${slug}" not found`);
+    return cinema;
+  }
+
+  // REST-owy update dla panelu admina (pelny zestaw edytowalnych pol).
+  // Wspolistnieje z legacy POST :slug uzywanym przez scraper.
+  @Patch(':slug')
+  @UseGuards(InternalApiKeyGuard)
+  async patchCinemaBySlug(
     @Param('slug') slug: string,
     @Body() body: UpdateCinemaDto,
   ): Promise<CinemaResponse> {

@@ -6,6 +6,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -44,6 +45,22 @@ export class DirectorsController {
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
   async updateDirectorBySlug(
+    @Param('slug') slug: string,
+    @Body() body: UpdateDirectorDto,
+  ): Promise<DirectorResponse> {
+    const director = await this.directorsService.updateDirectorBySlug(
+      slug,
+      body,
+    );
+    if (!director) throw new NotFoundException(`Director "${slug}" not found`);
+
+    return director;
+  }
+
+  // REST-owy alias update'u dla panelu admina.
+  @Patch(':slug')
+  @UseGuards(InternalApiKeyGuard)
+  async patchDirectorBySlug(
     @Param('slug') slug: string,
     @Body() body: UpdateDirectorDto,
   ): Promise<DirectorResponse> {

@@ -1,8 +1,14 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
+  Param,
+  ParseIntPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -15,6 +21,7 @@ import { GetRecentScreeningsQueryDto } from './dto/get-recent-screenings-query.d
 import { GetRecentVenuesQueryDto } from './dto/get-recent-venues-query.dto';
 import { CreateScreeningDto } from './dto/create-screening.dto';
 import { GetProgrammeProfileQueryDto } from './dto/get-programme-profile-query.dto';
+import { UpdateScreeningDto } from './dto/update-screening.dto';
 import type {
   Screening,
   ScreeningResponse,
@@ -86,5 +93,21 @@ export class ScreeningsController {
   @UseGuards(InternalApiKeyGuard)
   createScreening(@Body() dto: CreateScreeningDto): Promise<Screening> {
     return this.screeningsService.createScreening(dto);
+  }
+
+  @Patch(':id')
+  @UseGuards(InternalApiKeyGuard)
+  updateScreening(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateScreeningDto,
+  ): Promise<Screening> {
+    return this.screeningsService.updateScreening(id, dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(InternalApiKeyGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteScreening(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    await this.screeningsService.deleteScreening(id);
   }
 }

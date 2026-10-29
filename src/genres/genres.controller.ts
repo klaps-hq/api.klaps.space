@@ -6,6 +6,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -37,6 +38,19 @@ export class GenresController {
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
   async updateGenreBySlug(
+    @Param('slug') slug: string,
+    @Body() body: UpdateGenreDto,
+  ): Promise<GenreResponse> {
+    const genre = await this.genresService.updateGenreBySlug(slug, body);
+
+    if (!genre) throw new NotFoundException(`Genre "${slug}" not found`);
+    return genre;
+  }
+
+  // REST-owy alias update'u dla panelu admina.
+  @Patch(':slug')
+  @UseGuards(InternalApiKeyGuard)
+  async patchGenreBySlug(
     @Param('slug') slug: string,
     @Body() body: UpdateGenreDto,
   ): Promise<GenreResponse> {
