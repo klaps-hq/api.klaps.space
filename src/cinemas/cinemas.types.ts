@@ -30,4 +30,6 @@ export type CinemaResponse = {
   filmwebUrl: string;
   /** The cinema's own official website, when known; null otherwise. */
   website: string | null;
+  /** Contact email, when known; null otherwise. */
+  email: string | null;
 };

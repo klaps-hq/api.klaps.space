@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   getDateRangeUpToMonthFromNow,
   getNowInPolandWallClock,
@@ -22,6 +22,7 @@ import type {
   RandomScreeningResponse,
 } from './screenings.types';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
+import type { UpdateScreeningDto } from './dto/update-screening.dto';
 import { mapScreening, mapScreeningGroup } from './screenings.mapper';
 import { mapMovieHero, mapMovieSummary } from '../movies/movies.mapper';
 import { ScreeningsRepository } from './screenings.repository';
@@ -295,5 +296,25 @@ export class ScreeningsService {
     this.indexNowService.notifyContentChanged();
 
     return screening;
+  }
+
+  async updateScreening(
+    id: number,
+    dto: UpdateScreeningDto,
+  ): Promise<Screening> {
+    const screening = await this.repo.update(id, dto);
+    if (!screening) {
+      throw new NotFoundException(`Screening ${id} not found`);
+    }
+    this.indexNowService.notifyContentChanged();
+    return screening;
+  }
+
+  async deleteScreening(id: number): Promise<void> {
+    const deleted = await this.repo.deleteById(id);
+    if (!deleted) {
+      throw new NotFoundException(`Screening ${id} not found`);
+    }
+    this.indexNowService.notifyContentChanged();
   }
 }

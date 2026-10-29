@@ -30,6 +30,7 @@ export type ScreeningResponse = {
   date: string;
   time: string;
   dateTime: string;
+  type: string;
   ticketUrl: string | null;
   isDubbing: boolean;
   isSubtitled: boolean;

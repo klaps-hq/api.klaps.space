@@ -6,6 +6,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -65,6 +66,18 @@ export class CitiesController {
   @UseGuards(InternalApiKeyGuard)
   @HttpCode(HttpStatus.OK)
   async updateCityBySlug(
+    @Param('slug') slug: string,
+    @Body() body: UpdateCityDto,
+  ): Promise<CityResponse> {
+    const city = await this.citiesService.updateCityBySlug(slug, body);
+    if (!city) throw new NotFoundException(`City "${slug}" not found`);
+    return city;
+  }
+
+  // REST-owy alias update'u dla panelu admina.
+  @Patch(':slug')
+  @UseGuards(InternalApiKeyGuard)
+  async patchCityBySlug(
     @Param('slug') slug: string,
     @Body() body: UpdateCityDto,
   ): Promise<CityResponse> {
