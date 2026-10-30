@@ -46,15 +46,16 @@ describe('SitemapRepository', () => {
   });
 
   describe('findMovieEntries', () => {
-    it('should return movie slugs with effective updatedAt', async () => {
+    it('should return only movies with a recent or upcoming screening', async () => {
       const rows = [{ slug: 'pan-tadeusz-1999', updatedAt }];
-      const { groupBy } = mockSelectChain(rows);
+      const { groupBy, having } = mockSelectChain(rows, { having: true });
 
       const result = await repository.findMovieEntries();
 
       expect(result).toEqual(rows);
       expect(mockDb.select).toHaveBeenCalledTimes(1);
       expect(groupBy).toHaveBeenCalled();
+      expect(having).toHaveBeenCalledTimes(1);
     });
   });
 
