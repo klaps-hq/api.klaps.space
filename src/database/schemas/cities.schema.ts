@@ -21,6 +21,7 @@ export const citiesTable = pgTable('cities', {
   // by blank lines). Written by scripts, never touched by the scraper.
   guide: text(),
   lastScrapedAt: timestamp(),
+  createdAt: timestamp().notNull().defaultNow(),
 });
 
 export type City = typeof citiesTable.$inferSelect;

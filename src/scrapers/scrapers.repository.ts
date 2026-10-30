@@ -1,12 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { and, asc, desc, eq, inArray, lt, ne } from 'drizzle-orm';
+import { and, asc, between, desc, eq, inArray, lt, ne, sql } from 'drizzle-orm';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
 import type { NewScraper, Scraper } from '../database/schemas/scrapers.schema';
 import type {
   NewScraperRunRow,
+  ScraperRunCreated,
   ScraperRunRow,
 } from '../database/schemas/scraper_runs.schema';
 import type { NewScraperLogRow } from '../database/schemas/scraper_logs.schema';
@@ -86,6 +87,29 @@ export class ScrapersRepository {
       orderBy: [asc(schema.scraper_logs.ts), asc(schema.scraper_logs.id)],
       limit: 5000,
     });
+  }
+
+  // Rows created in [from, to]. These tables are only upserted, so createdAt
+  // marks what a run added.
+  async countCreated(from: Date, to: Date): Promise<ScraperRunCreated> {
+    const tables = {
+      movies: schema.movies,
+      screenings: schema.screenings,
+      cinemas: schema.cinemas,
+      cities: schema.cities,
+      genres: schema.genres,
+      directors: schema.directors,
+    };
+    const counts = await Promise.all(
+      Object.entries(tables).map(async ([key, table]) => {
+        const [row] = await this.db
+          .select({ c: sql<number>`count(*)`.mapWith(Number) })
+          .from(table)
+          .where(between(table.createdAt, from, to));
+        return [key, row?.c ?? 0] as const;
+      }),
+    );
+    return Object.fromEntries(counts) as unknown as ScraperRunCreated;
   }
 
   // === WRITE ===

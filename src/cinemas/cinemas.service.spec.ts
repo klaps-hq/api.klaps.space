@@ -67,6 +67,7 @@ describe('CinemasService', () => {
     description: null,
     guide: null,
     lastScrapedAt: null,
+    createdAt: new Date('2026-01-01'),
   };
 
   beforeEach(async () => {

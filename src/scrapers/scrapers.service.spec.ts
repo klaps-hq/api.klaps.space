@@ -30,11 +30,21 @@ const makeRun = (overrides: Partial<ScraperRunRow> = {}): ScraperRunRow => ({
   durationMs: null,
   stats: { fetched: 0, saved: 0, updated: 0, skipped: 0, failed: 0 },
   stages: [],
+  created: null,
   progress: null,
   error: null,
   stopRequested: false,
   ...overrides,
 });
+
+const created = {
+  movies: 2,
+  screenings: 40,
+  cinemas: 1,
+  cities: 0,
+  genres: 0,
+  directors: 3,
+};
 
 describe('ScrapersService', () => {
   let service: ScrapersService;
@@ -60,6 +70,7 @@ describe('ScrapersService', () => {
             updateRun: jest.fn(),
             insertLogs: jest.fn(),
             pruneOldRuns: jest.fn(),
+            countCreated: jest.fn(),
           },
         },
       ],
@@ -235,6 +246,23 @@ describe('ScrapersService', () => {
       expect(run.durationMs).toBeGreaterThanOrEqual(5 * 60_000);
     });
 
+    it('counts the records created while the run was open', async () => {
+      const startedAt = new Date(Date.now() - 60_000);
+      repo.findRunById.mockResolvedValue(makeRun({ startedAt }));
+      repo.countCreated.mockResolvedValue(created);
+      repo.updateRun.mockImplementation((_id, set) =>
+        Promise.resolve(makeRun({ startedAt, ...set })),
+      );
+
+      const run = await service.updateRun(makeRun().id, { status: 'success' });
+
+      expect(repo.countCreated).toHaveBeenCalledWith(
+        startedAt,
+        expect.any(Date),
+      );
+      expect(run.created).toEqual(created);
+    });
+
     it('keeps the run open on progress updates', async () => {
       repo.findRunById.mockResolvedValue(makeRun());
       repo.updateRun.mockResolvedValue(makeRun());
@@ -243,6 +271,7 @@ describe('ScrapersService', () => {
         progress: { stage: 'Seanse', done: 1, total: 10 },
       });
 
+      expect(repo.countCreated).not.toHaveBeenCalled();
       expect(repo.updateRun).toHaveBeenCalledWith(makeRun().id, {
         progress: { stage: 'Seanse', done: 1, total: 10 },
       });
