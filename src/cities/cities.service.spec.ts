@@ -163,6 +163,7 @@ describe('CitiesService', () => {
           description: 'Stolica Polski',
           voivodeship: 'mazowieckie',
           numberOfCinemas: 12,
+          guide: null,
         },
         screenings: [mockScreening],
       });
