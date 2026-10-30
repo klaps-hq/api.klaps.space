@@ -2,7 +2,7 @@ import { IsOptional, IsString } from 'class-validator';
 
 /**
  * Query for GET /screenings/profile. Exactly one scope is expected; when
- * several are given the first of cinema, city, genre, director wins. A
+ * several are given the first of cinema, city, genre, director, movie wins. A
  * scope that does not resolve yields an empty profile, never a nationwide
  * one.
  */
@@ -22,4 +22,8 @@ export class GetProgrammeProfileQueryDto {
   @IsOptional()
   @IsString({ message: 'directorSlug must be a string' })
   directorSlug?: string;
+
+  @IsOptional()
+  @IsString({ message: 'movieSlug must be a string' })
+  movieSlug?: string;
 }

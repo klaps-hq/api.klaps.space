@@ -124,6 +124,7 @@ export type GetProgrammeProfileParams = {
   citySlug?: string;
   genreSlug?: string;
   directorSlug?: string;
+  movieSlug?: string;
 };
 
 /** A ranked entity in a programme profile: a genre, director, city, etc. */

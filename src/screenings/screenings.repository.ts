@@ -331,6 +331,7 @@ export class ScreeningsRepository {
     citySlug?: string;
     genreSlug?: string;
     directorSlug?: string;
+    movieSlug?: string;
   }): Promise<ProfileInput | null> {
     const scope = await this.resolveProfileScope(params);
     if (!scope) return null;
@@ -425,6 +426,7 @@ export class ScreeningsRepository {
     citySlug?: string;
     genreSlug?: string;
     directorSlug?: string;
+    movieSlug?: string;
   }) {
     if (params.cinemaSlug || params.citySlug) {
       return (
@@ -457,6 +459,14 @@ export class ScreeningsRepository {
       });
       if (!director) return null;
       return this.buildDirectorCondition(director.id) ?? null;
+    }
+    if (params.movieSlug) {
+      const movie = await this.db.query.movies.findFirst({
+        where: eq(schema.movies.slug, params.movieSlug),
+        columns: { id: true },
+      });
+      if (!movie) return null;
+      return eq(schema.screenings.movieId, movie.id);
     }
     return null;
   }
