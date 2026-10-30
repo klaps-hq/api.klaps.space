@@ -3,7 +3,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
-import { and, asc, eq, ilike, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import type { Cinema } from '../database/schemas/cinemas.schema';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
@@ -14,6 +14,13 @@ import type { UpdateCinemaDto } from './dto/update-cinema.dto';
 import { isOpenAirCinemaName } from './open-air';
 
 type FullSchema = typeof schema & typeof relations;
+
+/** Outbound link columns kept healthy by the monthly link check. */
+export type CinemaLinkColumn =
+  | 'website'
+  | 'repertoireUrl'
+  | 'bookingUrl'
+  | 'operatorUrl';
 
 @Injectable()
 export class CinemasRepository {
@@ -107,7 +114,41 @@ export class CinemasRepository {
     });
   }
 
+  /** Cinemas with at least one outbound link worth checking. */
+  async findCinemaLinks() {
+    return this.db
+      .select({
+        id: schema.cinemas.id,
+        slug: schema.cinemas.slug,
+        website: schema.cinemas.website,
+        repertoireUrl: schema.cinemas.repertoireUrl,
+        bookingUrl: schema.cinemas.bookingUrl,
+        operatorUrl: schema.cinemas.operatorUrl,
+      })
+      .from(schema.cinemas)
+      .where(
+        or(
+          isNotNull(schema.cinemas.website),
+          isNotNull(schema.cinemas.repertoireUrl),
+          isNotNull(schema.cinemas.bookingUrl),
+          isNotNull(schema.cinemas.operatorUrl),
+        ),
+      );
+  }
+
   // === WRITE ===
+
+  /**
+   * Clears a dead outbound link. Matches on the old URL too, so a link
+   * corrected in the meantime is left alone. `updatedAt` stays: it tracks
+   * content changes for the sitemap, not link maintenance.
+   */
+  async clearCinemaLink(id: number, column: CinemaLinkColumn, url: string) {
+    await this.db
+      .update(schema.cinemas)
+      .set({ [column]: null })
+      .where(and(eq(schema.cinemas.id, id), eq(schema.cinemas[column], url)));
+  }
 
   async upsertBatch(cinemas: CreateCinemasBatchItemDto[]): Promise<void> {
     if (cinemas.length === 0) return;
