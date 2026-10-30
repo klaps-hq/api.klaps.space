@@ -14,6 +14,8 @@ export type CityResponse = {
   population: number | null;
   description: string | null;
   voivodeship: string | null;
+  /** Long guide to the city's cinemas; only on the city detail endpoint. */
+  guide?: string | null;
   numberOfCinemas?: number;
   /** ISO 8601 UTC; ostatnia zauważalna zmiana treści (max po kinach miasta). */
   updatedAt?: string;

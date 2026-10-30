@@ -19,6 +19,7 @@ describe('CitiesService', () => {
     population: null,
     voivodeship: 'mazowieckie',
     description: 'Stolica Polski',
+    guide: null,
     lastScrapedAt: new Date('2025-06-01'),
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-06-01'),
@@ -27,6 +28,7 @@ describe('CitiesService', () => {
   const mockCityWithCount = {
     ...mockCity,
     numberOfCinemas: 12,
+    guide: null,
   };
 
   const mockScreening = {
@@ -161,6 +163,7 @@ describe('CitiesService', () => {
           description: 'Stolica Polski',
           voivodeship: 'mazowieckie',
           numberOfCinemas: 12,
+          guide: null,
         },
         screenings: [mockScreening],
       });

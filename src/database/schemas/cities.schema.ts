@@ -17,6 +17,9 @@ export const citiesTable = pgTable('cities', {
   population: integer(),
   voivodeship: varchar({ length: 50 }),
   description: text(),
+  // Long researched guide to the city's cinemas (plain paragraphs separated
+  // by blank lines). Written by scripts, never touched by the scraper.
+  guide: text(),
   lastScrapedAt: timestamp(),
 });
 
