@@ -19,14 +19,23 @@ import {
   notInArray,
   or,
   sql,
+  type SQL,
 } from 'drizzle-orm';
 import type { CreateScreeningDto } from './dto/create-screening.dto';
 import type { UpdateScreeningDto } from './dto/update-screening.dto';
 import type { NewScreening } from '../database/schemas/screenings.schema';
 import type { Screening } from './screenings.types';
 import type { ProfileInput } from './screenings-profile';
+import { isChainCinema } from '../cinemas/cinema-chains';
+import { isClassicSql } from '../lib/classic';
 
 type FullSchema = typeof schema & typeof relations;
+
+/**
+ * WHERE condition on screenings: only those in independent (non-chain)
+ * cinemas, see cinemas/cinema-chains.ts.
+ */
+export const inIndependentCinema: SQL = sql`${schema.screenings.cinemaId} not in (select ${schema.cinemas.sourceId} from ${schema.cinemas} where ${isChainCinema})`;
 
 export type FindScreeningsParams = {
   startDay: Date;
@@ -43,8 +52,8 @@ export type FindScreeningsParams = {
   limit?: number;
   search?: string;
   openAir?: boolean;
-  /** Newest production year that still counts as a classic. */
-  classicMaxYear?: number;
+  /** Only classics, see lib/classic.ts. */
+  classic?: boolean;
 };
 
 @Injectable()
@@ -80,7 +89,7 @@ export class ScreeningsRepository {
       genreCondition,
       this.buildDirectorCondition(params.directorId),
       this.buildOpenAirCondition(params.openAir),
-      this.buildClassicCondition(params.classicMaxYear),
+      this.buildClassicCondition(params.classic),
     );
 
     const query = this.db
@@ -255,7 +264,7 @@ export class ScreeningsRepository {
     cinemaId?: number;
     cinemaSlug?: string;
     openAir?: boolean;
-    classicMaxYear?: number;
+    classic?: boolean;
   }): Promise<
     {
       movieId: number;
@@ -307,7 +316,7 @@ export class ScreeningsRepository {
           gte(schema.screenings.date, params.since),
           lt(schema.screenings.date, params.until),
           venueCondition,
-          this.buildClassicCondition(params.classicMaxYear),
+          this.buildClassicCondition(params.classic),
           notInArray(schema.screenings.movieId, scheduledHere),
         ),
       )
@@ -324,6 +333,12 @@ export class ScreeningsRepository {
    *
    * Returns null when the requested scope does not resolve, so the caller
    * can answer with an empty profile instead of a nationwide one.
+   *
+   * Genre and director scopes leave out screenings in chain multiplexes
+   * unless `includeChains` is set: there a mass reissue (632 Avengers
+   * screenings at Planet Cinema and GO KINO) would otherwise pass for the
+   * director's special-screenings record. Cinema, city and movie scopes
+   * always count every venue.
    */
   async findProfileData(params: {
     until: Date;
@@ -332,6 +347,7 @@ export class ScreeningsRepository {
     genreSlug?: string;
     directorSlug?: string;
     movieSlug?: string;
+    includeChains?: boolean;
   }): Promise<ProfileInput | null> {
     const scope = await this.resolveProfileScope(params);
     if (!scope) return null;
@@ -427,7 +443,11 @@ export class ScreeningsRepository {
     genreSlug?: string;
     directorSlug?: string;
     movieSlug?: string;
+    includeChains?: boolean;
   }) {
+    const venueCondition = params.includeChains
+      ? undefined
+      : inIndependentCinema;
     if (params.cinemaSlug || params.citySlug) {
       return (
         (await this.resolveLocationCondition(
@@ -444,13 +464,16 @@ export class ScreeningsRepository {
         columns: { id: true },
       });
       if (!genre) return null;
-      return inArray(
-        schema.screenings.movieId,
-        this.db
-          .select({ movieId: schema.movies_genres.movieId })
-          .from(schema.movies_genres)
-          .where(eq(schema.movies_genres.genreId, genre.id)),
-      );
+      return and(
+        inArray(
+          schema.screenings.movieId,
+          this.db
+            .select({ movieId: schema.movies_genres.movieId })
+            .from(schema.movies_genres)
+            .where(eq(schema.movies_genres.genreId, genre.id)),
+        ),
+        venueCondition,
+      )!;
     }
     if (params.directorSlug) {
       const director = await this.db.query.directors.findFirst({
@@ -458,7 +481,8 @@ export class ScreeningsRepository {
         columns: { id: true },
       });
       if (!director) return null;
-      return this.buildDirectorCondition(director.id) ?? null;
+      const directorCondition = this.buildDirectorCondition(director.id);
+      return directorCondition ? and(directorCondition, venueCondition)! : null;
     }
     if (params.movieSlug) {
       const movie = await this.db.query.movies.findFirst({
@@ -761,14 +785,21 @@ export class ScreeningsRepository {
     );
   }
 
-  private buildClassicCondition(classicMaxYear?: number) {
-    if (classicMaxYear === undefined) return undefined;
+  /**
+   * Screenings of classics, judged per screening: the subquery is correlated
+   * on the screening date, so a 2001 film is a classic in a 2026 programme
+   * and not in a 2025 one (lib/classic.ts).
+   */
+  private buildClassicCondition(classic?: boolean) {
+    if (!classic) return undefined;
     return inArray(
       schema.screenings.movieId,
       this.db
         .select({ id: schema.movies.id })
         .from(schema.movies)
-        .where(lte(schema.movies.productionYear, classicMaxYear)),
+        .where(
+          isClassicSql(schema.movies.productionYear, schema.screenings.date),
+        ),
     );
   }
 

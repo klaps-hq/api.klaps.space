@@ -116,6 +116,20 @@ describe('DirectorsRepository', () => {
       mockDb.query.directors.findFirst.mockResolvedValue(undefined);
 
       expect(await repository.findBySlug('nope')).toBeUndefined();
+      // Not a placeholder slug, so there is no second lookup.
+      expect(mockDb.query.directors.findFirst).toHaveBeenCalledTimes(1);
+    });
+
+    it('resolves a retired rezyser-<sourceId> slug by its TMDB id', async () => {
+      const director = { id: 2, slug: 'hayao-miyazaki', sourceId: 608 };
+      mockDb.query.directors.findFirst
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(director);
+
+      const result = await repository.findBySlug('rezyser-608');
+
+      expect(result).toEqual(director);
+      expect(mockDb.query.directors.findFirst).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -126,18 +140,23 @@ describe('DirectorsRepository', () => {
 
     it('aggregates movie + upcoming screening counts, defaulting missing to 0', async () => {
       selectChain.enqueue([{ directorId: 1, count: 3 }]); // movie counts
-      selectChain.enqueue([{ directorId: 1, count: 7 }]); // upcoming screening counts
+      // Upcoming screenings: all, and only in independent cinemas.
+      selectChain.enqueue([{ directorId: 1, count: 7, independentCount: 2 }]);
 
       const result = await repository.findStats([1, 2]);
 
       expect(result.get(1)).toEqual({
         moviesCount: 3,
         upcomingScreeningsCount: 7,
+        upcomingIndependentScreeningsCount: 2,
       });
       expect(result.get(2)).toEqual({
         moviesCount: 0,
         upcomingScreeningsCount: 0,
+        upcomingIndependentScreeningsCount: 0,
       });
+      // Screenings are joined to cinemas for the chain check.
+      expect(selectChain.leftJoin).toHaveBeenCalled();
     });
   });
 

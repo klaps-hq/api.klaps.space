@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   getDateRangeUpToMonthFromNow,
   getNowInPolandWallClock,
-  getTodayInPoland,
 } from '../lib/date';
 import { buildProgrammeProfile } from './screenings-profile';
 import { randomInt } from 'node:crypto';
@@ -27,16 +26,11 @@ import { mapScreening, mapScreeningGroup } from './screenings.mapper';
 import { mapMovieHero, mapMovieSummary } from '../movies/movies.mapper';
 import { ScreeningsRepository } from './screenings.repository';
 import {
-  CLASSIC_MIN_AGE_YEARS,
   RECENT_SCREENINGS_DEFAULT_DAYS,
   RECENT_SCREENINGS_DEFAULT_LIMIT,
   RETRO_YEAR_THRESHOLD,
 } from './screenings.constants';
 import { IndexNowService } from '../indexnow/indexnow.service';
-
-/** Newest production year that counts as a classic this (Polish) year. */
-const getClassicMaxYear = (): number =>
-  Number(getTodayInPoland().slice(0, 4)) - CLASSIC_MIN_AGE_YEARS;
 
 @Injectable()
 export class ScreeningsService {
@@ -70,7 +64,7 @@ export class ScreeningsService {
       limit: params?.limit,
       search: params?.search,
       openAir: params?.openAir,
-      classicMaxYear: params?.classic ? getClassicMaxYear() : undefined,
+      classic: params?.classic,
     });
 
     if (movieIds.length === 0) return [];
@@ -140,7 +134,7 @@ export class ScreeningsService {
       cityId: params.cityId,
       citySlug: params.citySlug,
       openAir: params.openAir,
-      classicMaxYear: params.classic ? getClassicMaxYear() : undefined,
+      classic: params.classic,
     });
     if (stats.length === 0) return [];
 

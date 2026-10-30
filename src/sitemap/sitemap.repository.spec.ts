@@ -1,6 +1,13 @@
 import { Test } from '@nestjs/testing';
 import { SitemapRepository } from './sitemap.repository';
 import { DRIZZLE } from '../database/constants';
+import { CINEMA_CHAIN_SQL_PATTERN } from '../cinemas/cinema-chains';
+import { PgDialect } from 'drizzle-orm/pg-core';
+import type { SQL } from 'drizzle-orm';
+
+const dialect = new PgDialect();
+/** Renders a HAVING argument so tests can assert on the generated SQL. */
+const render = (clause: SQL) => dialect.sqlToQuery(clause);
 
 const updatedAt = new Date('2024-01-01T00:00:00.000Z');
 
@@ -21,7 +28,7 @@ const mockSelectChain = (
     ? jest.fn().mockReturnValue({ having })
     : jest.fn().mockResolvedValue(rows);
   const leftJoin = jest.fn();
-  // Allow chained leftJoin calls (genres uses two) ending with groupBy.
+  // Allow chained leftJoin calls (genres and movies use two) ending with groupBy.
   leftJoin.mockReturnValue({ leftJoin, groupBy });
   const from = innerJoin
     ? jest.fn().mockReturnValue({
@@ -57,6 +64,18 @@ describe('SitemapRepository', () => {
       expect(groupBy).toHaveBeenCalled();
       expect(having).toHaveBeenCalledTimes(1);
     });
+
+    it('should count only screenings in independent cinemas', async () => {
+      const { leftJoin, having } = mockSelectChain([], { having: true });
+
+      await repository.findMovieEntries();
+
+      // screenings, then cinemas for the chain check.
+      expect(leftJoin).toHaveBeenCalledTimes(2);
+      const { sql, params } = render(having.mock.calls[0][0] as SQL);
+      expect(sql).toContain('not coalesce("cinemas"."name" ~*');
+      expect(params).toContain(CINEMA_CHAIN_SQL_PATTERN);
+    });
   });
 
   describe('findCinemaEntries', () => {
@@ -68,6 +87,18 @@ describe('SitemapRepository', () => {
 
       expect(result).toEqual(rows);
       expect(having).toHaveBeenCalledTimes(1);
+    });
+
+    it('should drop chain venues regardless of upcoming screenings', async () => {
+      const { having } = mockSelectChain([], { having: true });
+
+      await repository.findCinemaEntries();
+
+      const { sql, params } = render(having.mock.calls[0][0] as SQL);
+      expect(sql).toContain('not coalesce("cinemas"."name" ~*');
+      expect(params).toContain(CINEMA_CHAIN_SQL_PATTERN);
+      // The old exception for chain venues with an upcoming screening is gone.
+      expect(sql).not.toContain('>= CURRENT_DATE)');
     });
   });
 
@@ -83,6 +114,19 @@ describe('SitemapRepository', () => {
 
       expect(result).toEqual(rows);
       expect(having).toHaveBeenCalledTimes(1);
+    });
+
+    it('should leave out cities with nothing but chain cinemas', async () => {
+      const { having } = mockSelectChain([], {
+        innerJoin: true,
+        having: true,
+      });
+
+      await repository.findCityEntries();
+
+      const { sql, params } = render(having.mock.calls[0][0] as SQL);
+      expect(sql).toContain('not coalesce("cinemas"."name" ~*');
+      expect(params).toContain(CINEMA_CHAIN_SQL_PATTERN);
     });
   });
 
@@ -100,13 +144,14 @@ describe('SitemapRepository', () => {
   });
 
   describe('findDirectorEntries', () => {
-    it('should return director slugs filtered by the upcoming-screenings threshold', async () => {
+    it('should return director slugs filtered by the independent upcoming-screenings threshold', async () => {
       const rows = [{ slug: 'pawel-pawlikowski', updatedAt }];
-      // from → innerJoin → innerJoin → where → groupBy → having (resolves rows).
+      // from → innerJoin → innerJoin → leftJoin → where → groupBy → having.
       const having = jest.fn().mockResolvedValue(rows);
       const groupBy = jest.fn().mockReturnValue({ having });
       const where = jest.fn().mockReturnValue({ groupBy });
-      const innerJoin2 = jest.fn().mockReturnValue({ where });
+      const leftJoin = jest.fn().mockReturnValue({ where });
+      const innerJoin2 = jest.fn().mockReturnValue({ leftJoin });
       const innerJoin1 = jest.fn().mockReturnValue({ innerJoin: innerJoin2 });
       const from = jest.fn().mockReturnValue({ innerJoin: innerJoin1 });
       mockDb.select.mockReturnValue({ from });
@@ -114,7 +159,9 @@ describe('SitemapRepository', () => {
       const result = await repository.findDirectorEntries();
 
       expect(result).toEqual(rows);
-      expect(having).toHaveBeenCalled();
+      const { sql, params } = render(having.mock.calls[0][0] as SQL);
+      expect(sql).toContain('>= CURRENT_DATE and not coalesce(');
+      expect(params).toContain(CINEMA_CHAIN_SQL_PATTERN);
     });
   });
 });

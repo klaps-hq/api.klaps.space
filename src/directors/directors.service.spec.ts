@@ -45,7 +45,16 @@ describe('DirectorsService', () => {
       repo.findAll.mockResolvedValue([mockDirectorRow] as never);
       repo.count.mockResolvedValue(1);
       repo.findStats.mockResolvedValue(
-        new Map([[1, { moviesCount: 4, upcomingScreeningsCount: 7 }]]),
+        new Map([
+          [
+            1,
+            {
+              moviesCount: 4,
+              upcomingScreeningsCount: 7,
+              upcomingIndependentScreeningsCount: 7,
+            },
+          ],
+        ]),
       );
 
       const result = await service.getDirectors({ page: 1, limit: 10 });
@@ -102,7 +111,16 @@ describe('DirectorsService', () => {
     it('returns a mapped director when found', async () => {
       repo.findBySlug.mockResolvedValue(mockDirectorRow as never);
       repo.findStats.mockResolvedValue(
-        new Map([[1, { moviesCount: 2, upcomingScreeningsCount: 0 }]]),
+        new Map([
+          [
+            1,
+            {
+              moviesCount: 2,
+              upcomingScreeningsCount: 0,
+              upcomingIndependentScreeningsCount: 0,
+            },
+          ],
+        ]),
       );
 
       const result = await service.getDirectorBySlug('pawel-pawlikowski');

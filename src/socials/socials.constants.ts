@@ -1,3 +1,6 @@
+// Score tiers for picking social-post candidates (SCORE.CLASSIC,
+// SCORE.DEEP_CLASSIC), not a definition of a classic: that one is
+// lib/classic.ts (25 years before the screening year).
 export const CLASSIC_YEAR_THRESHOLD = 2000;
 export const DEEP_CLASSIC_YEAR_THRESHOLD = 1980;
 

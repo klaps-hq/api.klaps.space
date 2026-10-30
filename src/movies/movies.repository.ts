@@ -12,6 +12,7 @@ import type {
 import type { UpdateMovieDto } from './dto/update-movie.dto';
 import { and, desc, eq, gte, ilike, inArray, or, sql } from 'drizzle-orm';
 import { directorSlug, movieSlug, toSlug, uniqueSlug } from '../lib/slug';
+import { keepLatinNameSql } from '../lib/latin-name';
 import { excludedChanged } from '../lib/upsert';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
@@ -420,7 +421,8 @@ export class MoviesRepository {
             .onConflictDoUpdate({
               target: entityTable.sourceId,
               set: {
-                name: sql`excluded."name"`,
+                // A name in the original script never replaces a Latin one.
+                name: keepLatinNameSql(entityTable.name),
                 url: sql`excluded."url"`,
               },
             }),
@@ -467,7 +469,8 @@ export class MoviesRepository {
    * slug, a `role`, and optional bio/photoUrl. The slug is generated once and
    * never overwritten on conflict (like genres/movies) so public URLs never
    * churn; bio/photoUrl use COALESCE so a batch that omits them never wipes
-   * already-stored values.
+   * already-stored values, and a name in the original script never replaces
+   * a Latin one (lib/latin-name.ts).
    */
   private async upsertDirectors(
     movies: CreateMoviesBatchItemDto[],
@@ -523,6 +526,7 @@ export class MoviesRepository {
       };
     });
 
+    const directorName = keepLatinNameSql(schema.directors.name);
     const directorChunks = sortAndChunk(directorValues, (d) => d.sourceId);
     for (const chunk of directorChunks) {
       await withDeadlockRetry(
@@ -534,18 +538,22 @@ export class MoviesRepository {
               target: schema.directors.sourceId,
               // Celowo bez `slug` - slug jest zamrożony, regeneracja churnowałaby URL-e.
               set: {
-                name: sql`excluded."name"`,
+                name: directorName,
                 url: sql`excluded."url"`,
                 bio: sql`COALESCE(excluded."bio", ${schema.directors.bio})`,
                 photoUrl: sql`COALESCE(excluded."photoUrl", ${schema.directors.photoUrl})`,
                 updatedAt: sql`now()`,
               },
-              setWhere: excludedChanged([
-                schema.directors.name,
-                schema.directors.url,
-                schema.directors.bio,
-                schema.directors.photoUrl,
-              ]),
+              // Compares the name that would be written, not the raw
+              // incoming one, so a kept Latin name does not bump updatedAt
+              // (sitemap lastmod) on every scrape.
+              setWhere: sql`${directorName} IS DISTINCT FROM ${schema.directors.name} OR ${excludedChanged(
+                [
+                  schema.directors.url,
+                  schema.directors.bio,
+                  schema.directors.photoUrl,
+                ],
+              )}`,
             }),
         { label: 'createBatch:directors' },
       );

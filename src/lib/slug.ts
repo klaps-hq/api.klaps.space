@@ -43,6 +43,14 @@ export const movieSlug = (title: string, productionYear: number): string =>
  * [a-z0-9] characters (CJK, Cyrillic, Arabic, Greek, …) would otherwise
  * collapse to an empty slug, so they fall back to a stable, unique
  * `rezyser-<sourceId>` derived from the TMDB id.
+ *
+ * The fallback is a placeholder, not a URL meant to last: such a name is the
+ * original-script name TMDB returns when it has no Polish entry. Once a
+ * Latin-script name is known, scripts/backfill-person-latin-names.ts
+ * replaces the name and the placeholder slug, and the placeholder keeps
+ * resolving (DirectorsRepository.findBySlug). Cyrillic and Greek are not
+ * romanised here on purpose: slugs are frozen, and TMDB's Polish name
+ * ("Andriej Tarkowski") reads better than any mechanical romanisation.
  */
 export const directorSlug = (name: string, sourceId: number): string =>
   toSlug(name) || `rezyser-${sourceId}`;

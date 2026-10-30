@@ -14,7 +14,11 @@ describe('mapDirector', () => {
   it('maps a director with stats and updatedAt', () => {
     const result = mapDirector(
       base,
-      { moviesCount: 4, upcomingScreeningsCount: 7 },
+      {
+        moviesCount: 4,
+        upcomingScreeningsCount: 7,
+        upcomingIndependentScreeningsCount: 2,
+      },
       new Date('2026-06-01T12:00:00.000Z'),
     );
 
@@ -28,6 +32,7 @@ describe('mapDirector', () => {
       photoUrl: 'https://img/pp.jpg',
       moviesCount: 4,
       upcomingScreeningsCount: 7,
+      upcomingIndependentScreeningsCount: 2,
       updatedAt: '2026-06-01T12:00:00.000Z',
     });
   });
@@ -35,7 +40,11 @@ describe('mapDirector', () => {
   it('returns null bio/photoUrl/updatedAt and empty slug fallback', () => {
     const result = mapDirector(
       { ...base, slug: null, bio: null, photoUrl: null },
-      { moviesCount: 0, upcomingScreeningsCount: 0 },
+      {
+        moviesCount: 0,
+        upcomingScreeningsCount: 0,
+        upcomingIndependentScreeningsCount: 0,
+      },
       null,
     );
 

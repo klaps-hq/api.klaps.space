@@ -26,6 +26,12 @@ describe('directorSlug', () => {
     expect(directorSlug('Андрей Тарковский', 8452)).toBe('rezyser-8452');
   });
 
+  it('builds a readable slug once the name is in Latin script', () => {
+    expect(directorSlug('Hayao Miyazaki', 608)).toBe('hayao-miyazaki');
+    expect(directorSlug('Yasujirō Ozu', 95501)).toBe('yasujiro-ozu');
+    expect(directorSlug('Andriej Tarkowski', 8452)).toBe('andriej-tarkowski');
+  });
+
   it('never yields an empty slug', () => {
     expect(directorSlug('', 42)).toBe('rezyser-42');
   });
