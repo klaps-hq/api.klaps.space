@@ -5,6 +5,10 @@ import { DRIZZLE } from '../database/constants';
 import { and, asc, eq, gte, ilike, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { Director, DirectorStats } from './directors.types';
 import type { UpdateDirectorDto } from './dto/update-director.dto';
+import { isIndependentCinema } from '../cinemas/cinema-chains';
+
+/** Fallback slug given to directors whose name had no Latin letters. */
+const SOURCE_ID_SLUG = /^rezyser-(\d+)$/;
 
 @Injectable()
 export class DirectorsRepository {
@@ -36,9 +40,26 @@ export class DirectorsRepository {
     return result.count;
   }
 
+  /**
+   * Looks a director up by slug. A `rezyser-<sourceId>` slug that no longer
+   * exists falls back to the TMDB id it encodes: those were placeholder slugs
+   * for names in non-Latin script, regenerated once a Latin name was known
+   * (scripts/backfill-person-latin-names.ts). The caller gets the director
+   * with its current slug, and the frontend 301s to it when they differ.
+   */
   async findBySlug(slug: string) {
-    return this.db.query.directors.findFirst({
+    const director = await this.db.query.directors.findFirst({
       where: eq(schema.directors.slug, slug),
+    });
+    if (director) return director;
+
+    const match = SOURCE_ID_SLUG.exec(slug);
+    if (!match) return undefined;
+    return this.db.query.directors.findFirst({
+      where: and(
+        eq(schema.directors.sourceId, Number(match[1])),
+        isNotNull(schema.directors.slug),
+      ),
     });
   }
 
@@ -46,7 +67,8 @@ export class DirectorsRepository {
    * Per-director aggregate stats in two grouped queries - joining movies and
    * screenings in a single pass would double-count. Directors with no films or
    * no upcoming screenings are absent from the respective result and default
-   * to 0 in the returned map.
+   * to 0 in the returned map. Upcoming screenings are counted twice: all of
+   * them, and only those in independent (non-chain) cinemas.
    */
   async findStats(directorIds: number[]): Promise<Map<number, DirectorStats>> {
     if (directorIds.length === 0) return new Map();
@@ -64,11 +86,19 @@ export class DirectorsRepository {
         .select({
           directorId: schema.movies_directors.directorId,
           count: sql<number>`COUNT(*)`.mapWith(Number),
+          independentCount:
+            sql<number>`COUNT(*) FILTER (WHERE ${isIndependentCinema})`.mapWith(
+              Number,
+            ),
         })
         .from(schema.movies_directors)
         .innerJoin(
           schema.screenings,
           eq(schema.screenings.movieId, schema.movies_directors.movieId),
+        )
+        .leftJoin(
+          schema.cinemas,
+          eq(schema.cinemas.sourceId, schema.screenings.cinemaId),
         )
         .where(
           and(
@@ -82,14 +112,20 @@ export class DirectorsRepository {
     const stats = new Map<number, DirectorStats>(
       directorIds.map((id) => [
         id,
-        { moviesCount: 0, upcomingScreeningsCount: 0 },
+        {
+          moviesCount: 0,
+          upcomingScreeningsCount: 0,
+          upcomingIndependentScreeningsCount: 0,
+        },
       ]),
     );
     for (const row of movieRows) {
       stats.get(row.directorId)!.moviesCount = row.count;
     }
     for (const row of screeningRows) {
-      stats.get(row.directorId)!.upcomingScreeningsCount = row.count;
+      const entry = stats.get(row.directorId)!;
+      entry.upcomingScreeningsCount = row.count;
+      entry.upcomingIndependentScreeningsCount = row.independentCount;
     }
     return stats;
   }

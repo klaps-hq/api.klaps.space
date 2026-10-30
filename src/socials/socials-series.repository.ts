@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { and, eq, gte, inArray, like, lt, sql } from 'drizzle-orm';
+import { isClassicSql } from '../lib/classic';
 import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
-import { CLASSIC_YEAR_THRESHOLD } from './socials.constants';
 
 type FullSchema = typeof schema & typeof relations;
 
@@ -18,7 +18,9 @@ export class SocialsSeriesRepository {
     private readonly db: NodePgDatabase<FullSchema>,
   ) {}
 
-  // Screenings of classics (made before CLASSIC_YEAR_THRESHOLD) in [from, to).
+  // Screenings of classics in [from, to): films made at least 25 years
+  // before the screening year (lib/classic.ts), the same rule as the
+  // `classic` filter behind the "klasyka w kinach" pages.
   async findClassicScreenings(from: Date, to: Date) {
     return this.db
       .select({
@@ -31,7 +33,7 @@ export class SocialsSeriesRepository {
         and(
           gte(schema.screenings.date, from),
           lt(schema.screenings.date, to),
-          lt(schema.movies.productionYear, CLASSIC_YEAR_THRESHOLD),
+          isClassicSql(schema.movies.productionYear, schema.screenings.date),
         ),
       );
   }

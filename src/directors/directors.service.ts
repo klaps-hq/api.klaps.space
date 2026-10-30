@@ -69,7 +69,11 @@ export class DirectorsService {
     return data.map((d) =>
       mapDirector(
         d,
-        stats.get(d.id) ?? { moviesCount: 0, upcomingScreeningsCount: 0 },
+        stats.get(d.id) ?? {
+          moviesCount: 0,
+          upcomingScreeningsCount: 0,
+          upcomingIndependentScreeningsCount: 0,
+        },
         updatedAtById.get(d.id) ?? null,
       ),
     );

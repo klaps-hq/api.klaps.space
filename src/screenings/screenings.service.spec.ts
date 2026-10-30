@@ -78,23 +78,23 @@ describe('ScreeningsService', () => {
       expect(repo.findMoviesWithScreenings).not.toHaveBeenCalled();
     });
 
-    it('should translate classic into a production-year cap of 25 years', async () => {
+    it('should pass the classic filter to the repository, judged per screening there', async () => {
       repo.findFilteredMovieIds.mockResolvedValue([]);
 
       await service.getScreenings({ classic: true, openAir: true });
 
       expect(repo.findFilteredMovieIds).toHaveBeenCalledWith(
-        expect.objectContaining({ classicMaxYear: 2001, openAir: true }),
+        expect.objectContaining({ classic: true, openAir: true }),
       );
     });
 
-    it('should not cap the production year without classic', async () => {
+    it('should not filter classics without classic', async () => {
       repo.findFilteredMovieIds.mockResolvedValue([]);
 
       await service.getScreenings({});
 
       expect(repo.findFilteredMovieIds).toHaveBeenCalledWith(
-        expect.objectContaining({ classicMaxYear: undefined }),
+        expect.objectContaining({ classic: undefined }),
       );
     });
 
@@ -297,7 +297,7 @@ describe('ScreeningsService', () => {
 
       const call = repo.findRecentMovieStats.mock.calls[0][0];
       expect(call.openAir).toBe(true);
-      expect(call.classicMaxYear).toBe(2001);
+      expect(call.classic).toBe(true);
     });
 
     it('should map films in the order the repository returned them', async () => {

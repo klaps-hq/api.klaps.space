@@ -1,5 +1,8 @@
 import { Test } from '@nestjs/testing';
-import { ScreeningsRepository } from './screenings.repository';
+import {
+  inIndependentCinema,
+  ScreeningsRepository,
+} from './screenings.repository';
 import { DRIZZLE } from '../database/constants';
 
 jest.mock('../lib/chunked-upsert', () => ({
@@ -41,6 +44,19 @@ const mockInsert = jest.fn().mockReturnValue({ values: mockValues });
 
 const mockSelect = jest.fn().mockReturnValue(selectChain);
 
+/** Whether `target` appears anywhere inside a drizzle SQL condition tree. */
+const containsChunk = (node: unknown, target: unknown): boolean => {
+  if (node === target) return true;
+  if (Array.isArray(node)) return node.some((n) => containsChunk(n, target));
+  if (node && typeof node === 'object' && 'queryChunks' in node) {
+    return containsChunk(
+      (node as { queryChunks: unknown[] }).queryChunks,
+      target,
+    );
+  }
+  return false;
+};
+
 const mockDb = {
   query: {
     movies: {
@@ -57,6 +73,9 @@ const mockDb = {
       findFirst: jest.fn(),
     },
     genres: {
+      findFirst: jest.fn(),
+    },
+    directors: {
       findFirst: jest.fn(),
     },
   },
@@ -662,6 +681,48 @@ describe('ScreeningsRepository', () => {
       expect(mockDb.query.screenings.findFirst).toHaveBeenCalledWith({
         where: expect.anything(),
       });
+    });
+  });
+
+  describe('findProfileData', () => {
+    const until = new Date('2026-10-30T12:00:00.000Z');
+    // Scope subqueries call where() first; the screenings query is the last call.
+    const rowsWhere = () => selectChain.where.mock.calls.at(-1)[0] as unknown;
+
+    it('should leave chain multiplexes out of a genre profile by default', async () => {
+      mockDb.query.genres.findFirst.mockResolvedValue({ id: 3 });
+
+      await repo.findProfileData({ until, genreSlug: 'dramat' });
+
+      expect(containsChunk(rowsWhere(), inIndependentCinema)).toBe(true);
+    });
+
+    it('should leave chain multiplexes out of a director profile by default', async () => {
+      mockDb.query.directors.findFirst.mockResolvedValue({ id: 7 });
+
+      await repo.findProfileData({ until, directorSlug: 'joe-russo' });
+
+      expect(containsChunk(rowsWhere(), inIndependentCinema)).toBe(true);
+    });
+
+    it('should count chain multiplexes with includeChains', async () => {
+      mockDb.query.directors.findFirst.mockResolvedValue({ id: 7 });
+
+      await repo.findProfileData({
+        until,
+        directorSlug: 'joe-russo',
+        includeChains: true,
+      });
+
+      expect(containsChunk(rowsWhere(), inIndependentCinema)).toBe(false);
+    });
+
+    it('should keep chain multiplexes in a city profile', async () => {
+      mockDb.query.cities.findFirst.mockResolvedValue({ sourceId: 1 });
+
+      await repo.findProfileData({ until, citySlug: 'warszawa' });
+
+      expect(containsChunk(rowsWhere(), inIndependentCinema)).toBe(false);
     });
   });
 });

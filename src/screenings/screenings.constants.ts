@@ -1,13 +1,7 @@
 export const RETRO_YEAR_THRESHOLD = 2026;
 
-/**
- * Age at which a film counts as a classic for the `classic` filter (the
- * "klasyka w kinach" landing pages). The scraper only keeps films at least
- * three years old, so the whole catalogue is "not new"; 25 years marks the
- * films people search for as classics. In November 2026 that kept 34 of 64
- * films and 208 of 437 screenings.
- */
-export const CLASSIC_MIN_AGE_YEARS = 25;
+// The classic definition (25 years before the screening year) lives in
+// lib/classic.ts, shared with the monthly stats in the socials module.
 
 /**
  * Look-back window and page size for GET /screenings/recent.
