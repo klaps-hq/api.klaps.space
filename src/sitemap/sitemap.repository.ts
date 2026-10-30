@@ -9,11 +9,11 @@ import {
 } from './sitemap.constants';
 
 /**
- * HAVING clause for venue rows: at least one screening dated within the last
- * VENUE_ACTIVITY_WINDOW_DAYS days or later. Venues outside it render no
- * repertoire and no recent programme, so the frontend marks them `noindex`
+ * HAVING clause for venue and movie rows: at least one screening dated within
+ * the last VENUE_ACTIVITY_WINDOW_DAYS days or later. Pages outside it render
+ * no repertoire and no recent programme, so the frontend marks them `noindex`
  * and they must not be advertised here. Screenings are never deleted, so a
- * venue that starts screening again comes back on its own.
+ * venue or movie that starts screening again comes back on its own.
  */
 const hasRecentOrUpcomingScreening = sql`count(${schema.screenings.id}) filter (where ${schema.screenings.date} >= CURRENT_DATE - ${VENUE_ACTIVITY_WINDOW_DAYS}::int) > 0`;
 
@@ -51,6 +51,12 @@ export class SitemapRepository {
   /**
    * Returns slug + effective content `updatedAt` per movie:
    * max(movie.updatedAt, newest screening.updatedAt of that movie).
+   * Only movies with a recent or upcoming screening: the frontend keeps a
+   * movie page indexable while it has upcoming screenings or played anywhere
+   * within the window (its 'Ostatnio w kinach' list), and marks the rest
+   * `noindex`. Returning the whole catalogue made the frontend cross-check
+   * against upcoming screenings only, so movies between runs - indexable
+   * pages - were left out of the sitemap.
    */
   async findMovieEntries(): Promise<SitemapRow[]> {
     return this.db
@@ -66,7 +72,8 @@ export class SitemapRepository {
         schema.screenings,
         eq(schema.screenings.movieId, schema.movies.id),
       )
-      .groupBy(schema.movies.id);
+      .groupBy(schema.movies.id)
+      .having(hasRecentOrUpcomingScreening);
   }
 
   /**
