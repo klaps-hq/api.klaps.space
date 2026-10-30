@@ -125,6 +125,12 @@ export type GetProgrammeProfileParams = {
   genreSlug?: string;
   directorSlug?: string;
   movieSlug?: string;
+  /**
+   * Count chain multiplexes too. Only matters for the genre and director
+   * scopes, which leave them out by default; cinema, city and movie scopes
+   * always include every venue.
+   */
+  includeChains?: boolean;
 };
 
 /** A ranked entity in a programme profile: a genre, director, city, etc. */

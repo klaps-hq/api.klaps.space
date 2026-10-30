@@ -25,6 +25,7 @@ export const mapDirector = (
   bio: director.bio ?? null,
   photoUrl: director.photoUrl ?? null,
   upcomingScreeningsCount: stats.upcomingScreeningsCount,
+  upcomingIndependentScreeningsCount: stats.upcomingIndependentScreeningsCount,
   moviesCount: stats.moviesCount,
   updatedAt: updatedAt ? updatedAt.toISOString() : null,
 });

@@ -6,6 +6,9 @@ import type { CreateMoviesBatchItemDto } from './dto/create-movies-batch.dto';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
 import { directorSlug, movieSlug, toSlug, uniqueSlug } from '../lib/slug';
+import { PgDialect } from 'drizzle-orm/pg-core';
+import type { SQL } from 'drizzle-orm';
+import * as schema from '../database/schemas';
 
 jest.mock('../lib/chunked-upsert', () => ({
   sortAndChunk: jest.fn((items) => [items]),
@@ -538,6 +541,47 @@ describe('MoviesRepository', () => {
 
       // Existing slug reused → no slug regeneration for the renamed director.
       expect(directorSlug).not.toHaveBeenCalled();
+    });
+
+    it('should not let a name in the original script replace a Latin one', async () => {
+      const movieWithCrew: CreateMoviesBatchItemDto = {
+        ...baseMovie,
+        directors: [
+          { sourceId: 119294, name: 'عباس کیارستمی', url: '/person/119294' },
+        ],
+        scriptwriters: [
+          { sourceId: 119294, name: 'عباس کیارستمی', url: '/person/119294' },
+        ],
+      };
+
+      selectChain._enqueue([]);
+      insertChain.onConflictDoUpdate.mockResolvedValue(undefined);
+      selectChain._enqueue([{ id: 1, sourceId: 100 }]);
+      selectChain._enqueue([{ sourceId: 119294, slug: 'abbas-kiarostami' }]);
+      selectChain._enqueue([{ id: 56, sourceId: 119294 }]);
+      selectChain._enqueue([{ id: 70, sourceId: 119294 }]);
+
+      await repository.upsertBatch([movieWithCrew]);
+
+      const dialect = new PgDialect();
+      const personSets = (
+        insertChain.onConflictDoUpdate.mock.calls as [
+          { target: unknown; set: { name?: SQL } },
+        ][]
+      )
+        .map(([config]) => config)
+        .filter(
+          (config) =>
+            config.target === schema.directors.sourceId ||
+            config.target === schema.scriptwriters.sourceId,
+        );
+
+      expect(personSets).toHaveLength(2);
+      for (const config of personSets) {
+        expect(dialect.sqlToQuery(config.set.name!).sql).toMatch(
+          /^CASE WHEN excluded\."name" ~ '\[A-Za-z\]'/,
+        );
+      }
     });
 
     it('should handle multiple movies in batch', async () => {

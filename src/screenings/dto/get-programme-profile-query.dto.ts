@@ -1,10 +1,14 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { QueryBoolean } from '../../lib/query-boolean';
 
 /**
  * Query for GET /screenings/profile. Exactly one scope is expected; when
  * several are given the first of cinema, city, genre, director, movie wins. A
  * scope that does not resolve yields an empty profile, never a nationwide
  * one.
+ *
+ * Genre and director profiles count only independent cinemas unless
+ * `includeChains=true`; cinema, city and movie profiles ignore the flag.
  */
 export class GetProgrammeProfileQueryDto {
   @IsOptional()
@@ -26,4 +30,9 @@ export class GetProgrammeProfileQueryDto {
   @IsOptional()
   @IsString({ message: 'movieSlug must be a string' })
   movieSlug?: string;
+
+  @IsOptional()
+  @QueryBoolean()
+  @IsBoolean()
+  includeChains?: boolean;
 }

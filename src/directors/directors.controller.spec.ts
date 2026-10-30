@@ -15,6 +15,7 @@ const mockDirector: DirectorResponse = {
   bio: null,
   photoUrl: null,
   upcomingScreeningsCount: 7,
+  upcomingIndependentScreeningsCount: 5,
   moviesCount: 4,
   updatedAt: '2026-06-01T12:00:00.000Z',
 };

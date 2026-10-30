@@ -94,7 +94,10 @@ export class GetScreeningsQueryDto {
   @IsBoolean()
   openAir?: boolean;
 
-  /** Only classics: films at least CLASSIC_MIN_AGE_YEARS old. */
+  /**
+   * Only classics: screenings of films made at least CLASSIC_MIN_AGE_YEARS
+   * before the screening year (lib/classic.ts).
+   */
   @IsOptional()
   @QueryBoolean()
   @IsBoolean()
