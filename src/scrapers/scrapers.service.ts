@@ -43,6 +43,7 @@ export const toRunResponse = (row: ScraperRunRow): ScraperRunResponse => ({
   durationMs: row.durationMs,
   stats: row.stats,
   stages: row.stages,
+  created: row.created ?? null,
   progress: row.progress ?? null,
   error: row.error,
   stopRequested: row.stopRequested,
@@ -203,13 +204,18 @@ export class ScrapersService {
     const run = await this.requireRun(id);
     const terminal = dto.status && dto.status !== 'running';
     const now = new Date();
+    const closing = terminal && !run.finishedAt;
+    const created = closing
+      ? await this.repository.countCreated(run.startedAt, now)
+      : undefined;
     const updated = await this.repository.updateRun(id, {
+      ...(created ? { created } : {}),
       ...(dto.status ? { status: dto.status } : {}),
       ...(dto.stats ? { stats: dto.stats } : {}),
       ...(dto.stages ? { stages: dto.stages } : {}),
       ...(dto.progress !== undefined ? { progress: dto.progress } : {}),
       ...(dto.error !== undefined ? { error: dto.error } : {}),
-      ...(terminal && !run.finishedAt
+      ...(closing
         ? {
             finishedAt: now,
             durationMs: now.getTime() - run.startedAt.getTime(),
@@ -269,6 +275,7 @@ export class ScrapersService {
     await this.repository.updateRun(run.id, {
       status,
       error,
+      created: await this.repository.countCreated(run.startedAt, now),
       finishedAt: now,
       durationMs: now.getTime() - run.startedAt.getTime(),
       progress: null,

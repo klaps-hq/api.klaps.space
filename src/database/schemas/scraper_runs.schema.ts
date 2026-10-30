@@ -26,6 +26,16 @@ export interface ScraperRunStage {
   stats: Partial<ScraperRunStats>;
 }
 
+// Records created while the run was open, counted by the API when it ends.
+export interface ScraperRunCreated {
+  movies: number;
+  screenings: number;
+  cinemas: number;
+  cities: number;
+  genres: number;
+  directors: number;
+}
+
 export interface ScraperRunProgress {
   stage: string;
   done: number;
@@ -53,6 +63,7 @@ export const scraperRunsTable = pgTable(
       .notNull()
       .default({ fetched: 0, saved: 0, updated: 0, skipped: 0, failed: 0 }),
     stages: jsonb().$type<ScraperRunStage[]>().notNull().default([]),
+    created: jsonb().$type<ScraperRunCreated | null>(),
     progress: jsonb().$type<ScraperRunProgress | null>(),
     error: text(),
     // Set by the panel; the scraper stops cooperatively between stages.

@@ -1,4 +1,5 @@
 import type {
+  ScraperRunCreated,
   ScraperRunProgress,
   ScraperRunStage,
   ScraperRunStats,
@@ -36,6 +37,8 @@ export interface ScraperRunResponse {
   durationMs: number | null;
   stats: ScraperRunStats;
   stages: ScraperRunStage[];
+  // Records the run added; null while it runs and for runs before this field.
+  created: ScraperRunCreated | null;
   progress: ScraperRunProgress | null;
   error: string | null;
   stopRequested: boolean;
