@@ -27,6 +27,7 @@
     "db:import-city-guides": "bunx ts-node -r dotenv/config src/scripts/import-city-guides.ts",
     "db:merge-duplicate-movies": "bunx ts-node -r dotenv/config src/scripts/merge-duplicate-movies.ts",
     "db:wipe": "node -r ts-node/register src/scripts/db-wipe.ts",
+    "db:backup-json": "bunx ts-node -r dotenv/config src/scripts/db-backup-json.ts",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --env-file .env --watch --builder swc",
