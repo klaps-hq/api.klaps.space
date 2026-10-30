@@ -52,7 +52,7 @@ export class CitiesService {
     ]);
 
     return {
-      city: mapCity(city, numberOfCinemas),
+      city: { ...mapCity(city, numberOfCinemas), guide: city.guide ?? null },
       screenings,
     };
   }

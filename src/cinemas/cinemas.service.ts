@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import type { CinemaResponse, CinemaSummaryResponse } from './cinemas.types';
-import { mapCinemaDetail, mapCinemaSummary } from './cinemas.mapper';
+import {
+  mapCinemaDetail,
+  mapCinemaDetails,
+  mapCinemaSummary,
+} from './cinemas.mapper';
 import type { CreateCinemasBatchItemDto } from './dto/create-cinemas-batch.dto';
 import type { GetCinemasQueryDto } from './dto/get-cinemas-query.dto';
 import type { UpdateCinemaDto } from './dto/update-cinema.dto';
@@ -47,6 +51,9 @@ export class CinemasService {
       ),
       latitude: c.latitude,
       longitude: c.longitude,
+      // City pages compare their venues (rooms, accessibility); the full
+      // nationwide list stays lean.
+      ...(sourceCityId !== undefined && { details: mapCinemaDetails(c) }),
     }));
   }
 

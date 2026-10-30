@@ -19,6 +19,8 @@ export type CinemaSummaryResponse = {
   longitude?: number | null;
   /** ISO 8601 UTC; ostatnia zauważalna zmiana treści (kino lub jego seanse). */
   updatedAt?: string;
+  /** Venue details; only when the list is filtered by city. */
+  details?: CinemaDetailsResponse;
 };
 
 export type CinemaResponse = {

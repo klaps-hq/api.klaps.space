@@ -65,6 +65,7 @@ describe('CinemasService', () => {
     population: null,
     voivodeship: null,
     description: null,
+    guide: null,
     lastScrapedAt: null,
   };
 
@@ -145,7 +146,9 @@ describe('CinemasService', () => {
 
       expect(citiesService.findBySlug).toHaveBeenCalledWith('warszawa');
       expect(repo.findAll).toHaveBeenCalledWith(10, undefined, undefined);
-      expect(result).toEqual([listItem]);
+      expect(result).toEqual([
+        { ...listItem, details: expect.objectContaining({ rooms: [] }) },
+      ]);
     });
 
     it('should include cinema and city updatedAt from content maps', async () => {
