@@ -202,7 +202,7 @@ export class CinemasRepository {
 
   async updateBySlug(
     slug: string,
-    data: UpdateCinemaDto,
+    data: UpdateCinemaDto & { detailsUpdatedAt?: Date },
   ): Promise<Cinema | null> {
     const condition = eq(schema.cinemas.slug, slug);
 

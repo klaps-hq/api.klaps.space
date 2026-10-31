@@ -7,7 +7,10 @@ import {
 } from './cinemas.mapper';
 import type { CreateCinemasBatchItemDto } from './dto/create-cinemas-batch.dto';
 import type { GetCinemasQueryDto } from './dto/get-cinemas-query.dto';
-import type { UpdateCinemaDto } from './dto/update-cinema.dto';
+import {
+  CINEMA_DETAIL_FIELDS,
+  type UpdateCinemaDto,
+} from './dto/update-cinema.dto';
 import { CinemasRepository } from './cinemas.repository';
 import { CitiesService } from '../cities/cities.service';
 
@@ -83,7 +86,11 @@ export class CinemasService {
     slug: string,
     data: UpdateCinemaDto,
   ): Promise<CinemaResponse | null> {
-    const cinema = await this.repo.updateBySlug(slug, data);
+    const touchesDetails = CINEMA_DETAIL_FIELDS.some((f) => f in data);
+    const cinema = await this.repo.updateBySlug(
+      slug,
+      touchesDetails ? { ...data, detailsUpdatedAt: new Date() } : data,
+    );
     if (!cinema) return null;
     return mapCinemaDetail(cinema);
   }
