@@ -121,6 +121,25 @@ describe('SocialsSeriesService', () => {
       });
     });
 
+    it('ranks studio cinemas only, ties by name', async () => {
+      repo.findClassicScreenings.mockResolvedValue([
+        { movieId: 1, cinemaId: 40 },
+        { movieId: 1, cinemaId: 40 },
+        { movieId: 1, cinemaId: 30 },
+        { movieId: 1, cinemaId: 10 },
+      ]);
+      repo.findCinemasByIds.mockResolvedValue([
+        cinema(10, 1, 52),
+        cinema(30, 1, 54),
+        { ...cinema(40, 2, 50), name: 'Cinema City Bonarka' },
+      ]);
+
+      const stats = await service.getMonthStats('2026-10');
+
+      expect(stats.cinemas).toBe(3);
+      expect(stats.topCinemas.map((c) => c.slug)).toEqual(['c-10', 'c-30']);
+    });
+
     it('flags a month that was already published', async () => {
       repo.findSeriesPosts.mockResolvedValue([
         { postDate: '2026-11-01', reason: 'SERIES:stats:2026-10' },

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { isChainCinemaName } from '../cinemas/cinema-chains';
 import {
   getDatePlusDays,
   getTodayInPoland,
@@ -133,19 +134,25 @@ export class SocialsSeriesService {
           lat: mean(c.lat),
           lon: mean(c.lon),
         })),
-      topCinemas: topEntries(byCinema, TOP_CINEMAS)
-        .map(([id, count]) => {
+      // Studio cinemas only: the site ranks them for the monthly badge, so a
+      // chain venue in the top five would leave an empty spot. Ties go by name
+      // so the order does not depend on row order.
+      topCinemas: [...byCinema.entries()]
+        .flatMap(([id, count]) => {
           const cinema = cinemaById.get(id);
-          return cinema
-            ? {
-                name: cinema.name,
-                slug: cinema.slug,
-                city: cinema.cityName,
-                count,
-              }
-            : null;
+          return cinema && !isChainCinemaName(cinema.name)
+            ? [
+                {
+                  name: cinema.name,
+                  slug: cinema.slug,
+                  city: cinema.cityName,
+                  count,
+                },
+              ]
+            : [];
         })
-        .filter((c) => c !== null),
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'pl'))
+        .slice(0, TOP_CINEMAS),
     };
   }
 
