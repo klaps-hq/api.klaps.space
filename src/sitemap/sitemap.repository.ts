@@ -199,13 +199,16 @@ export class SitemapRepository {
    * newest screening was added. The frontend applies its own indexing
    * threshold on top.
    */
-  async findSeriesEntries(): Promise<SitemapRow[]> {
+  async findSeriesEntries(): Promise<
+    (SitemapRow & { hasUpcoming: boolean })[]
+  > {
     return this.db
       .select({
         slug: schema.series.slug,
         updatedAt: sql<Date>`max(${schema.screenings.createdAt})`.mapWith(
           schema.screenings.createdAt,
         ),
+        hasUpcoming: sql<boolean>`bool_or(${schema.screenings.date} >= CURRENT_DATE)`,
       })
       .from(schema.series)
       .innerJoin(

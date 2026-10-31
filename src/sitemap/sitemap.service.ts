@@ -26,7 +26,10 @@ export class SitemapService {
       cities: cities.map(mapSitemapEntry),
       genres: genres.map(mapSitemapEntry),
       directors: directors.map(mapSitemapEntry),
-      series: series.map(mapSitemapEntry),
+      series: series.map((s) => ({
+        ...mapSitemapEntry(s),
+        hasUpcoming: Boolean(s.hasUpcoming),
+      })),
     };
   }
 }

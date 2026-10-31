@@ -10,6 +10,6 @@ export type SitemapResponse = {
   cities: SitemapEntry[];
   genres: SitemapEntry[];
   directors: SitemapEntry[];
-  /** Cycles, festivals and clubs (GET /series). */
-  series: SitemapEntry[];
+  /** Cycles, festivals and clubs (GET /series), page /cykle/<slug>. */
+  series: (SitemapEntry & { hasUpcoming: boolean })[];
 };
