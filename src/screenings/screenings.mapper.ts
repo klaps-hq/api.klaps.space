@@ -4,6 +4,7 @@ import type {
 } from './screenings.types';
 import { mapCinemaSummary } from '../cinemas/cinemas.mapper';
 import { mapMovieSummary } from '../movies/movies.mapper';
+import type { SpecialType } from '../database/schemas/series.schema';
 
 type ScreeningInput = {
   id: number;
@@ -12,6 +13,11 @@ type ScreeningInput = {
   type: string;
   isDubbing: boolean | number;
   isSubtitled: boolean | number;
+  specialType?: SpecialType | null;
+  specialLabel?: string | null;
+  editionNote?: string | null;
+  seriesId?: number | null;
+  series?: { slug: string } | null;
   cinema?: Parameters<typeof mapCinemaSummary>[0] | null;
 };
 
@@ -58,6 +64,11 @@ export const mapScreening = (screening: ScreeningInput): ScreeningResponse => {
     ticketUrl: screening.url ?? null,
     isDubbing: Boolean(screening.isDubbing),
     isSubtitled: Boolean(screening.isSubtitled),
+    specialType: screening.specialType ?? null,
+    specialLabel: screening.specialLabel ?? null,
+    editionNote: screening.editionNote ?? null,
+    seriesId: screening.seriesId ?? null,
+    seriesSlug: screening.series?.slug ?? null,
     cinema: screening.cinema
       ? mapCinemaSummary(screening.cinema)
       : EMPTY_CINEMA,

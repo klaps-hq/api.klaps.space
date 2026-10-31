@@ -1,4 +1,5 @@
 import { screeningsTable } from '../database/schemas/screenings.schema';
+import type { SpecialType } from '../database/schemas/series.schema';
 import type { CinemaSummaryResponse } from '../cinemas/cinemas.types';
 import type {
   MovieSummaryResponse,
@@ -23,6 +24,9 @@ export type GetScreeningsParams = {
   search?: string;
   openAir?: boolean;
   classic?: boolean;
+  special?: boolean;
+  specialType?: SpecialType;
+  seriesSlug?: string;
 };
 
 export type ScreeningResponse = {
@@ -34,6 +38,14 @@ export type ScreeningResponse = {
   ticketUrl: string | null;
   isDubbing: boolean;
   isSubtitled: boolean;
+  /** Cycle, anniversary, festival... null for a regular screening. */
+  specialType: SpecialType | null;
+  /** The provider's label as published, e.g. "Helios RePlay". */
+  specialLabel: string | null;
+  /** Short note for badges and titles, e.g. "30. rocznica", "4K". */
+  editionNote: string | null;
+  seriesId: number | null;
+  seriesSlug: string | null;
   cinema: CinemaSummaryResponse;
 };
 

@@ -61,6 +61,7 @@ describe('IndexNowService', () => {
       cities: [],
       genres: [],
       directors: [],
+      series: [],
     });
 
     service.notifyContentChanged();
@@ -86,6 +87,7 @@ describe('IndexNowService', () => {
       cities: [{ slug: 'krakow', updatedAt: recent }],
       genres: [{ slug: 'dramat', updatedAt: stale }],
       directors: [{ slug: 'pawel-pawlikowski', updatedAt: recent }],
+      series: [],
     });
 
     service.notifyContentChanged();

@@ -193,4 +193,26 @@ export class SitemapRepository {
       )
       .groupBy(schema.genres.id);
   }
+
+  /**
+   * Series with a screening in the activity window; updatedAt is when the
+   * newest screening was added. The frontend applies its own indexing
+   * threshold on top.
+   */
+  async findSeriesEntries(): Promise<SitemapRow[]> {
+    return this.db
+      .select({
+        slug: schema.series.slug,
+        updatedAt: sql<Date>`max(${schema.screenings.createdAt})`.mapWith(
+          schema.screenings.createdAt,
+        ),
+      })
+      .from(schema.series)
+      .innerJoin(
+        schema.screenings,
+        eq(schema.screenings.seriesId, schema.series.id),
+      )
+      .groupBy(schema.series.id)
+      .having(hasRecentOrUpcomingScreening);
+  }
 }
