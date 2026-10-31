@@ -61,6 +61,7 @@ describe('IndexNowService', () => {
       cities: [],
       genres: [],
       directors: [],
+      series: [],
     });
 
     service.notifyContentChanged();
@@ -86,6 +87,10 @@ describe('IndexNowService', () => {
       cities: [{ slug: 'krakow', updatedAt: recent }],
       genres: [{ slug: 'dramat', updatedAt: stale }],
       directors: [{ slug: 'pawel-pawlikowski', updatedAt: recent }],
+      series: [
+        { slug: 'helios-replay', updatedAt: recent, hasUpcoming: true },
+        { slug: 'dkf-zamek', updatedAt: recent, hasUpcoming: false },
+      ],
     });
 
     service.notifyContentChanged();
@@ -106,6 +111,7 @@ describe('IndexNowService', () => {
       `${FRONTEND_URL}/kina/kino-pod-baranami`,
       `${FRONTEND_URL}/miasta/krakow`,
       `${FRONTEND_URL}/rezyserzy/pawel-pawlikowski`,
+      `${FRONTEND_URL}/cykle/helios-replay`,
     ]);
   });
 

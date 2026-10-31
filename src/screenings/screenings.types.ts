@@ -1,4 +1,5 @@
 import { screeningsTable } from '../database/schemas/screenings.schema';
+import type { SpecialType } from '../database/schemas/series.schema';
 import type { CinemaSummaryResponse } from '../cinemas/cinemas.types';
 import type {
   MovieSummaryResponse,
@@ -23,6 +24,9 @@ export type GetScreeningsParams = {
   search?: string;
   openAir?: boolean;
   classic?: boolean;
+  special?: boolean;
+  specialType?: SpecialType;
+  seriesSlug?: string;
 };
 
 export type ScreeningResponse = {
@@ -34,6 +38,14 @@ export type ScreeningResponse = {
   ticketUrl: string | null;
   isDubbing: boolean;
   isSubtitled: boolean;
+  /** Cycle, anniversary, festival... null for a regular screening. */
+  specialType: SpecialType | null;
+  /** The provider's label as published, e.g. "Helios RePlay". */
+  specialLabel: string | null;
+  /** Short note for badges and titles, e.g. "30. rocznica", "4K". */
+  editionNote: string | null;
+  seriesId: number | null;
+  seriesSlug: string | null;
   cinema: CinemaSummaryResponse;
 };
 
@@ -136,6 +148,15 @@ export type GetProgrammeProfileParams = {
    * [mieście]" page otherwise showed multiplex numbers under that heading.
    */
   independentOnly?: boolean;
+  /**
+   * Narrow the profile to screenings on or after `from` and on or before
+   * `to` (YYYY-MM-DD, Polish calendar days). Past screenings only, so `to`
+   * never reaches beyond now.
+   */
+  from?: string;
+  to?: string;
+  /** List every city in topCities instead of the top five. */
+  allCities?: boolean;
 };
 
 /** A ranked entity in a programme profile: a genre, director, city, etc. */
@@ -176,5 +197,12 @@ export type ProgrammeProfileResponse = {
   topGenres: ProfileRanked[];
   topDirectors: ProfileRanked[];
   topCinemas: (ProfileRanked & { citySlug: string; cityName: string })[];
+  /** Top five cities, or every city when requested with `allCities`. */
   topCities: ProfileRanked[];
+  /**
+   * Screenings per calendar month (YYYY-MM, Polish wall clock), oldest
+   * first, from the first to the last month with a screening. Months in
+   * between without screenings are listed with zero.
+   */
+  byMonth: { month: string; screenings: number }[];
 };

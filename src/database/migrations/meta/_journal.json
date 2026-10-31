@@ -113,6 +113,13 @@
       "when": 1793364348590,
       "tag": "0015_scraper_run_created",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793457787853,
+      "tag": "0016_special_screenings_series",
+      "breakpoints": true
     }
   ]
 }

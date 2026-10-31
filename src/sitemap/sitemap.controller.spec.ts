@@ -11,6 +11,7 @@ const mockSitemapResponse = {
   directors: [
     { slug: 'pawel-pawlikowski', updatedAt: '2026-06-01T12:00:00.000Z' },
   ],
+  series: [],
 };
 
 describe('SitemapController', () => {

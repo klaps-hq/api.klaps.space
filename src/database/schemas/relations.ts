@@ -14,6 +14,7 @@ import { moviesScriptwritersTable } from './movies_scriptwriters.schema';
 import { scriptwritersTable } from './scriptwriters.schema';
 import { screeningsTable } from './screenings.schema';
 import { showtimesTable } from './showtimes.schema';
+import { seriesAliasesTable, seriesTable } from './series.schema';
 import { socialsPostsTable } from './socials_posts.schema';
 import {
   socialsPlanMediaTable,
@@ -151,7 +152,26 @@ export const screeningsRelations = relations(screeningsTable, ({ one }) => ({
     fields: [screeningsTable.showtimeId],
     references: [showtimesTable.id],
   }),
+  series: one(seriesTable, {
+    fields: [screeningsTable.seriesId],
+    references: [seriesTable.id],
+  }),
 }));
+
+export const seriesRelations = relations(seriesTable, ({ many }) => ({
+  screenings: many(screeningsTable),
+  aliases: many(seriesAliasesTable),
+}));
+
+export const seriesAliasesRelations = relations(
+  seriesAliasesTable,
+  ({ one }) => ({
+    series: one(seriesTable, {
+      fields: [seriesAliasesTable.seriesId],
+      references: [seriesTable.id],
+    }),
+  }),
+);
 
 export const showtimesRelations = relations(
   showtimesTable,

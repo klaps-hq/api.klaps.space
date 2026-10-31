@@ -21,7 +21,12 @@ import {
   sql,
   type SQL,
 } from 'drizzle-orm';
-import type { CreateScreeningDto } from './dto/create-screening.dto';
+import type {
+  CreateScreeningDto,
+  ScreeningSeriesDto,
+} from './dto/create-screening.dto';
+import type { SpecialType } from '../database/schemas/series.schema';
+import { toSlug } from '../lib/slug';
 import type { UpdateScreeningDto } from './dto/update-screening.dto';
 import type { NewScreening } from '../database/schemas/screenings.schema';
 import type { Screening } from './screenings.types';
@@ -38,7 +43,7 @@ type FullSchema = typeof schema & typeof relations;
 export const inIndependentCinema: SQL = sql`${schema.screenings.cinemaId} not in (select ${schema.cinemas.sourceId} from ${schema.cinemas} where ${isChainCinema})`;
 
 /** Movie columns read by mapMovieSummary. */
-const movieSummaryColumns = {
+export const movieSummaryColumns = {
   id: true,
   sourceId: true,
   slug: true,
@@ -59,7 +64,7 @@ const movieSummaryColumns = {
  * screening they were over half of the response, and clients read them from
  * the cinema and city endpoints instead (klaps.space nulls them here too).
  */
-const cinemaSummaryColumns = {
+export const cinemaSummaryColumns = {
   id: true,
   sourceId: true,
   slug: true,
@@ -71,7 +76,7 @@ const cinemaSummaryColumns = {
   isOpenAir: true,
 } as const;
 
-const citySummaryColumns = {
+export const citySummaryColumns = {
   id: true,
   slug: true,
   name: true,
@@ -97,7 +102,24 @@ export type FindScreeningsParams = {
   openAir?: boolean;
   /** Only classics, see lib/classic.ts. */
   classic?: boolean;
+  special?: boolean;
+  specialType?: string;
+  seriesSlug?: string;
 };
+
+/** Screening columns of listings, special-screening fields included. */
+export const screeningListColumns = {
+  id: true,
+  url: true,
+  date: true,
+  type: true,
+  isDubbing: true,
+  isSubtitled: true,
+  specialType: true,
+  specialLabel: true,
+  editionNote: true,
+  seriesId: true,
+} as const;
 
 @Injectable()
 export class ScreeningsRepository {
@@ -133,6 +155,7 @@ export class ScreeningsRepository {
       this.buildDirectorCondition(params.directorId),
       this.buildOpenAirCondition(params.openAir),
       this.buildClassicCondition(params.classic),
+      await this.buildSpecialCondition(params),
     );
 
     const query = this.db
@@ -164,8 +187,14 @@ export class ScreeningsRepository {
       cinemaId?: number;
       cinemaSlug?: string;
       openAir?: boolean;
+      special?: boolean;
+      specialType?: string;
+      seriesSlug?: string;
     },
   ) {
+    const specialCondition = locationFilter
+      ? await this.buildSpecialCondition(locationFilter)
+      : undefined;
     const locationCondition = locationFilter
       ? await this.resolveLocationCondition(
           locationFilter.cityId,
@@ -194,25 +223,20 @@ export class ScreeningsRepository {
           },
         },
         screenings: {
-          columns: {
-            id: true,
-            url: true,
-            date: true,
-            type: true,
-            isDubbing: true,
-            isSubtitled: true,
-          },
+          columns: screeningListColumns,
           with: {
             cinema: {
               columns: cinemaSummaryColumns,
               with: { city: { columns: citySummaryColumns } },
             },
+            series: { columns: { slug: true } },
           },
           where: and(
             gte(schema.screenings.date, startDay),
             lte(schema.screenings.date, endDay),
             locationCondition,
             this.buildOpenAirCondition(locationFilter?.openAir),
+            specialCondition,
           ),
         },
       },
@@ -396,7 +420,7 @@ export class ScreeningsRepository {
 
   /**
    * Raw data for a programme profile: every screening in the scope before
-   * `until`, plus the film, genre, director and cinema metadata it needs.
+   * `until` (and from `since` on, when given), plus the film, genre, director and cinema metadata it needs.
    * Rows are aggregated in buildProgrammeProfile; even a city-wide scope is a
    * few thousand narrow rows over the whole history.
    *
@@ -410,6 +434,7 @@ export class ScreeningsRepository {
    * count every venue; a city scope does unless `independentOnly` is set.
    */
   async findProfileData(params: {
+    since?: Date;
     until: Date;
     cinemaSlug?: string;
     citySlug?: string;
@@ -436,7 +461,13 @@ export class ScreeningsRepository {
         schema.showtimes,
         eq(schema.screenings.showtimeId, schema.showtimes.id),
       )
-      .where(and(lt(schema.screenings.date, params.until), scope));
+      .where(
+        and(
+          params.since ? gte(schema.screenings.date, params.since) : undefined,
+          lt(schema.screenings.date, params.until),
+          scope,
+        ),
+      );
 
     const movieIds = [...new Set(rows.map((r) => r.movieId))];
     const cinemaIds = [...new Set(rows.map((r) => r.cinemaId))];
@@ -660,7 +691,15 @@ export class ScreeningsRepository {
   // === WRITE ===
 
   async insert(dto: CreateScreeningDto): Promise<Screening> {
-    const values = { ...dto, date: new Date(dto.date) };
+    const { series, ...rest } = dto;
+    const special: Partial<NewScreening> = {};
+    if (dto.specialType !== undefined) special.specialType = dto.specialType;
+    if (dto.specialLabel !== undefined) special.specialLabel = dto.specialLabel;
+    if (dto.editionNote !== undefined) special.editionNote = dto.editionNote;
+    if (series !== undefined) {
+      special.seriesId = series ? await this.resolveSeriesId(series) : null;
+    }
+    const values = { ...rest, ...special, date: new Date(dto.date) };
     const [result] = await this.db
       .insert(schema.screenings)
       .values(values)
@@ -682,6 +721,7 @@ export class ScreeningsRepository {
           date: values.date,
           isDubbing: dto.isDubbing,
           isSubtitled: dto.isSubtitled,
+          ...special,
         },
       })
       .returning({ id: schema.screenings.id });
@@ -725,9 +765,12 @@ export class ScreeningsRepository {
         );
     }
 
-    const { date, ...rest } = dto;
+    const { date, series, ...rest } = dto;
     const values: Partial<NewScreening> = { ...rest, updatedAt: new Date() };
     if (date !== undefined) values.date = new Date(date);
+    if (series !== undefined) {
+      values.seriesId = series ? await this.resolveSeriesId(series) : null;
+    }
 
     await this.db
       .update(schema.screenings)
@@ -756,6 +799,69 @@ export class ScreeningsRepository {
   }
 
   // === PRIVATE ===
+
+  /**
+   * Finds the series a name belongs to through its alias, creating both on
+   * first sight. Safe under parallel saves: every insert ignores conflicts
+   * and the row is read back by its unique key.
+   */
+  private async resolveSeriesId(series: ScreeningSeriesDto): Promise<number> {
+    const key = toSlug(series.name);
+    const alias = await this.db.query.series_aliases.findFirst({
+      where: eq(schema.series_aliases.alias, key),
+    });
+    let seriesId = alias?.seriesId;
+    if (!seriesId) {
+      await this.db
+        .insert(schema.series)
+        .values({
+          slug: key,
+          name: series.name,
+          type: series.type,
+          organizer: series.organizer ?? null,
+          isChainProgramme: series.isChainProgramme ?? false,
+        })
+        .onConflictDoNothing({ target: schema.series.slug });
+      const row = await this.db.query.series.findFirst({
+        where: eq(schema.series.slug, key),
+        columns: { id: true },
+      });
+      seriesId = row!.id;
+      await this.db
+        .insert(schema.series_aliases)
+        .values({ alias: key, seriesId })
+        .onConflictDoNothing();
+    }
+    await this.db
+      .update(schema.series)
+      .set({ lastSeenAt: new Date() })
+      .where(eq(schema.series.id, seriesId));
+    return seriesId;
+  }
+
+  /** Special-screening filters shared by the movie ids and the screenings. */
+  async buildSpecialCondition(params: {
+    special?: boolean;
+    specialType?: string;
+    seriesSlug?: string;
+  }) {
+    if (params.seriesSlug) {
+      const series = await this.db.query.series.findFirst({
+        where: eq(schema.series.slug, params.seriesSlug),
+        columns: { id: true },
+      });
+      // Unknown series: match nothing rather than everything.
+      return eq(schema.screenings.seriesId, series?.id ?? -1);
+    }
+    if (params.specialType) {
+      return eq(
+        schema.screenings.specialType,
+        params.specialType as SpecialType,
+      );
+    }
+    if (params.special) return isNotNull(schema.screenings.specialType);
+    return undefined;
+  }
 
   private async resolveLocationCondition(
     cityId?: number,

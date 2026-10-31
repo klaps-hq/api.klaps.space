@@ -18,6 +18,7 @@ describe('SitemapService', () => {
             findCityEntries: jest.fn().mockResolvedValue([]),
             findGenreEntries: jest.fn().mockResolvedValue([]),
             findDirectorEntries: jest.fn().mockResolvedValue([]),
+            findSeriesEntries: jest.fn().mockResolvedValue([]),
           },
         },
       ],
@@ -58,6 +59,7 @@ describe('SitemapService', () => {
         directors: [
           { slug: 'pawel-pawlikowski', updatedAt: '2026-06-01T12:00:00.000Z' },
         ],
+        series: [],
       });
     });
 
@@ -81,6 +83,7 @@ describe('SitemapService', () => {
         cities: [],
         genres: [],
         directors: [],
+        series: [],
       });
     });
   });

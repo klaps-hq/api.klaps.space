@@ -78,10 +78,19 @@ const mockDb = {
     directors: {
       findFirst: jest.fn(),
     },
+    series: {
+      findFirst: jest.fn(),
+    },
+    series_aliases: {
+      findFirst: jest.fn(),
+    },
   },
   selectDistinct: mockSelectDistinct,
   select: mockSelect,
   insert: mockInsert,
+  update: jest.fn().mockReturnValue({
+    set: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+  }),
 };
 
 describe('ScreeningsRepository', () => {
@@ -344,6 +353,7 @@ describe('ScreeningsRepository', () => {
               cinema: expect.objectContaining({
                 with: { city: expect.anything() },
               }),
+              series: { columns: { slug: true } },
             },
             where: expect.anything(),
           }),
@@ -724,6 +734,36 @@ describe('ScreeningsRepository', () => {
         where: expect.anything(),
       });
     });
+
+    it('stores the special fields and the series found by alias', async () => {
+      mockDb.query.series_aliases.findFirst.mockResolvedValue({
+        alias: 'helios-replay',
+        seriesId: 7,
+      });
+      mockDb.query.screenings.findFirst.mockResolvedValue({ id: 1 });
+
+      await repo.insert({
+        ...dto,
+        specialType: 'cycle',
+        specialLabel: 'Helios RePlay',
+        editionNote: '30. rocznica',
+        series: { name: 'Helios RePlay', type: 'cycle', organizer: 'Helios' },
+      });
+
+      const special = {
+        specialType: 'cycle',
+        specialLabel: 'Helios RePlay',
+        editionNote: '30. rocznica',
+        seriesId: 7,
+      };
+      expect(mockValues).toHaveBeenCalledWith(expect.objectContaining(special));
+      expect(mockOnDuplicateKeyUpdate).toHaveBeenCalledWith({
+        target: expect.anything(),
+        set: expect.objectContaining(special),
+      });
+      // The alias already exists: no new series.
+      expect(mockInsert).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('findProfileData', () => {
@@ -757,6 +797,29 @@ describe('ScreeningsRepository', () => {
       });
 
       expect(containsChunk(rowsWhere(), inIndependentCinema)).toBe(false);
+    });
+
+    it('should add a lower date bound only when since is given', async () => {
+      mockDb.query.directors.findFirst.mockResolvedValue({ id: 7 });
+      const since = new Date('2026-03-01T00:00:00.000Z');
+      // Bound values are wrapped in drizzle Param chunks.
+      const bindsSince = (node: unknown): boolean => {
+        if (node && typeof node === 'object' && 'value' in node) {
+          return node.value === since;
+        }
+        if (Array.isArray(node)) return node.some(bindsSince);
+        if (node && typeof node === 'object' && 'queryChunks' in node) {
+          return bindsSince((node as { queryChunks: unknown[] }).queryChunks);
+        }
+        return false;
+      };
+
+      await repo.findProfileData({ until, directorSlug: 'joe-russo' });
+      const withoutSince = rowsWhere();
+      await repo.findProfileData({ since, until, directorSlug: 'joe-russo' });
+
+      expect(bindsSince(withoutSince)).toBe(false);
+      expect(bindsSince(rowsWhere())).toBe(true);
     });
 
     it('should keep chain multiplexes in a city profile', async () => {

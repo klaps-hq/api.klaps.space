@@ -12,6 +12,10 @@ import { Transform, Type } from 'class-transformer';
 import { getTodayInPoland } from '../../lib/date';
 import { VOIVODESHIPS, type Voivodeship } from '../../lib/voivodeships';
 import { QueryBoolean } from '../../lib/query-boolean';
+import {
+  SPECIAL_TYPES,
+  type SpecialType,
+} from '../../database/schemas/series.schema';
 
 export class GetScreeningsQueryDto {
   @IsOptional()
@@ -102,4 +106,18 @@ export class GetScreeningsQueryDto {
   @QueryBoolean()
   @IsBoolean()
   classic?: boolean;
+
+  /** Only special screenings (cycles, anniversaries, festivals...). */
+  @IsOptional()
+  @QueryBoolean()
+  @IsBoolean()
+  special?: boolean;
+
+  @IsOptional()
+  @IsIn(SPECIAL_TYPES)
+  specialType?: SpecialType;
+
+  @IsOptional()
+  @IsString({ message: 'seriesSlug must be a string' })
+  seriesSlug?: string;
 }

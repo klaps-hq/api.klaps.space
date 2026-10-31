@@ -47,6 +47,11 @@ export const PROFILE_TOP_LIMIT = 5;
  */
 export const PROFILE_TOP_CINEMAS_LIMIT = 20;
 
+export type ProfileOptions = {
+  /** List every city in topCities instead of the top PROFILE_TOP_LIMIT. */
+  allCities?: boolean;
+};
+
 const EMPTY_PROFILE: ProgrammeProfileResponse = {
   since: null,
   until: null,
@@ -67,9 +72,35 @@ const EMPTY_PROFILE: ProgrammeProfileResponse = {
   topDirectors: [],
   topCinemas: [],
   topCities: [],
+  byMonth: [],
 };
 
 const toDay = (date: Date): string => date.toISOString().slice(0, 10);
+
+/**
+ * Every calendar month from the first to the last key (YYYY-MM), with the
+ * months without screenings filled in as zero, so a chart drawn from the
+ * list shows gaps instead of silently joining the months around them.
+ */
+const fillMonths = (
+  months: Map<string, number>,
+): { month: string; screenings: number }[] => {
+  const keys = [...months.keys()].sort();
+  if (keys.length === 0) return [];
+  const [lastYear, lastMonth] = keys[keys.length - 1].split('-').map(Number);
+  let [year, month] = keys[0].split('-').map(Number);
+  const result: { month: string; screenings: number }[] = [];
+  while (year < lastYear || (year === lastYear && month <= lastMonth)) {
+    const key = `${year}-${String(month).padStart(2, '0')}`;
+    result.push({ month: key, screenings: months.get(key) ?? 0 });
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
+  }
+  return result;
+};
 
 /**
  * Sorts a tally by count (desc), then by name so ties are stable between
@@ -100,6 +131,7 @@ const bump = <T extends object>(
  */
 export const buildProgrammeProfile = (
   input: ProfileInput,
+  options: ProfileOptions = {},
 ): ProgrammeProfileResponse => {
   const movies = new Map(input.movies.map((m) => [m.id, m]));
   // The scraper sometimes keeps a second row for a film it already has
@@ -162,6 +194,8 @@ export const buildProgrammeProfile = (
     if (row.date < since) since = row.date;
     if (row.date > until) until = row.date;
 
+    // Stored timestamps are the Polish wall clock labelled as UTC, so the
+    // UTC month is the Europe/Warsaw month.
     const month = toDay(row.date).slice(0, 7);
     months.set(month, (months.get(month) ?? 0) + 1);
     // Monday-first index: getUTCDay() is Sunday-first, and the stored
@@ -255,6 +289,10 @@ export const buildProgrammeProfile = (
     topGenres: rank(topGenres),
     topDirectors: rank(topDirectors),
     topCinemas: rank(topCinemas, PROFILE_TOP_CINEMAS_LIMIT),
-    topCities: rank(topCities),
+    topCities: rank(
+      topCities,
+      options.allCities ? Number.POSITIVE_INFINITY : PROFILE_TOP_LIMIT,
+    ),
+    byMonth: fillMonths(months),
   };
 };

@@ -64,6 +64,7 @@ describe('buildProgrammeProfile', () => {
     expect(profile.screenings).toBe(0);
     expect(profile.since).toBeNull();
     expect(profile.busiestMonth).toBeNull();
+    expect(profile.byMonth).toEqual([]);
   });
 
   it('aggregates counts, dates and calendar facts', () => {
@@ -125,5 +126,78 @@ describe('buildProgrammeProfile', () => {
     expect(profile.screenings).toBe(3);
     expect(profile.movies).toBe(2);
     expect(profile.topMovies[0].slug).toBe('rejs-1970');
+  });
+
+  it('breaks screenings down by month, oldest first', () => {
+    const profile = buildProgrammeProfile(baseInput());
+
+    expect(profile.byMonth).toEqual([
+      { month: '2026-03', screenings: 1 },
+      { month: '2026-04', screenings: 2 },
+    ]);
+  });
+
+  it('lists months without screenings as zero, across a year end', () => {
+    const input = baseInput();
+    input.rows = [
+      { ...input.rows[0], date: at('2025-11-30T20:00:00') },
+      { ...input.rows[1], date: at('2026-02-01T00:30:00') },
+    ];
+
+    const profile = buildProgrammeProfile(input);
+
+    expect(profile.byMonth).toEqual([
+      { month: '2025-11', screenings: 1 },
+      { month: '2025-12', screenings: 0 },
+      { month: '2026-01', screenings: 0 },
+      { month: '2026-02', screenings: 1 },
+    ]);
+  });
+
+  it('counts a late-night screening in its Polish calendar month', () => {
+    const input = baseInput();
+    // 23:30 on 31 March in Warsaw; the stored value already is the wall
+    // clock, so it must not be shifted into April.
+    input.rows = [{ ...input.rows[0], date: at('2026-03-31T23:30:00') }];
+
+    const profile = buildProgrammeProfile(input);
+
+    expect(profile.byMonth).toEqual([{ month: '2026-03', screenings: 1 }]);
+  });
+
+  it('keeps byMonth consistent with the deduplicated screening count', () => {
+    const input = baseInput();
+    input.movies.push({
+      id: 3,
+      slug: 'rejs-1970-2',
+      title: 'Rejs',
+      productionYear: 1970,
+    });
+    input.rows.push({ ...input.rows[0], movieId: 3 });
+
+    const profile = buildProgrammeProfile(input);
+
+    expect(profile.byMonth.reduce((sum, m) => sum + m.screenings, 0)).toBe(
+      profile.screenings,
+    );
+  });
+
+  it('lists only the top cities unless allCities is set', () => {
+    const input = baseInput();
+    for (let i = 0; i < 6; i += 1) {
+      input.cinemas.push({
+        sourceId: 100 + i,
+        slug: `kino-${i}`,
+        name: `Kino ${i}`,
+        citySlug: `miasto-${i}`,
+        cityName: `Miasto ${i}`,
+      });
+      input.rows.push({ ...input.rows[0], cinemaId: 100 + i });
+    }
+
+    expect(buildProgrammeProfile(input).topCities).toHaveLength(5);
+    const all = buildProgrammeProfile(input, { allCities: true }).topCities;
+    expect(all).toHaveLength(8);
+    expect(all.reduce((sum, c) => sum + c.count, 0)).toBe(9);
   });
 });
