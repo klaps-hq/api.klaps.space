@@ -337,8 +337,8 @@ export class ScreeningsRepository {
    * Genre and director scopes leave out screenings in chain multiplexes
    * unless `includeChains` is set: there a mass reissue (632 Avengers
    * screenings at Planet Cinema and GO KINO) would otherwise pass for the
-   * director's special-screenings record. Cinema, city and movie scopes
-   * always count every venue.
+   * director's special-screenings record. Cinema and movie scopes always
+   * count every venue; a city scope does unless `independentOnly` is set.
    */
   async findProfileData(params: {
     until: Date;
@@ -348,6 +348,7 @@ export class ScreeningsRepository {
     directorSlug?: string;
     movieSlug?: string;
     includeChains?: boolean;
+    independentOnly?: boolean;
   }): Promise<ProfileInput | null> {
     const scope = await this.resolveProfileScope(params);
     if (!scope) return null;
@@ -444,19 +445,22 @@ export class ScreeningsRepository {
     directorSlug?: string;
     movieSlug?: string;
     includeChains?: boolean;
+    independentOnly?: boolean;
   }) {
     const venueCondition = params.includeChains
       ? undefined
       : inIndependentCinema;
     if (params.cinemaSlug || params.citySlug) {
-      return (
-        (await this.resolveLocationCondition(
-          undefined,
-          params.citySlug,
-          undefined,
-          params.cinemaSlug,
-        )) ?? null
+      const location = await this.resolveLocationCondition(
+        undefined,
+        params.citySlug,
+        undefined,
+        params.cinemaSlug,
       );
+      if (!location) return null;
+      return !params.cinemaSlug && params.independentOnly
+        ? and(location, inIndependentCinema)
+        : location;
     }
     if (params.genreSlug) {
       const genre = await this.db.query.genres.findFirst({

@@ -724,5 +724,17 @@ describe('ScreeningsRepository', () => {
 
       expect(containsChunk(rowsWhere(), inIndependentCinema)).toBe(false);
     });
+
+    it('should leave chain multiplexes out of a city profile with independentOnly', async () => {
+      mockDb.query.cities.findFirst.mockResolvedValue({ sourceId: 1 });
+
+      await repo.findProfileData({
+        until,
+        citySlug: 'torun',
+        independentOnly: true,
+      });
+
+      expect(containsChunk(rowsWhere(), inIndependentCinema)).toBe(true);
+    });
   });
 });
