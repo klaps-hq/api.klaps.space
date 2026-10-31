@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  getDatePlusDays,
   getDateRangeUpToMonthFromNow,
   getNowInPolandWallClock,
 } from '../lib/date';
@@ -189,12 +190,19 @@ export class ScreeningsService {
   async getProgrammeProfile(
     params: GetProgrammeProfileParams,
   ): Promise<ProgrammeProfileResponse> {
+    const { from, to, allCities, ...scope } = params;
+    // Stored timestamps are the Polish wall clock labelled as UTC, so a
+    // Polish calendar day starts at its UTC midnight.
+    const now = getNowInPolandWallClock();
+    const toEnd = to ? new Date(`${getDatePlusDays(to, 1)}T00:00:00Z`) : null;
     const data = await this.repo.findProfileData({
-      ...params,
-      until: getNowInPolandWallClock(),
+      ...scope,
+      since: from ? new Date(`${from}T00:00:00Z`) : undefined,
+      until: toEnd && toEnd < now ? toEnd : now,
     });
     return buildProgrammeProfile(
       data ?? { rows: [], movies: [], genres: [], directors: [], cinemas: [] },
+      { allCities },
     );
   }
 

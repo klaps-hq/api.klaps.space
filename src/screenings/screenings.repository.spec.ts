@@ -759,6 +759,29 @@ describe('ScreeningsRepository', () => {
       expect(containsChunk(rowsWhere(), inIndependentCinema)).toBe(false);
     });
 
+    it('should add a lower date bound only when since is given', async () => {
+      mockDb.query.directors.findFirst.mockResolvedValue({ id: 7 });
+      const since = new Date('2026-03-01T00:00:00.000Z');
+      // Bound values are wrapped in drizzle Param chunks.
+      const bindsSince = (node: unknown): boolean => {
+        if (node && typeof node === 'object' && 'value' in node) {
+          return node.value === since;
+        }
+        if (Array.isArray(node)) return node.some(bindsSince);
+        if (node && typeof node === 'object' && 'queryChunks' in node) {
+          return bindsSince((node as { queryChunks: unknown[] }).queryChunks);
+        }
+        return false;
+      };
+
+      await repo.findProfileData({ until, directorSlug: 'joe-russo' });
+      const withoutSince = rowsWhere();
+      await repo.findProfileData({ since, until, directorSlug: 'joe-russo' });
+
+      expect(bindsSince(withoutSince)).toBe(false);
+      expect(bindsSince(rowsWhere())).toBe(true);
+    });
+
     it('should keep chain multiplexes in a city profile', async () => {
       mockDb.query.cities.findFirst.mockResolvedValue({ sourceId: 1 });
 

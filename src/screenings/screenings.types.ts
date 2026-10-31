@@ -136,6 +136,15 @@ export type GetProgrammeProfileParams = {
    * [mieście]" page otherwise showed multiplex numbers under that heading.
    */
   independentOnly?: boolean;
+  /**
+   * Narrow the profile to screenings on or after `from` and on or before
+   * `to` (YYYY-MM-DD, Polish calendar days). Past screenings only, so `to`
+   * never reaches beyond now.
+   */
+  from?: string;
+  to?: string;
+  /** List every city in topCities instead of the top five. */
+  allCities?: boolean;
 };
 
 /** A ranked entity in a programme profile: a genre, director, city, etc. */
@@ -176,5 +185,12 @@ export type ProgrammeProfileResponse = {
   topGenres: ProfileRanked[];
   topDirectors: ProfileRanked[];
   topCinemas: (ProfileRanked & { citySlug: string; cityName: string })[];
+  /** Top five cities, or every city when requested with `allCities`. */
   topCities: ProfileRanked[];
+  /**
+   * Screenings per calendar month (YYYY-MM, Polish wall clock), oldest
+   * first, from the first to the last month with a screening. Months in
+   * between without screenings are listed with zero.
+   */
+  byMonth: { month: string; screenings: number }[];
 };
