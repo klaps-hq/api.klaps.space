@@ -113,11 +113,14 @@ export class IndexNowService implements OnModuleDestroy {
       ...changed(sitemap.cities, 'miasta'),
       ...changed(sitemap.genres, 'gatunki'),
       ...changed(sitemap.directors, 'rezyserzy'),
-      // A series page with nothing scheduled is not worth a ping.
-      ...changed(
-        sitemap.series.filter((s) => s.hasUpcoming),
-        'cykle',
-      ),
+      // Off until the frontend serves /cykle (INDEXNOW_SERIES=true); a
+      // series page with nothing scheduled is never worth a ping.
+      ...(this.configService.get<string>('INDEXNOW_SERIES') === 'true'
+        ? changed(
+            sitemap.series.filter((s) => s.hasUpcoming),
+            'cykle',
+          )
+        : []),
     ];
 
     return urls.slice(0, MAX_URLS);
