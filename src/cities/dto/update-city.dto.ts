@@ -32,6 +32,11 @@ export class UpdateCityDto {
   @IsString()
   description?: string | null;
 
+  /** Long guide to the city's cinemas (paragraphs split by blank lines). */
+  @IsOptional()
+  @IsString()
+  guide?: string | null;
+
   @IsOptional()
   @IsIn(VOIVODESHIPS)
   voivodeship?: Voivodeship;

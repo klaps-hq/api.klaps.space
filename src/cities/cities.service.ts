@@ -76,6 +76,6 @@ export class CitiesService {
   ): Promise<CityResponse | null> {
     const city = await this.repo.updateBySlug(slug, data);
     if (!city) return null;
-    return mapCity(city);
+    return { ...mapCity(city), guide: city.guide ?? null };
   }
 }

@@ -244,7 +244,7 @@ describe('CitiesService', () => {
       expect(repo.updateBySlug).toHaveBeenCalledWith('warszawa', {
         description: 'Nowy opis',
       });
-      expect(result).toEqual(mockCityResponse);
+      expect(result).toEqual({ ...mockCityResponse, guide: null });
     });
 
     it('should return null when city not found', async () => {
