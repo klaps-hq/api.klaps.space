@@ -4,7 +4,7 @@ import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
 import { and, asc, eq, ilike, inArray, isNotNull, or, sql } from 'drizzle-orm';
-import type { Cinema } from '../database/schemas/cinemas.schema';
+import type { Cinema, CinemaPhoto } from '../database/schemas/cinemas.schema';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
 import { cinemaSlug, toSlug, uniqueSlug } from '../lib/slug';
@@ -202,7 +202,10 @@ export class CinemasRepository {
 
   async updateBySlug(
     slug: string,
-    data: UpdateCinemaDto & { detailsUpdatedAt?: Date },
+    data: UpdateCinemaDto & {
+      detailsUpdatedAt?: Date;
+      photos?: CinemaPhoto[] | null;
+    },
   ): Promise<Cinema | null> {
     const condition = eq(schema.cinemas.slug, slug);
 

@@ -11,6 +11,7 @@ import {
   CINEMA_DETAIL_FIELDS,
   type UpdateCinemaDto,
 } from './dto/update-cinema.dto';
+import type { SetCinemaPhotosDto } from './dto/set-cinema-photos.dto';
 import { CinemasRepository } from './cinemas.repository';
 import { CitiesService } from '../cities/cities.service';
 
@@ -91,6 +92,18 @@ export class CinemasService {
       slug,
       touchesDetails ? { ...data, detailsUpdatedAt: new Date() } : data,
     );
+    if (!cinema) return null;
+    return mapCinemaDetail(cinema);
+  }
+
+  async setCinemaPhotosBySlug(
+    slug: string,
+    { photos }: SetCinemaPhotosDto,
+  ): Promise<CinemaResponse | null> {
+    const cinema = await this.repo.updateBySlug(slug, {
+      photos: photos.length > 0 ? photos : null,
+      detailsUpdatedAt: new Date(),
+    });
     if (!cinema) return null;
     return mapCinemaDetail(cinema);
   }

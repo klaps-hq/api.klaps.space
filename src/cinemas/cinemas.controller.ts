@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -17,6 +18,7 @@ import type { CinemaResponse, CinemaSummaryResponse } from './cinemas.types';
 import { GetCinemasQueryDto } from './dto/get-cinemas-query.dto';
 import { CreateCinemasBatchDto } from './dto/create-cinemas-batch.dto';
 import { UpdateCinemaDto } from './dto/update-cinema.dto';
+import { SetCinemaPhotosDto } from './dto/set-cinema-photos.dto';
 
 @Controller('cinemas')
 export class CinemasController {
@@ -68,6 +70,20 @@ export class CinemasController {
     @Body() body: UpdateCinemaDto,
   ): Promise<CinemaResponse> {
     const cinema = await this.cinemasService.updateCinemaBySlug(slug, body);
+
+    if (!cinema) throw new NotFoundException(`Cinema "${slug}" not found`);
+    return cinema;
+  }
+
+  // Gallery is written only by the scraper's photo pipeline (and takedowns),
+  // so it has its own endpoint instead of a field in UpdateCinemaDto.
+  @Put(':slug/photos')
+  @UseGuards(InternalApiKeyGuard)
+  async setCinemaPhotosBySlug(
+    @Param('slug') slug: string,
+    @Body() body: SetCinemaPhotosDto,
+  ): Promise<CinemaResponse> {
+    const cinema = await this.cinemasService.setCinemaPhotosBySlug(slug, body);
 
     if (!cinema) throw new NotFoundException(`Cinema "${slug}" not found`);
     return cinema;
