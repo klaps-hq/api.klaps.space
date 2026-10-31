@@ -194,6 +194,7 @@ describe('SocialsRepository', () => {
           movie: {
             with: {
               movies_genres: true,
+              movies_countries: { with: { country: true } },
             },
           },
           cinema: {

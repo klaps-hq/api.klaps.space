@@ -78,6 +78,8 @@ export class SocialsRepository {
         movie: {
           with: {
             movies_genres: true,
+            // Production countries, for themed reels (e.g. Polish films on 11 November).
+            movies_countries: { with: { country: true } },
           },
         },
         cinema: {
