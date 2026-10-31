@@ -758,9 +758,12 @@ export class ScreeningsRepository {
         );
     }
 
-    const { date, ...rest } = dto;
+    const { date, series, ...rest } = dto;
     const values: Partial<NewScreening> = { ...rest, updatedAt: new Date() };
     if (date !== undefined) values.date = new Date(date);
+    if (series !== undefined) {
+      values.seriesId = series ? await this.resolveSeriesId(series) : null;
+    }
 
     await this.db
       .update(schema.screenings)
