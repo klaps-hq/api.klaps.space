@@ -324,5 +324,16 @@ describe('CinemasService', () => {
 
       expect(result).toBeNull();
     });
+
+    it('should stamp detailsUpdatedAt when venue details change', async () => {
+      repo.updateBySlug.mockResolvedValue(mockCinemaWithCity);
+
+      await service.updateCinemaBySlug('kino-muranow', { phone: '123' });
+
+      expect(repo.updateBySlug).toHaveBeenCalledWith('kino-muranow', {
+        phone: '123',
+        detailsUpdatedAt: expect.any(Date),
+      });
+    });
   });
 });
