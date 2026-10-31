@@ -105,5 +105,8 @@ export const mapCinemaDetails = (
   rooms: cinema.rooms ?? [],
   accessibility: cinema.accessibility ?? null,
   logoUrl: cinema.logoUrl ?? null,
-  photos: cinema.photos ?? [],
+  photos: (cinema.photos ?? []).map((photo) => ({
+    ...photo,
+    source: photo.source ?? 'commons',
+  })),
 });
