@@ -26,10 +26,13 @@ export type CinemaAccessibility = {
 export type CinemaPhoto = {
   /** Image URL (Commons thumbnail or our mirror). */
   url: string;
-  /** Commons file page, linked from the attribution. */
+  /** Commons file page or the cinema page the photo was taken from. */
   sourceUrl: string;
   author: string;
-  license: string;
+  /** Missing on rows imported before website photos existed: Commons. */
+  source?: 'commons' | 'website';
+  /** Null for website photos, which carry no free licence. */
+  license: string | null;
   licenseUrl: string | null;
 };
 
@@ -75,7 +78,8 @@ export const cinemasTable = pgTable('cinemas', {
   accessibility: jsonb().$type<CinemaAccessibility>(),
   // Mirrored to our media bucket; never hotlinked from the cinema's site.
   logoUrl: varchar({ length: 512 }),
-  // Freely licensed photos only (Wikimedia Commons), with attribution.
+  // Commons photos (with licence) and photos from the cinema's own website,
+  // always with the author and a link to the source.
   photos: jsonb().$type<CinemaPhoto[]>(),
   detailsUpdatedAt: timestamp(),
   createdAt: timestamp().notNull().defaultNow(),

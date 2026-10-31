@@ -336,4 +336,45 @@ describe('CinemasService', () => {
       });
     });
   });
+
+  describe('setCinemaPhotosBySlug', () => {
+    const photo = {
+      url: 'https://media.klaps.space/klaps-cms-media/cinemas/x/photo-1.jpg',
+      sourceUrl: 'https://kino.pl/o-kinie',
+      author: 'Kino Muranow',
+      source: 'website' as const,
+      license: null,
+      licenseUrl: null,
+    };
+
+    it('should store the gallery and stamp detailsUpdatedAt', async () => {
+      repo.updateBySlug.mockResolvedValue(mockCinemaWithCity);
+
+      await service.setCinemaPhotosBySlug('kino-muranow', { photos: [photo] });
+
+      expect(repo.updateBySlug).toHaveBeenCalledWith('kino-muranow', {
+        photos: [photo],
+        detailsUpdatedAt: expect.any(Date),
+      });
+    });
+
+    it('should clear the column for an empty gallery', async () => {
+      repo.updateBySlug.mockResolvedValue(mockCinemaWithCity);
+
+      await service.setCinemaPhotosBySlug('kino-muranow', { photos: [] });
+
+      expect(repo.updateBySlug).toHaveBeenCalledWith('kino-muranow', {
+        photos: null,
+        detailsUpdatedAt: expect.any(Date),
+      });
+    });
+
+    it('should return null when cinema not found', async () => {
+      repo.updateBySlug.mockResolvedValue(null);
+
+      expect(
+        await service.setCinemaPhotosBySlug('nieistniejace', { photos: [] }),
+      ).toBeNull();
+    });
+  });
 });

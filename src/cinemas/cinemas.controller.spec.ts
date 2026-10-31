@@ -56,6 +56,7 @@ describe('CinemasController', () => {
             getCinemaBySlug: jest.fn(),
             createCinemasBatch: jest.fn(),
             updateCinemaBySlug: jest.fn(),
+            setCinemaPhotosBySlug: jest.fn(),
           },
         },
         {
@@ -173,6 +174,32 @@ describe('CinemasController', () => {
 
       await expect(
         controller.patchCinemaBySlug('nieistniejace', { name: 'x' } as any),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('setCinemaPhotosBySlug', () => {
+    it('should return updated cinema when found', async () => {
+      service.setCinemaPhotosBySlug.mockResolvedValue(mockCinemaResponse);
+
+      const body = { photos: [] };
+      const result = await controller.setCinemaPhotosBySlug(
+        'kino-muranow',
+        body,
+      );
+
+      expect(service.setCinemaPhotosBySlug).toHaveBeenCalledWith(
+        'kino-muranow',
+        body,
+      );
+      expect(result).toEqual(mockCinemaResponse);
+    });
+
+    it('should throw NotFoundException when cinema not found', async () => {
+      service.setCinemaPhotosBySlug.mockResolvedValue(null);
+
+      await expect(
+        controller.setCinemaPhotosBySlug('nieistniejace', { photos: [] }),
       ).rejects.toThrow(NotFoundException);
     });
   });
