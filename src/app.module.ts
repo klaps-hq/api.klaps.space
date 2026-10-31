@@ -17,6 +17,8 @@ import { SearchModule } from './search/search.module';
 import { SitemapModule } from './sitemap/sitemap.module';
 import { LandingIntrosModule } from './landing-intros/landing-intros.module';
 import { AdminModule } from './admin/admin.module';
+import { SeriesModule } from './series/series.module';
+import { TicketingMatchesModule } from './ticketing-matches/ticketing-matches.module';
 import { InternalBypassThrottlerGuard } from './guards/internal-bypass-throttler.guard';
 import { DatabaseExceptionFilter } from './common/filters/database-exception.filter';
 import { AppLoggerModule } from './logger/logger.module';
@@ -42,6 +44,8 @@ import { HealthModule } from './health/health.module';
     LandingIntrosModule,
     SitemapModule,
     AdminModule,
+    SeriesModule,
+    TicketingMatchesModule,
     ThrottlerModule.forRoot([
       { name: 'short', ttl: 10_000, limit: 30 },
       { name: 'long', ttl: 60_000, limit: 100 },

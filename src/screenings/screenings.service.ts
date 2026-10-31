@@ -66,6 +66,9 @@ export class ScreeningsService {
       search: params?.search,
       openAir: params?.openAir,
       classic: params?.classic,
+      special: params?.special,
+      specialType: params?.specialType,
+      seriesSlug: params?.seriesSlug,
     });
 
     if (movieIds.length === 0) return [];
@@ -81,6 +84,9 @@ export class ScreeningsService {
         cinemaId: params?.cinemaId,
         cinemaSlug: params?.cinemaSlug,
         openAir: params?.openAir,
+        special: params?.special,
+        specialType: params?.specialType,
+        seriesSlug: params?.seriesSlug,
       },
     );
 

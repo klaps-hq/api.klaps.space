@@ -18,6 +18,11 @@ export { moviesDirectorsTable as movies_directors } from './movies_directors.sch
 export { moviesGenresTable as movies_genres } from './movies_genres.schema';
 export { moviesScriptwritersTable as movies_scriptwriters } from './movies_scriptwriters.schema';
 export { screeningsTable as screenings } from './screenings.schema';
+export {
+  seriesTable as series,
+  seriesAliasesTable as series_aliases,
+} from './series.schema';
+export { ticketingMatchesTable as ticketing_matches } from './ticketing_matches.schema';
 export { scrapersTable as scrapers } from './scrapers.schema';
 export { scraperRunsTable as scraper_runs } from './scraper_runs.schema';
 export { scraperLogsTable as scraper_logs } from './scraper_logs.schema';

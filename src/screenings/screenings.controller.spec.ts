@@ -157,6 +157,10 @@ describe('ScreeningsController', () => {
         type: 'regular',
         isDubbing: false,
         isSubtitled: true,
+        specialType: null,
+        specialLabel: null,
+        editionNote: null,
+        seriesId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };

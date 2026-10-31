@@ -562,6 +562,10 @@ describe('ScreeningsService', () => {
         id: 1,
         ...dto,
         date: new Date(dto.date),
+        specialType: null,
+        specialLabel: null,
+        editionNote: null,
+        seriesId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };

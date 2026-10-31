@@ -78,10 +78,19 @@ const mockDb = {
     directors: {
       findFirst: jest.fn(),
     },
+    series: {
+      findFirst: jest.fn(),
+    },
+    series_aliases: {
+      findFirst: jest.fn(),
+    },
   },
   selectDistinct: mockSelectDistinct,
   select: mockSelect,
   insert: mockInsert,
+  update: jest.fn().mockReturnValue({
+    set: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+  }),
 };
 
 describe('ScreeningsRepository', () => {
@@ -344,6 +353,7 @@ describe('ScreeningsRepository', () => {
               cinema: expect.objectContaining({
                 with: { city: expect.anything() },
               }),
+              series: { columns: { slug: true } },
             },
             where: expect.anything(),
           }),
@@ -723,6 +733,36 @@ describe('ScreeningsRepository', () => {
       expect(mockDb.query.screenings.findFirst).toHaveBeenCalledWith({
         where: expect.anything(),
       });
+    });
+
+    it('stores the special fields and the series found by alias', async () => {
+      mockDb.query.series_aliases.findFirst.mockResolvedValue({
+        alias: 'helios-replay',
+        seriesId: 7,
+      });
+      mockDb.query.screenings.findFirst.mockResolvedValue({ id: 1 });
+
+      await repo.insert({
+        ...dto,
+        specialType: 'cycle',
+        specialLabel: 'Helios RePlay',
+        editionNote: '30. rocznica',
+        series: { name: 'Helios RePlay', type: 'cycle', organizer: 'Helios' },
+      });
+
+      const special = {
+        specialType: 'cycle',
+        specialLabel: 'Helios RePlay',
+        editionNote: '30. rocznica',
+        seriesId: 7,
+      };
+      expect(mockValues).toHaveBeenCalledWith(expect.objectContaining(special));
+      expect(mockOnDuplicateKeyUpdate).toHaveBeenCalledWith({
+        target: expect.anything(),
+        set: expect.objectContaining(special),
+      });
+      // The alias already exists: no new series.
+      expect(mockInsert).toHaveBeenCalledTimes(1);
     });
   });
 
