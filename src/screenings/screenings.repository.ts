@@ -396,7 +396,7 @@ export class ScreeningsRepository {
 
   /**
    * Raw data for a programme profile: every screening in the scope before
-   * `until`, plus the film, genre, director and cinema metadata it needs.
+   * `until` (and from `since` on, when given), plus the film, genre, director and cinema metadata it needs.
    * Rows are aggregated in buildProgrammeProfile; even a city-wide scope is a
    * few thousand narrow rows over the whole history.
    *
@@ -410,6 +410,7 @@ export class ScreeningsRepository {
    * count every venue; a city scope does unless `independentOnly` is set.
    */
   async findProfileData(params: {
+    since?: Date;
     until: Date;
     cinemaSlug?: string;
     citySlug?: string;
@@ -436,7 +437,13 @@ export class ScreeningsRepository {
         schema.showtimes,
         eq(schema.screenings.showtimeId, schema.showtimes.id),
       )
-      .where(and(lt(schema.screenings.date, params.until), scope));
+      .where(
+        and(
+          params.since ? gte(schema.screenings.date, params.since) : undefined,
+          lt(schema.screenings.date, params.until),
+          scope,
+        ),
+      );
 
     const movieIds = [...new Set(rows.map((r) => r.movieId))];
     const cinemaIds = [...new Set(rows.map((r) => r.cinemaId))];

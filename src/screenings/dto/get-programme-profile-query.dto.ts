@@ -1,5 +1,7 @@
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, Matches } from 'class-validator';
 import { QueryBoolean } from '../../lib/query-boolean';
+
+const DATE_PATTERN = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 
 /**
  * Query for GET /screenings/profile. Exactly one scope is expected; when
@@ -10,6 +12,9 @@ import { QueryBoolean } from '../../lib/query-boolean';
  * Genre and director profiles count only independent cinemas unless
  * `includeChains=true`; cinema, city and movie profiles ignore the flag.
  * A city profile counts independent cinemas only with `independentOnly=true`.
+ *
+ * `from` and `to` (YYYY-MM-DD, both inclusive) narrow the profile to a date
+ * range; `allCities=true` lists every city instead of the top five.
  */
 export class GetProgrammeProfileQueryDto {
   @IsOptional()
@@ -41,4 +46,19 @@ export class GetProgrammeProfileQueryDto {
   @QueryBoolean()
   @IsBoolean()
   independentOnly?: boolean;
+
+  @IsOptional()
+  @Matches(DATE_PATTERN, {
+    message: 'from must be a date in YYYY-MM-DD format',
+  })
+  from?: string;
+
+  @IsOptional()
+  @Matches(DATE_PATTERN, { message: 'to must be a date in YYYY-MM-DD format' })
+  to?: string;
+
+  @IsOptional()
+  @QueryBoolean()
+  @IsBoolean()
+  allCities?: boolean;
 }

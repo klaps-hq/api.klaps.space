@@ -4,6 +4,10 @@ jest.mock('../lib/date', () => ({
     .fn()
     .mockReturnValue({ startDay: '2025-01-01', endDay: '2025-02-01' }),
   getTodayInPoland: jest.fn().mockReturnValue('2026-10-28'),
+  getNowInPolandWallClock: jest
+    .fn()
+    .mockReturnValue(new Date('2026-10-30T12:00:00.000Z')),
+  getDatePlusDays: jest.requireActual('../lib/date').getDatePlusDays,
 }));
 jest.mock('./screenings.mapper', () => ({
   mapScreening: jest.fn((s: any) => ({ id: s.id, mapped: true })),
@@ -49,6 +53,7 @@ describe('ScreeningsService', () => {
             findRecentVenueStats: jest.fn(),
             findMovieSummariesByIds: jest.fn(),
             findMovieIdsWithScreeningsBetween: jest.fn(),
+            findProfileData: jest.fn(),
             insert: jest.fn(),
           },
         },
@@ -384,6 +389,90 @@ describe('ScreeningsService', () => {
       });
 
       expect(result.map((r) => r.movie.id)).toEqual([984, 3]);
+    });
+  });
+
+  describe('getProgrammeProfile', () => {
+    const now = new Date('2026-10-30T12:00:00.000Z');
+
+    it('should count every past screening without a date range', async () => {
+      repo.findProfileData.mockResolvedValue(null);
+
+      const result = await service.getProgrammeProfile({
+        directorSlug: 'andrzej-wajda',
+      });
+
+      expect(repo.findProfileData).toHaveBeenCalledWith({
+        directorSlug: 'andrzej-wajda',
+        since: undefined,
+        until: now,
+      });
+      expect(result.screenings).toBe(0);
+      expect(result.byMonth).toEqual([]);
+    });
+
+    it('should narrow the profile to whole Polish days from and to', async () => {
+      repo.findProfileData.mockResolvedValue(null);
+
+      await service.getProgrammeProfile({
+        directorSlug: 'andrzej-wajda',
+        from: '2026-03-01',
+        to: '2026-06-30',
+      });
+
+      expect(repo.findProfileData).toHaveBeenCalledWith({
+        directorSlug: 'andrzej-wajda',
+        since: new Date('2026-03-01T00:00:00.000Z'),
+        until: new Date('2026-07-01T00:00:00.000Z'),
+      });
+    });
+
+    it('should never count beyond now when to is in the future', async () => {
+      repo.findProfileData.mockResolvedValue(null);
+
+      await service.getProgrammeProfile({
+        directorSlug: 'andrzej-wajda',
+        to: '2026-12-31',
+      });
+
+      expect(repo.findProfileData).toHaveBeenCalledWith(
+        expect.objectContaining({ until: now }),
+      );
+    });
+
+    it('should list every city with allCities', async () => {
+      repo.findProfileData.mockResolvedValue({
+        rows: Array.from({ length: 7 }, (_, i) => ({
+          date: new Date('2026-04-01T18:00:00.000Z'),
+          movieId: 1,
+          cinemaId: i + 1,
+          isDubbing: false,
+        })),
+        movies: [
+          { id: 1, slug: 'brzezina', title: 'Brzezina', productionYear: 1970 },
+        ],
+        genres: [],
+        directors: [],
+        cinemas: Array.from({ length: 7 }, (_, i) => ({
+          sourceId: i + 1,
+          slug: `kino-${i + 1}`,
+          name: `Kino ${i + 1}`,
+          citySlug: `miasto-${i + 1}`,
+          cityName: `Miasto ${i + 1}`,
+        })),
+      });
+
+      const top = await service.getProgrammeProfile({ directorSlug: 'x' });
+      const all = await service.getProgrammeProfile({
+        directorSlug: 'x',
+        allCities: true,
+      });
+
+      expect(top.topCities).toHaveLength(5);
+      expect(all.topCities).toHaveLength(7);
+      expect(repo.findProfileData).not.toHaveBeenCalledWith(
+        expect.objectContaining({ allCities: true }),
+      );
     });
   });
 
