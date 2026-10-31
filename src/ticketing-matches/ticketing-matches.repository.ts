@@ -34,6 +34,9 @@ export class TicketingMatchesRepository {
         lte(t.year, retroYear ?? 0),
         sql`(${t.method} in ('ai', 'tmdb-wikidata') or ${t.note} like 'via AI%')`,
         sql`${t.rawTitle} !~ '(19|20)[0-9]{2}'`,
+        // The scraper marks matches backed by a classics programme or an
+        // anniversary in the event name; those need no review.
+        sql`${t.result}->>'retroEvidence' is null`,
       ),
       manual: eq(t.manual, true),
     };
