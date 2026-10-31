@@ -111,6 +111,31 @@ describe('IndexNowService', () => {
       `${FRONTEND_URL}/kina/kino-pod-baranami`,
       `${FRONTEND_URL}/miasta/krakow`,
       `${FRONTEND_URL}/rezyserzy/pawel-pawlikowski`,
+    ]);
+  });
+
+  it('should add series pages with upcoming screenings when INDEXNOW_SERIES is on', async () => {
+    config = { INDEXNOW_KEY: KEY, FRONTEND_URL, INDEXNOW_SERIES: 'true' };
+    const recent = new Date().toISOString();
+    sitemapService.getSitemap.mockResolvedValue({
+      movies: [],
+      cinemas: [],
+      cities: [],
+      genres: [],
+      directors: [],
+      series: [
+        { slug: 'helios-replay', updatedAt: recent, hasUpcoming: true },
+        { slug: 'dkf-zamek', updatedAt: recent, hasUpcoming: false },
+      ],
+    });
+
+    service.notifyContentChanged();
+    await jest.runAllTimersAsync();
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.urlList).toEqual([
+      FRONTEND_URL,
+      `${FRONTEND_URL}/seanse`,
       `${FRONTEND_URL}/cykle/helios-replay`,
     ]);
   });
