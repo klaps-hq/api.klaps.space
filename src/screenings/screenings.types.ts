@@ -131,6 +131,11 @@ export type GetProgrammeProfileParams = {
    * always include every venue.
    */
   includeChains?: boolean;
+  /**
+   * City scope only: count independent cinemas alone. The "Kina studyjne w
+   * [mieście]" page otherwise showed multiplex numbers under that heading.
+   */
+  independentOnly?: boolean;
 };
 
 /** A ranked entity in a programme profile: a genre, director, city, etc. */

@@ -9,6 +9,7 @@ import { QueryBoolean } from '../../lib/query-boolean';
  *
  * Genre and director profiles count only independent cinemas unless
  * `includeChains=true`; cinema, city and movie profiles ignore the flag.
+ * A city profile counts independent cinemas only with `independentOnly=true`.
  */
 export class GetProgrammeProfileQueryDto {
   @IsOptional()
@@ -35,4 +36,9 @@ export class GetProgrammeProfileQueryDto {
   @QueryBoolean()
   @IsBoolean()
   includeChains?: boolean;
+
+  @IsOptional()
+  @QueryBoolean()
+  @IsBoolean()
+  independentOnly?: boolean;
 }
