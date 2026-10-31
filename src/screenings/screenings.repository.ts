@@ -37,6 +37,49 @@ type FullSchema = typeof schema & typeof relations;
  */
 export const inIndependentCinema: SQL = sql`${schema.screenings.cinemaId} not in (select ${schema.cinemas.sourceId} from ${schema.cinemas} where ${isChainCinema})`;
 
+/** Movie columns read by mapMovieSummary. */
+const movieSummaryColumns = {
+  id: true,
+  sourceId: true,
+  slug: true,
+  url: true,
+  title: true,
+  titleOriginal: true,
+  description: true,
+  productionYear: true,
+  duration: true,
+  language: true,
+  posterUrl: true,
+  videoUrl: true,
+} as const;
+
+/**
+ * Cinema and city columns for screening listings, nested once per screening.
+ * Descriptions are left out on purpose and map to null: repeated on every
+ * screening they were over half of the response, and clients read them from
+ * the cinema and city endpoints instead (klaps.space nulls them here too).
+ */
+const cinemaSummaryColumns = {
+  id: true,
+  sourceId: true,
+  slug: true,
+  name: true,
+  street: true,
+  url: true,
+  latitude: true,
+  longitude: true,
+  isOpenAir: true,
+} as const;
+
+const citySummaryColumns = {
+  id: true,
+  slug: true,
+  name: true,
+  nameDeclinated: true,
+  population: true,
+  voivodeship: true,
+} as const;
+
 export type FindScreeningsParams = {
   startDay: Date;
   endDay: Date;
@@ -133,12 +176,38 @@ export class ScreeningsRepository {
         )
       : undefined;
 
+    // Columns are listed explicitly: the cinema and city are nested once per
+    // screening, and selecting whole rows dragged long texts (city guides and
+    // descriptions, cinema descriptions and jsonb details, movie blur
+    // placeholders) into the JSON built for every one of thousands of
+    // screenings: about 21 MB for a two-month window.
     return this.db.query.movies.findMany({
       where: inArray(schema.movies.id, movieIds),
+      columns: movieSummaryColumns,
       with: {
-        movies_genres: { with: { genre: true } },
+        movies_genres: {
+          columns: {},
+          with: {
+            genre: {
+              columns: { id: true, slug: true, name: true, description: true },
+            },
+          },
+        },
         screenings: {
-          with: { cinema: { with: { city: true } } },
+          columns: {
+            id: true,
+            url: true,
+            date: true,
+            type: true,
+            isDubbing: true,
+            isSubtitled: true,
+          },
+          with: {
+            cinema: {
+              columns: cinemaSummaryColumns,
+              with: { city: { columns: citySummaryColumns } },
+            },
+          },
           where: and(
             gte(schema.screenings.date, startDay),
             lte(schema.screenings.date, endDay),

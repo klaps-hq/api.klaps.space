@@ -334,14 +334,56 @@ describe('ScreeningsRepository', () => {
       expect(result).toEqual(movies);
       expect(mockDb.query.movies.findMany).toHaveBeenCalledWith({
         where: expect.anything(),
+        columns: expect.objectContaining({ id: true, title: true }),
         with: expect.objectContaining({
-          movies_genres: { with: { genre: true } },
+          movies_genres: expect.objectContaining({
+            with: { genre: expect.anything() },
+          }),
           screenings: expect.objectContaining({
-            with: { cinema: { with: { city: true } } },
+            with: {
+              cinema: expect.objectContaining({
+                with: { city: expect.anything() },
+              }),
+            },
             where: expect.anything(),
           }),
         }),
       });
+    });
+
+    it('should select only the columns the mappers read', async () => {
+      mockDb.query.movies.findMany.mockResolvedValue([]);
+
+      await repo.findMoviesWithScreenings(
+        [10],
+        new Date('2025-01-01'),
+        new Date('2025-01-31'),
+      );
+
+      const [{ columns, with: rel }] = mockDb.query.movies.findMany.mock
+        .calls[0] as [
+        {
+          columns: Record<string, boolean>;
+          with: {
+            screenings: {
+              with: {
+                cinema: {
+                  columns: Record<string, boolean>;
+                  with: { city: { columns: Record<string, boolean> } };
+                };
+              };
+            };
+          };
+        },
+      ];
+      const cinema = rel.screenings.with.cinema;
+      // Long texts nested per screening made the listing take seconds.
+      expect(cinema.with.city.columns).not.toHaveProperty('guide');
+      expect(cinema.with.city.columns).not.toHaveProperty('description');
+      expect(cinema.columns).not.toHaveProperty('description');
+      expect(cinema.columns).not.toHaveProperty('photos');
+      expect(cinema.columns).not.toHaveProperty('rooms');
+      expect(columns).not.toHaveProperty('posterBlurDataUrl');
     });
 
     it('should resolve location filter when provided with cinemaSlug', async () => {
