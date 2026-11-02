@@ -14,6 +14,7 @@ describe('CinemasController', () => {
     slug: 'kino-muranow',
     name: 'Kino Muranow',
     street: 'ul. Andersa 1',
+    postalCode: null,
     description: 'Kino artystyczne w centrum Warszawy',
     city: {
       id: 5,
@@ -30,6 +31,7 @@ describe('CinemasController', () => {
     filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
     website: null,
     email: null,
+    duplicateOfSlug: null,
     details: {
       phone: null,
       repertoireUrl: null,

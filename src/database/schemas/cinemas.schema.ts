@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   boolean,
   integer,
   jsonb,
@@ -48,6 +49,19 @@ export const cinemasTable = pgTable('cinemas', {
   longitude: real(),
   latitude: real(),
   street: varchar({ length: 255 }),
+  // Set when `street` was corrected by hand: the scraper upsert then keeps
+  // the stored value instead of the one from the source.
+  streetLocked: boolean().notNull().default(false),
+  // Polish postal code ("38-400"). The source does not provide one, so it is
+  // filled by scripts only and the scraper upsert never touches it.
+  postalCode: varchar({ length: 6 }),
+  // Operator/venue duplicates: the source sometimes lists the same place
+  // twice (once under the operator, once under the venue name). The extra
+  // row points at the canonical cinema and is left out of city lists,
+  // counts, search and the sitemap. Never touched by the scraper upsert.
+  duplicateOfId: integer().references((): AnyPgColumn => cinemasTable.id, {
+    onDelete: 'set null',
+  }),
   description: text(),
   email: varchar({ length: 255 }),
   website: varchar({ length: 255 }),

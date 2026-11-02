@@ -27,6 +27,7 @@ type DbCinemaWithCity = {
   slug: string;
   name: string;
   street: string | null;
+  postalCode?: string | null;
   description?: string | null;
   url: string;
   website?: string | null;
@@ -65,6 +66,7 @@ export const mapCinemaSummary = (
   slug: cinema.slug,
   name: cinema.name,
   street: cinema.street,
+  postalCode: cinema.postalCode ?? null,
   description: cinema.description ?? null,
   city: cinema.city
     ? mapCity(cinema.city, undefined, cityUpdatedAt)
@@ -73,12 +75,16 @@ export const mapCinemaSummary = (
   ...(updatedAt !== undefined && { updatedAt: updatedAt.toISOString() }),
 });
 
-export const mapCinemaDetail = (cinema: DbCinemaWithCity): CinemaResponse => ({
+export const mapCinemaDetail = (
+  cinema: DbCinemaWithCity,
+  duplicateOfSlug: string | null = null,
+): CinemaResponse => ({
   id: cinema.id,
   sourceId: cinema.sourceId,
   slug: cinema.slug,
   name: cinema.name,
   street: cinema.street,
+  postalCode: cinema.postalCode ?? null,
   description: cinema.description ?? null,
   city: cinema.city ? mapCity(cinema.city) : EMPTY_CITY,
   isOpenAir: cinema.isOpenAir ?? false,
@@ -87,6 +93,7 @@ export const mapCinemaDetail = (cinema: DbCinemaWithCity): CinemaResponse => ({
   filmwebUrl: cinema.url,
   website: cinema.website ?? null,
   email: cinema.email ?? null,
+  duplicateOfSlug,
   details: mapCinemaDetails(cinema),
 });
 

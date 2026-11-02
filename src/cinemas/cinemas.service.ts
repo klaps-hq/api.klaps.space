@@ -72,7 +72,7 @@ export class CinemasService {
   async getCinemaBySlug(slug: string): Promise<CinemaResponse | null> {
     const cinema = await this.repo.findBySlug(slug);
     if (!cinema) return null;
-    return mapCinemaDetail(cinema);
+    return this.toDetail(cinema);
   }
 
   // === WRITE ===
@@ -87,13 +87,18 @@ export class CinemasService {
     slug: string,
     data: UpdateCinemaDto,
   ): Promise<CinemaResponse | null> {
+    // A street set by hand corrects the source, so it is locked against the
+    // next scrape unless the caller decides otherwise.
+    if (data.street !== undefined && data.streetLocked === undefined) {
+      data = { ...data, streetLocked: data.street !== null };
+    }
     const touchesDetails = CINEMA_DETAIL_FIELDS.some((f) => f in data);
     const cinema = await this.repo.updateBySlug(
       slug,
       touchesDetails ? { ...data, detailsUpdatedAt: new Date() } : data,
     );
     if (!cinema) return null;
-    return mapCinemaDetail(cinema);
+    return this.toDetail(cinema);
   }
 
   async setCinemaPhotosBySlug(
@@ -105,10 +110,21 @@ export class CinemasService {
       detailsUpdatedAt: new Date(),
     });
     if (!cinema) return null;
-    return mapCinemaDetail(cinema);
+    return this.toDetail(cinema);
   }
 
   // === PRIVATE ===
+
+  private async toDetail(
+    cinema: Parameters<typeof mapCinemaDetail>[0] & {
+      duplicateOfId: number | null;
+    },
+  ): Promise<CinemaResponse> {
+    const duplicateOfSlug = cinema.duplicateOfId
+      ? await this.repo.findSlugById(cinema.duplicateOfId)
+      : null;
+    return mapCinemaDetail(cinema, duplicateOfSlug);
+  }
 
   private async resolveSourceCityId(
     cityId?: number,

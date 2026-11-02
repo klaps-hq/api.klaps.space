@@ -7,6 +7,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -94,6 +95,21 @@ export class UpdateCinemaDto {
   @IsString()
   @MaxLength(255)
   street?: string | null;
+
+  /** Keeps a hand-corrected street from being overwritten by the scraper. */
+  @IsOptional()
+  @IsBoolean()
+  streetLocked?: boolean;
+
+  @IsOptional()
+  @Matches(/^\d{2}-\d{3}$/, { message: 'postalCode must look like 00-000' })
+  postalCode?: string | null;
+
+  /** Marks this row as an operator/venue duplicate of another cinema (id). */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  duplicateOfId?: number | null;
 
   @IsOptional()
   @IsString()

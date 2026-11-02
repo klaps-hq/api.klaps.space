@@ -27,6 +27,7 @@ const EMPTY_CINEMA = {
   slug: '',
   name: '',
   street: null,
+  postalCode: null,
   description: null,
   city: {
     id: 0,
