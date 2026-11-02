@@ -8,6 +8,7 @@ import { withDeadlockRetry } from '../lib/with-deadlock-retry';
 import { toSlug, uniqueSlug } from '../lib/slug';
 import { AREACODE_TO_VOIVODESHIP } from '../lib/voivodeships';
 import { excludedChanged } from '../lib/upsert';
+import { isCanonicalCinema } from '../cinemas/cinema-duplicates';
 import type { City } from './cities.types';
 import type { CreateCitiesBatchItemDto } from './dto/create-cities-batch.dto';
 import type { UpdateCityDto } from './dto/update-city.dto';
@@ -28,6 +29,7 @@ export class CitiesRepository {
   async findWithCinemaCount(voivodeship?: string) {
     const cityColumns = getTableColumns(schema.cities);
 
+    // Operator/venue duplicates are joined out, so one place is one cinema.
     return this.db
       .select({
         ...cityColumns,
@@ -40,7 +42,10 @@ export class CitiesRepository {
       .from(schema.cities)
       .innerJoin(
         schema.cinemas,
-        eq(schema.cinemas.sourceCityId, schema.cities.sourceId),
+        and(
+          eq(schema.cinemas.sourceCityId, schema.cities.sourceId),
+          isCanonicalCinema,
+        ),
       )
       .where(
         voivodeship ? eq(schema.cities.voivodeship, voivodeship) : undefined,
@@ -74,7 +79,9 @@ export class CitiesRepository {
       // map to a real number so callers can do arithmetic on it.
       .select({ count: sql<number>`count(*)`.mapWith(Number) })
       .from(schema.cinemas)
-      .where(eq(schema.cinemas.sourceCityId, sourceCityId));
+      .where(
+        and(eq(schema.cinemas.sourceCityId, sourceCityId), isCanonicalCinema),
+      );
     return count;
   }
 

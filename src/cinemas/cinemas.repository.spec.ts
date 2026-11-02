@@ -64,14 +64,15 @@ describe('CinemasRepository', () => {
   });
 
   describe('findAll', () => {
-    it('should call findMany without where when no sourceCityId', async () => {
+    it('should only filter out duplicates when no sourceCityId', async () => {
       const expected = [{ id: 1, name: 'Cinema 1' }];
       mockDb.query.cinemas.findMany.mockResolvedValue(expected);
 
       const result = await repository.findAll();
 
+      // Operator/venue duplicates are always left out of the list.
       expect(mockDb.query.cinemas.findMany).toHaveBeenCalledWith({
-        where: undefined,
+        where: expect.anything(),
         with: { city: true },
       });
       expect(result).toEqual(expected);

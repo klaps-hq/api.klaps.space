@@ -25,6 +25,7 @@ describe('SearchService', () => {
     slug: 'kino-muranow',
     name: 'Kino Muranow',
     street: 'ul. Andersa 1',
+    postalCode: null,
     description: null,
     city: mockCityResponse,
     isOpenAir: false,

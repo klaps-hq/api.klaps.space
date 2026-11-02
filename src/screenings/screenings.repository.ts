@@ -70,6 +70,7 @@ export const cinemaSummaryColumns = {
   slug: true,
   name: true,
   street: true,
+  postalCode: true,
   url: true,
   latitude: true,
   longitude: true,

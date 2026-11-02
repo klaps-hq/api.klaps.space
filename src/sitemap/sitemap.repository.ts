@@ -4,6 +4,7 @@ import * as schema from '../database/schemas';
 import { DRIZZLE } from '../database/constants';
 import { eq, isNotNull, sql } from 'drizzle-orm';
 import { isIndependentCinema } from '../cinemas/cinema-chains';
+import { isCanonicalCinema } from '../cinemas/cinema-duplicates';
 import {
   DIRECTOR_INDEX_THRESHOLD,
   VENUE_ACTIVITY_WINDOW_DAYS,
@@ -82,7 +83,8 @@ export class SitemapRepository {
    * venues are never listed, whatever their programme: October 2026 GSC
    * showed them drawing ~87% of impressions (people looking for the chain's
    * own repertoire) and zero clicks. `name` is usable in HAVING because rows
-   * are grouped by the cinema primary key.
+   * are grouped by the cinema primary key. Operator/venue duplicates are
+   * left out: their page points at the canonical cinema.
    */
   async findCinemaEntries(): Promise<SitemapRow[]> {
     return this.db
@@ -99,7 +101,9 @@ export class SitemapRepository {
         eq(schema.screenings.cinemaId, schema.cinemas.sourceId),
       )
       .groupBy(schema.cinemas.id)
-      .having(sql`${hasRecentOrUpcomingScreening} and ${isIndependentCinema}`);
+      .having(
+        sql`${hasRecentOrUpcomingScreening} and ${isIndependentCinema} and ${isCanonicalCinema}`,
+      );
   }
 
   /**

@@ -4,6 +4,7 @@ import * as schema from '../database/schemas';
 import * as relations from '../database/schemas/relations';
 import { DRIZZLE } from '../database/constants';
 import { and, asc, eq, ilike, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { isCanonicalCinema } from './cinema-duplicates';
 import type { Cinema, CinemaPhoto } from '../database/schemas/cinemas.schema';
 import { sortAndChunk } from '../lib/chunked-upsert';
 import { withDeadlockRetry } from '../lib/with-deadlock-retry';
@@ -34,6 +35,7 @@ export class CinemasRepository {
   async findAll(sourceCityId?: number, limit?: number, openAir?: boolean) {
     return this.db.query.cinemas.findMany({
       where: and(
+        isCanonicalCinema,
         sourceCityId
           ? eq(schema.cinemas.sourceCityId, sourceCityId)
           : undefined,
@@ -105,9 +107,17 @@ export class CinemasRepository {
     return new Map(rows.map((r) => [r.sourceCityId, r.updatedAt]));
   }
 
+  async findSlugById(id: number): Promise<string | null> {
+    const row = await this.db.query.cinemas.findFirst({
+      where: eq(schema.cinemas.id, id),
+      columns: { slug: true },
+    });
+    return row?.slug ?? null;
+  }
+
   async searchByName(query: string, limit: number) {
     return this.db.query.cinemas.findMany({
-      where: ilike(schema.cinemas.name, `%${query}%`),
+      where: and(ilike(schema.cinemas.name, `%${query}%`), isCanonicalCinema),
       with: { city: true },
       orderBy: asc(schema.cinemas.name),
       limit,
@@ -183,17 +193,21 @@ export class CinemasRepository {
                 sourceCityId: sql`excluded."sourceCityId"`,
                 longitude: sql`excluded."longitude"`,
                 latitude: sql`excluded."latitude"`,
-                street: sql`excluded."street"`,
+                // A street corrected by hand (streetLocked) survives the
+                // scrape. postalCode and duplicateOfId are absent from this
+                // set, so they are never overwritten either.
+                street: sql`CASE WHEN ${schema.cinemas.streetLocked} THEN ${schema.cinemas.street} ELSE excluded."street" END`,
                 updatedAt: sql`now()`,
               },
-              setWhere: excludedChanged([
+              // The street only counts as a change while it is not locked,
+              // otherwise every scrape would bump updatedAt for nothing.
+              setWhere: sql`${excludedChanged([
                 schema.cinemas.name,
                 schema.cinemas.url,
                 schema.cinemas.sourceCityId,
                 schema.cinemas.longitude,
                 schema.cinemas.latitude,
-                schema.cinemas.street,
-              ]),
+              ])} OR (NOT ${schema.cinemas.streetLocked} AND ${schema.cinemas.street} IS DISTINCT FROM excluded."street")`,
             }),
         { label: 'createCinemasBatch' },
       );
