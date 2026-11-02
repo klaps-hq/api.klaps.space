@@ -14,6 +14,9 @@ describe('CinemasService', () => {
     slug: 'kino-muranow',
     name: 'Kino Muranow',
     street: 'ul. Andersa 1',
+    streetLocked: false,
+    postalCode: null,
+    duplicateOfId: null,
     description: 'Kino artystyczne w centrum Warszawy',
     sourceCityId: 10,
     url: 'https://www.filmweb.pl/cinema/kino-muranow',
@@ -83,6 +86,7 @@ describe('CinemasService', () => {
             findCityContentUpdatedAt: jest.fn().mockResolvedValue(new Map()),
             upsertBatch: jest.fn(),
             updateBySlug: jest.fn(),
+            findSlugById: jest.fn(),
           },
         },
         {
@@ -105,6 +109,7 @@ describe('CinemasService', () => {
     slug: 'kino-muranow',
     name: 'Kino Muranow',
     street: 'ul. Andersa 1',
+    postalCode: null,
     description: 'Kino artystyczne w centrum Warszawy',
     city: {
       id: 5,
@@ -203,6 +208,7 @@ describe('CinemasService', () => {
       expect(result).toEqual({
         id: 1,
         sourceId: 101,
+        postalCode: null,
         slug: 'kino-muranow',
         name: 'Kino Muranow',
         street: 'ul. Andersa 1',
@@ -222,6 +228,7 @@ describe('CinemasService', () => {
         filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
         website: null,
         email: null,
+        duplicateOfSlug: null,
         details: {
           phone: null,
           repertoireUrl: null,
@@ -280,6 +287,7 @@ describe('CinemasService', () => {
       expect(result).toEqual({
         id: 1,
         sourceId: 101,
+        postalCode: null,
         slug: 'kino-muranow',
         name: 'Kino Muranow',
         street: 'ul. Andersa 1',
@@ -299,6 +307,7 @@ describe('CinemasService', () => {
         filmwebUrl: 'https://www.filmweb.pl/cinema/kino-muranow',
         website: null,
         email: null,
+        duplicateOfSlug: null,
         details: {
           phone: null,
           repertoireUrl: null,
@@ -334,6 +343,34 @@ describe('CinemasService', () => {
         phone: '123',
         detailsUpdatedAt: expect.any(Date),
       });
+    });
+
+    it('should lock a street corrected by hand against the scraper', async () => {
+      repo.updateBySlug.mockResolvedValue(mockCinemaWithCity);
+
+      await service.updateCinemaBySlug('kino-muranow', {
+        street: 'Bieszczadzka 1',
+      });
+
+      expect(repo.updateBySlug).toHaveBeenCalledWith('kino-muranow', {
+        street: 'Bieszczadzka 1',
+        streetLocked: true,
+      });
+    });
+
+    it('should return the canonical slug of a duplicate cinema', async () => {
+      repo.updateBySlug.mockResolvedValue({
+        ...mockCinemaWithCity,
+        duplicateOfId: 7,
+      });
+      repo.findSlugById.mockResolvedValue('polonez-skierniewice');
+
+      const result = await service.updateCinemaBySlug('kino-muranow', {
+        description: 'Updated',
+      });
+
+      expect(repo.findSlugById).toHaveBeenCalledWith(7);
+      expect(result?.duplicateOfSlug).toBe('polonez-skierniewice');
     });
   });
 

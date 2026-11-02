@@ -11,6 +11,8 @@ export type CinemaSummaryResponse = {
   slug: string;
   name: string;
   street: string | null;
+  /** Polish postal code ("38-400"), when known; null otherwise. */
+  postalCode: string | null;
   description: string | null;
   city: CityResponse;
   isOpenAir: boolean;
@@ -29,6 +31,8 @@ export type CinemaResponse = {
   slug: string;
   name: string;
   street: string | null;
+  /** Polish postal code ("38-400"), when known; null otherwise. */
+  postalCode: string | null;
   description: string | null;
   city: CityResponse;
   isOpenAir: boolean;
@@ -39,6 +43,11 @@ export type CinemaResponse = {
   website: string | null;
   /** Contact email, when known; null otherwise. */
   email: string | null;
+  /**
+   * Slug of the canonical cinema when this row is an operator/venue
+   * duplicate of it (the page should point there); null otherwise.
+   */
+  duplicateOfSlug: string | null;
   /** Researched venue details; every field null when unknown. */
   details: CinemaDetailsResponse;
 };
